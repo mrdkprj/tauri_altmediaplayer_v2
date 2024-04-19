@@ -1,0 +1,105 @@
+.menu-container{
+    padding: 5px 0px;
+    position: fixed;
+    width: fit-content;
+    background-color: var(--context-bgcolor);
+    display: flex;
+    flex-direction: column;
+    outline: 1px solid var(--context-border-color);
+    font-size: 12px;
+    z-index: 9999;
+    outline-offset: -1px;
+    border-radius: 4px;
+}
+
+.menu-item{
+    height: 25px;
+    padding: 1px 25px 1px 25px;
+    margin: 0px 5px;
+    color: var(--context-color);
+    cursor: default;
+    border-radius: 4px;
+    line-height: 25px;
+    white-space: nowrap;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.menu-separator{
+    width: 100%;
+    border-top: 1px solid var(--context-border-color);
+    margin: 5px 0px;
+}
+
+.submenu{
+    position: absolute;
+    top:-4px;
+    /*left: calc(100% + 30px);*/
+    left:100% ;
+    outline: 1px solid var(--context-border-color);
+    border-radius: 4px;
+    visibility: hidden;
+    display: flex;
+    background-color: var(--context-bgcolor);
+    flex-direction: column;
+    transition-delay: 0.5s;
+    transition-property: visibility;
+    padding: 5px 0px;
+}
+
+.revert .submenu{
+    right: 100%;
+    left: unset;
+}
+
+.submenu-container{
+    position: relative;
+}
+.submenu-container::before{
+    content: "";
+    position: absolute;
+    right: 12px;
+    width: 6px;
+    height: 6px;
+    top: calc(50% - 4px);
+    border-top: 1px solid var(--menu-color);
+    border-right: 1px solid var(--menu-color);
+    transform: rotate(45deg);
+}
+
+.checkbox-menu{
+    position: relative;
+}
+
+.checkbox-menu[checked]::before{
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    top: 5px;
+    border-right: 2px solid var(--context-color);
+    transform: rotate(30deg);
+}
+
+.checkbox-menu[checked]::after{
+    content: "";
+    position: absolute;
+    left: 1px;
+    width: 5px;
+    height: 6px;
+    top: 15px;
+    border-left: 2px solid var(--context-color);
+    transform: rotate(135deg);
+}
+
+.menu-item-container:hover .menu-item,
+.menu-item:hover,
+.submenu-container:hover > .menu-item{
+    background-color: var(--context-hover-color);
+}
+
+.submenu-container:hover .submenu{
+    visibility: visible;
+}

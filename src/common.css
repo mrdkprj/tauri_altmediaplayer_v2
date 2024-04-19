@@ -1,0 +1,183 @@
+:root{
+    --font:Segoe UI,sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root{
+        --main-bgcolor:#272626;
+        --media-bgcolor:#000;
+
+        --menu-bgcolor:#202020;
+        --menu-color:#c3bebe;
+        --menu-border-color:#3c393999;
+        --menu-hover-color:#5f5b5b;
+
+        --primary-highlight-color:#d57f1a;
+        --secondary-highlight-color:#e1dede;
+
+        --primary-forecolor:#fff;
+        --secondary-forecolor:#000;
+
+        --playlist-item-color:#959292;
+        --playlist-item-border-color:#c3bebe;
+        --playlist-item-drag-bgcolor:#423f3f;
+
+        --radio-border-color:#423f3f;
+
+        --button-border-color:#959292;
+        --button-bgcolor:#272626;
+        --button-color:#fff;
+        --button-disabled:#5c5656;
+
+        --input-bgcolor:#423f3f;
+        --input-color:#fff;
+        --input-focus-outline:#6161c1;
+
+        --close-hover-bgcolor:#da0707c4;
+        --close-hover-color:#fff;
+
+        --fullscreen-menu-bgcolor:#14131338;
+        --fullscreen-primary-color:#e1dede;
+        --fullscreen-slider-bgcolor:#ffffff80;
+
+        --slider-bgcolor:rgb(255, 255, 255, 0.3);
+        --slider-track-bgcolor:#ffffffcc;
+        --slider-track-value-color:#817b7b;
+        --slider-thumb-bgcolor:#fff;
+        --slider-thumb-border-color:#000;
+
+        --scrollbar-track:#272626;
+        --scrollbar-thumb:#7979791a;
+        --scrollbar-thumb-hover:#79797966;
+
+        --context-bgcolor:#252526;
+        --context-border-color:#454545;
+        --context-color:#e7e0e0;
+        --context-hover-color:#04395e;
+
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root{
+        --main-bgcolor: #fff;
+        --media-bgcolor: #fff;
+
+        --menu-bgcolor: #f5f5f5;
+        --menu-color: #0e0e0e;
+        --menu-border-color: #c7bfbf99;
+        --menu-hover-color: #d1c1c1;
+
+        --primary-highlight-color: #d57f1a;
+        --secondary-highlight-color: #242222;
+
+        --primary-forecolor: #000;
+        --secondary-forecolor:#fff;
+
+        --playlist-item-color: #959292;
+        --playlist-item-border-color: #938989;
+        --playlist-item-drag-bgcolor: #423f3f;
+
+        --radio-border-color: #423f3f;
+
+        --button-border-color: #504949;
+        --button-bgcolor: #fff;
+        --button-color: #000;
+        --button-disabled: #5c5656;
+
+        --input-bgcolor: #fff;
+        --input-color: #000;
+        --input-focus-outline: #6161c1;
+
+        --close-hover-bgcolor: #da0707c4;
+        --close-hover-color: #fff;
+
+        --fullscreen-menu-bgcolor: #14131338;
+        --fullscreen-primary-color: #e1dede;
+        --fullscreen-slider-bgcolor: #363333cc;
+
+        --slider-bgcolor: #221e1e26;
+        --slider-track-bgcolor: #363333cc;
+        --slider-track-value-color: #817b7b;
+        --slider-thumb-bgcolor: #fff;
+        --slider-thumb-border-color: #000;
+
+        --scrollbar-track: #fff;
+        --scrollbar-thumb: #7979791a;
+        --scrollbar-thumb-hover: #79797966;
+
+        --context-bgcolor:#f5f5f5;
+        --context-border-color:#c7bfbf99;
+        --context-color:#0e0e0e;
+        --context-hover-color:#d1c1c1;
+
+    }
+}
+
+html, body, #root{
+    width:100%;
+    height:100%;
+}
+
+body{
+    margin:0;
+    font-family: var(--font);
+}
+
+div:focus{
+    outline: none;
+}
+
+.viewport{
+    background-color: var(--main-bgcolor);
+    color:var(--menu-color);
+    height:100%;
+    width: 100%;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    outline-width: 1px;
+    outline-style: solid;
+    outline-color: var(--menu-border-color);
+    outline-offset: -1px;
+}
+
+.title-bar{
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    height: 29px;
+    min-height: 29px;
+    width: 100%;
+    color: var(--menu-color);
+    background-color: var(--menu-bgcolor);
+    border-bottom: 1px solid var(--menu-border-color);
+    -webkit-app-region: drag;
+}
+
+.close-btn{
+    position: absolute;
+    top:0;
+    width: 45px;
+    height: auto;
+    text-align: center;
+    line-height: 30px;
+    user-select: none;
+    -webkit-app-region:no-drag;
+}
+
+::-webkit-scrollbar {
+    width: auto;
+}
+
+::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+}

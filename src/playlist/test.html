@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        div{
+            position: fixed;
+            top: 0px;
+            left: 0px;
+            width: 300px;
+            height: 400px;
+            background-color: blue;
+        }
+    </style>
+    <script>
+        window.onload=()=>{
+            const d = document.getElementById("div")
+            d.addEventListener("mouseleave", _ => console.log("loeave"))
+            d.addEventListener("mouseenter", _ => console.log("loeave"))
+        }
+    </script>
+</head>
+<body>
+    <div id="div"></div>
+</body>
+</html>

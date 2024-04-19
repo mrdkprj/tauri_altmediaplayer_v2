@@ -1,0 +1,35 @@
+{
+  "name": "mediaplayer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "release": "tauri build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "start": "vite build && tauri dev",
+    "start2": "tauri dev"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.0.0-beta.0",
+    "@tauri-apps/plugin-fs": "2.0.0-beta.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.0.2",
+    "@tauri-apps/cli": "2.0.0-beta.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.0.0-beta.1",
+    "@tauri-apps/plugin-dialog": "^2.0.0-beta.1",
+    "@tauri-apps/plugin-shell": "^2.0.0-beta.1",
+    "@tsconfig/svelte": "^5.0.2",
+    "@types/node": "^20.11.17",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "svelte": "^4.2.10",
+    "svelte-check": "^3.6.4",
+    "tslib": "^2.6.2",
+    "typescript": "^5.0.2",
+    "vite": "^5.0.0"
+  }
+}
