@@ -1,10 +1,11 @@
 use serde::Serialize;
-use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::UI::Controls::*;
-use windows::Win32::UI::Shell::*;
+use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, SIZE, TRUE, WPARAM};
+use windows::Win32::Graphics::Gdi::{CreateCompatibleDC, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, ExcludeClipRect, GetDC, GetObjectW, GetPixel, InflateRect, LineTo, MoveToEx, OffsetRect, ReleaseDC, SelectObject, SetBkMode, SetRectEmpty, SetTextColor, DT_CALCRECT, DT_LEFT, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HDC, HFONT, HGDIOBJ, HPEN, LOGFONTW, PS_SOLID, TRANSPARENT};
+use windows::Win32::UI::Controls::{CloseThemeData, DrawThemeBackgroundEx, DrawThemeTextEx, GetThemeBitmap, OpenThemeDataEx, DRAWITEMSTRUCT, GBF_DIRECT, HTHEME, MC_CHECKMARKNORMAL, MEASUREITEMSTRUCT, MENU_POPUPBACKGROUND, MENU_POPUPCHECK, MENU_POPUPGUTTER, MENU_POPUPITEM, MENU_POPUPSEPARATOR, MENU_POPUPSUBMENU, MPI_HOT, MPI_NORMAL, MSM_NORMAL, ODA_SELECT, ODS_CHECKED, ODS_GRAYED, ODS_SELECTED, OTD_NONCLIENT, TMT_DIBDATA};
+use windows::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
+use windows::Win32::UI::WindowsAndMessaging::{CreatePopupMenu, GetMenuInfo, GetMenuItemCount, GetMenuItemInfoW, GetSystemMetrics, InsertMenuItemW, SetMenuInfo, SetMenuItemInfoW, SystemParametersInfoW, TrackPopupMenu, HMENU, MENUINFO, MENUITEMINFOW, MFS_CHECKED, MFS_UNCHECKED, MFT_OWNERDRAW, MFT_SEPARATOR, MFT_STRING, MIIM_DATA, MIIM_FTYPE, MIIM_ID, MIIM_STATE, MIIM_SUBMENU, MIM_APPLYTOSUBMENUS, MIM_BACKGROUND, MIM_MENUDATA, NONCLIENTMETRICSW, SM_CXHSCROLL, SM_CXMENUCHECK, SM_CYMENU, SPI_GETNONCLIENTMETRICS, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_TOPALIGN, WM_DESTROY, WM_DRAWITEM, WM_INITMENUPOPUP, WM_MEASUREITEM};
 use windows_core::{PCWSTR, PWSTR};
-use windows::Win32::UI::WindowsAndMessaging::*;
+
 use once_cell::sync::Lazy;
 use std::ffi::c_void;
 use std::mem::size_of;

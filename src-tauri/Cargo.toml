@@ -50,6 +50,7 @@ custom-protocol = ["tauri/custom-protocol"]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-#[patch.crates-io]
-#wry = { path = './wry-0.37.0' }
+[patch.crates-io]
+#tao = { path = "./tao-0.27.0" }
+#wry = { path = './wry-0.39.1' }
 #webview2-com-sys = { path = './webview2-com-sys-0.28.0' }

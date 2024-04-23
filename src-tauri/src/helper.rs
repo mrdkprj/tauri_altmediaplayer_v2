@@ -15,6 +15,7 @@ const TAURI_EVENT_NAME:&str = "contextmenu-event";
 pub const SORT_MENU_NAME:&str = "Sort";
 const PLAYBACK_SPEEDS:[f64;8] = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 const SEEK_SPEEDS:[f64;9] = [0.03, 0.05, 0.1, 0.5, 1.0, 3.0, 5.0, 10.0, 20.0];
+const TEST:bool = false;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Position {
@@ -51,6 +52,9 @@ pub fn popup_menu(app:&tauri::AppHandle, label:&str, position:Position){
 
 pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
 
+    if TEST {
+        return Ok(());
+    }
     let hwnd = window.hwnd().unwrap();
     let mut menu = Menu::new_with_theme(hwnd, settings.theme);
 
@@ -102,12 +106,16 @@ fn create_theme_submenu(menu:&mut Menu, settings:&Settings){
     let parent = menu.submenu("Theme");
 
     for (_, theme) in Theme::iter().enumerate() {
-        let theme_str = &theme.to_string();
-        parent.radio(&id, theme_str, theme_str, &id, theme == settings.theme);
+        let theme_str = if theme.to_string() == "dark" { "Dark" } else { "Light" };
+        parent.radio(&id, theme_str, &theme.to_string(), &id, theme == settings.theme);
     }
 }
 
 pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
+
+    if TEST {
+        return Ok(());
+    }
 
     let hwnd = window.hwnd().unwrap();
     let menu = Menu::new_with_theme(hwnd, settings.theme);
@@ -140,6 +148,10 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 }
 
 pub fn create_sort_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
+
+    if TEST {
+        return Ok(());
+    }
 
     let hwnd = window.hwnd().unwrap();
     let menu = Menu::new_with_theme(hwnd, settings.theme);

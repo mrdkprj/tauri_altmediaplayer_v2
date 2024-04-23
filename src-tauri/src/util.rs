@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-#![allow(dead_code)]
 use once_cell::sync::Lazy;
 use tauri::Manager;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -55,9 +53,7 @@ fn change_webview_theme(window:&tauri::WebviewWindow, theme:Theme){
     windows.iter().enumerate().for_each(|(_,(_, win))|{
         win.with_webview( move |webview| {
             unsafe{
-
-                //let core_webview = ICoreWebView2Ext(webview.controller().CoreWebView2().unwrap());
-                let core_webview_13: ICoreWebView2_13 = webview.controller().CoreWebView2().unwrap().cast().unwrap();//core_webview.cast::<ICoreWebView2_13>().unwrap();
+                let core_webview_13: ICoreWebView2_13 = webview.controller().CoreWebView2().unwrap().cast().unwrap();
                 core_webview_13.Profile().unwrap().SetPreferredColorScheme(webview_theme).unwrap();
             }
         }).unwrap();

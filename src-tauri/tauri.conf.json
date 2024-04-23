@@ -22,7 +22,7 @@
         "visible":true,
         "decorations":false,
         "skipTaskbar":false,
-        "transparent":false,
+        "transparent":true,
         "theme": "Dark",
         "url":"src/player/index.html"
       },
@@ -39,7 +39,7 @@
         "decorations":false,
         "skipTaskbar":true,
         "parent":"Player",
-        "transparent":false,
+        "transparent":true,
         "theme": "Dark",
         "url":"src/playlist/index.html"
       }

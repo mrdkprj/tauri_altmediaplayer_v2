@@ -96,7 +96,7 @@
     }
 
     const onFileDrop = (e:Mp.FileDropEvent) => {
-
+        console.log(e)
         const files = getDropFiles(e)
 
         if(files.length){
@@ -499,7 +499,6 @@
         e.preventDefault()
         e.stopPropagation()
         ipc.invoke("open_context_menu", {x:e.screenX, y:e.screenY})
-        //ipc.sendTo("ContextMenu", "open-context-menu", {type:"Player", position:{x:e.screenX, y:e.screenY} })
     }
 
     const togglePlaylistWindow = async () => {
@@ -570,8 +569,7 @@
     })
 </script>
 
-<!-- <svelte:window on:keydown={onKeydown} on:resize={onResize} on:contextmenu={e => e.preventDefault()}/> -->
-<svelte:window on:keydown={onKeydown} on:resize={onResize} />
+<svelte:window on:keydown={onKeydown} on:resize={onResize} on:contextmenu={e => e.preventDefault()}/>
 <svelte:document on:mousemove={onMousemove}/>
 
 <div class="player-viewport" class:full-screen={$appState.isFullScreen} class:loaded={$appState.loaded} class:autohide={$appState.autohide}>
