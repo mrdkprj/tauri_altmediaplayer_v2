@@ -48,7 +48,7 @@ const XMT_CHECKBOX:X_MENU_TYPE = X_MENU_TYPE(1);
 const XMT_RADIO:X_MENU_TYPE = X_MENU_TYPE(2);
 const XMT_SUBMENU:X_MENU_TYPE = X_MENU_TYPE(3);
 const XMT_SEPARATOR:X_MENU_TYPE = X_MENU_TYPE(4);
-const XMT_DUMMY:X_MENU_TYPE = X_MENU_TYPE(5);
+const XMT_MARGIN:X_MENU_TYPE = X_MENU_TYPE(5);
 const MENU_SUBCLASS_ID: usize = 200;
 
 #[derive(Clone)]
@@ -191,7 +191,7 @@ impl Menu {
     }
 
     fn add_margin(&self, menu:HMENU, index:u32){
-        Self::_menu(self, "", "", "", None, None, XMT_DUMMY, Some(MenuMargin{menu, index})).unwrap();
+        Self::_menu(self, "", "", "", None, None, XMT_MARGIN, Some(MenuMargin{menu, index})).unwrap();
     }
 
     fn _menu(&self, id:&str, label:&str, value:&str, name:Option<&str>, checked:Option<bool>, menu_type:X_MENU_TYPE, margin:Option<MenuMargin>) -> Result<MENUITEMINFOW, windows_core::Error> {
@@ -219,7 +219,7 @@ impl Menu {
                 mii.hSubMenu = submenu;
             },
 
-            XMT_SEPARATOR | XMT_DUMMY => {
+            XMT_SEPARATOR | XMT_MARGIN => {
                 mii.fType |= MFT_SEPARATOR;
             },
             _ => {}
@@ -245,7 +245,7 @@ impl Menu {
             menu_type,
             name
         };
-        mii.dwItemData = Box::into_raw(Box::new(itemdata)) as usize;
+        mii.dwItemData = Box::into_raw(Box::new(itemdata)) as _;
 
         if margin.is_none() {
             let count = unsafe { GetMenuItemCount(self.menu) };
@@ -289,14 +289,13 @@ fn close_theme(){
     }
 }
 
-#[allow(unused_variables)]
 unsafe extern "system" fn menu_subclass_proc(
     hwnd: HWND,
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
-    uidsubclass: usize,
-    dwrefdata: usize,
+    _uidsubclass: usize,
+    _dwrefdata: usize,
 ) -> LRESULT {
 
     match msg {
@@ -314,13 +313,13 @@ unsafe extern "system" fn menu_subclass_proc(
         }
 
         WM_MEASUREITEM => {
-            MeasureItem(hwnd, std::mem::transmute::<isize, &mut MEASUREITEMSTRUCT>(lparam.0));
+            measure_item(hwnd, std::mem::transmute::<isize, &mut MEASUREITEMSTRUCT>(lparam.0)).unwrap();
             LRESULT(0)
         }
 
         WM_DRAWITEM => {
             let theme = open_theme(hwnd);
-            DrawItemFlat(theme, std::mem::transmute::<isize, &DRAWITEMSTRUCT>(lparam.0)).unwrap();
+            draw_item(theme, std::mem::transmute::<isize, &DRAWITEMSTRUCT>(lparam.0)).unwrap();
             LRESULT(0)
         }
 
@@ -342,18 +341,9 @@ unsafe extern "system" fn menu_subclass_proc(
     }
 }
 
-#[allow(non_upper_case_globals)]
-const s_kcxGap:i32 = 1;
-#[allow(non_upper_case_globals)]
-const s_kcxTextMargin:i32 = 2;
-#[allow(non_upper_case_globals)]
-const s_kcxButtonMargin:i32 = 3;
-#[allow(non_upper_case_globals)]
-const s_kcyButtonMargin:i32 = 3;
-
 fn from_usize<'a, T>(data:usize) -> &'a T {
-    let pmd_ptr = data as *const T;
-    unsafe { &*pmd_ptr }
+    let item_data_ptr = data as *const T;
+    unsafe { &*item_data_ptr }
 }
 
 fn is_dark() -> bool {
@@ -426,9 +416,86 @@ fn toggle_radio(hmenu:HMENU, selected_id:u32, selected_item_info:&mut MENUITEMIN
     }
 }
 
+const V_MARGIN:i32 = 1;
+const H_MARGIN:i32 = 2;
+static BASE_SIZE:Lazy<SIZE> = Lazy::new(|| {
+    let mut size = SIZE::default();
+    size.cx = 16 + 2 * 3;
+    size.cy = 15 + 2 * 3;
+    size
+});
+
+fn measure_item(hwnd:HWND, measure_item_struct:&mut MEASUREITEMSTRUCT) -> Result<(), windows_core::Error> {
+
+    unsafe {
+
+        let item_data_ptr = measure_item_struct.itemData as *const MenuItemData;
+        let item_data = &*item_data_ptr;
+
+        match item_data.menu_type {
+
+            XMT_SEPARATOR => {
+                // separator - use half system height and zero width
+                measure_item_struct.itemHeight = (GetSystemMetrics(SM_CYMENU) as u32 + 4u32) / 2u32;
+                measure_item_struct.itemWidth  = 0;
+            },
+
+            XMT_MARGIN => {
+                measure_item_struct.itemHeight = 2;
+                measure_item_struct.itemWidth  = 0;
+            },
+
+            _ => {
+
+                let dc:HDC = GetDC(hwnd);
+                let menu_font = get_font()?;
+                let font:HFONT = CreateFontIndirectW(&menu_font);
+                let old_font:HGDIOBJ = SelectObject(dc, font);
+                let mut text_rect = RECT::default();
+
+                let mut text = item_data.label.clone();
+                DrawTextW(dc, text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
+
+                let mut cx = text_rect.right - text_rect.left;
+                SelectObject(dc, old_font);
+
+                let mut log_font = LOGFONTW::default();
+                GetObjectW(font, size_of::<LOGFONTW>() as i32, Some(&mut log_font as *mut _ as *mut c_void));
+
+                let mut cy = log_font.lfHeight;
+                if cy < 0 {
+                    cy = -cy;
+                }
+                let cy_margin = 8;
+                cy += cy_margin;
+
+                // height of item is the bigger of these two
+                measure_item_struct.itemHeight = std::cmp::max(cy as u32 + 4u32, BASE_SIZE.cy as u32);
+
+                // L/R margin for readability
+                cx += 2 * H_MARGIN;
+                // space between button and menu text
+                cx += V_MARGIN;
+                // button width (L=button; R=empty margin)
+                cx += 2 * BASE_SIZE.cx;
+                // extra padding
+                cx += 20;
+
+                // Windows adds 1 to returned value
+                cx -= GetSystemMetrics(SM_CXMENUCHECK) - 1;
+
+                measure_item_struct.itemWidth = (cx + 10) as u32;
+
+                ReleaseDC(hwnd, dc);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn draw_background_color(hwnd:HWND, menu:HMENU) -> Result<(), windows_core::Error> {
     unsafe{
-
         let mut info = MENUINFO::default();
         info.cbSize = size_of::<MENUINFO>() as u32;
         info.fMask = MIM_BACKGROUND | MIM_APPLYTOSUBMENUS | MIM_MENUDATA;
@@ -450,241 +517,147 @@ fn draw_background_color(hwnd:HWND, menu:HMENU) -> Result<(), windows_core::Erro
             SetMenuInfo(menu, &info)?;
         }
     }
-
     Ok(())
 }
 
-#[allow(non_snake_case)]
-fn MeasureItem(hWnd:HWND, lpMeasureItemStruct:&mut MEASUREITEMSTRUCT){
+fn draw_item(theme:HTHEME, draw_item_struct:&DRAWITEMSTRUCT) -> Result<(), windows_core::Error> {
 
     unsafe {
+        let item_data_ptr = draw_item_struct.itemData as *const MenuItemData;
+        let item_data = &*item_data_ptr;
 
-        let info = GetSystemSettings(hWnd);
-        let pmd_ptr = lpMeasureItemStruct.itemData as *const MenuItemData;
-        let pmd = &*pmd_ptr;
+        let dc = draw_item_struct.hDC;
+        let mut item_rect = draw_item_struct.rcItem;
 
-        match pmd.menu_type {
+        let _disabled = (draw_item_struct.itemState.0 & ODS_GRAYED.0) != 0;
+        let selected = (draw_item_struct.itemState.0 & ODS_SELECTED.0) != 0;
+        let checked = (draw_item_struct.itemState.0 & ODS_CHECKED.0) != 0;
 
-            XMT_SEPARATOR => {
-            // separator - use half system height and zero width
-            lpMeasureItemStruct.itemHeight = (GetSystemMetrics(SM_CYMENU) as u32 + 4u32) / 2u32;
-            lpMeasureItemStruct.itemWidth  = 0;
-            },
-
-            XMT_DUMMY => {
-                lpMeasureItemStruct.itemHeight = 2;
-                lpMeasureItemStruct.itemWidth  = 0;
-            },
-
-            _ => {
-                // compute size of text - use DrawText with DT_CALCRECT
-                let dc:HDC = GetDC(hWnd);
-                let hOldFont:HGDIOBJ = SelectObject(dc, info.m_fontMenu);
-                let mut rcText = RECT::default();
-
-                let mut text = pmd.label.clone();
-                DrawTextW(dc, text.as_mut_slice(), &mut rcText, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-
-                let mut cx = rcText.right - rcText.left;
-                SelectObject(dc, hOldFont);
-
-                let mut lf = LOGFONTW::default();
-                GetObjectW(info.m_fontMenu, size_of::<LOGFONTW>() as i32, Some(&mut lf as *mut _ as *mut c_void));
-
-                let mut cy = lf.lfHeight;
-                if cy < 0 {
-                    cy = -cy;
-                }
-                let cyMargin = 8;
-                cy += cyMargin;
-
-                let mut m_szBitmap = SIZE::default();
-                m_szBitmap.cx = 16;
-                m_szBitmap.cy = 15;
-                let mut m_szButton = SIZE::default();
-                m_szButton.cx = m_szBitmap.cx + 2 * s_kcxButtonMargin;
-                m_szButton.cy = m_szBitmap.cy + 2 * s_kcyButtonMargin;
-
-                // height of item is the bigger of these two
-                lpMeasureItemStruct.itemHeight = std::cmp::max(cy as u32 + 4u32, m_szButton.cy as u32);
-
-                // width is width of text plus a bunch of stuff
-                cx += 2 * s_kcxTextMargin;   // L/R margin for readability
-                cx += s_kcxGap;              // space between button and menu text
-                cx += 2 * m_szButton.cx;     // button width (L=button; R=empty margin)
-                cx += info.m_cxExtraSpacing;      // extra between item text and accelerator keys
-
-                // Windows adds 1 to returned value
-                cx -= GetSystemMetrics(SM_CXMENUCHECK) - 1;
-                // done deal
-                lpMeasureItemStruct.itemWidth = (cx + 10) as u32;
-
-                ReleaseDC(hWnd, dc);
-            }
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-fn DrawItemFlat(theme:HTHEME, lpDrawItemStruct:&DRAWITEMSTRUCT) -> Result<(), windows_core::Error> {
-
-    unsafe {
-
-        let mut m_szBitmap = SIZE::default();
-        m_szBitmap.cx = 16;
-        m_szBitmap.cy = 15;
-        let mut m_szButton = SIZE::default();
-        m_szButton.cx = m_szBitmap.cx + 2 * s_kcxButtonMargin;
-        m_szButton.cy = m_szBitmap.cy + 2 * s_kcyButtonMargin;
-
-        let pmd_ptr = lpDrawItemStruct.itemData as *const MenuItemData;
-        let pmd = &*pmd_ptr;
-
-        let dc = lpDrawItemStruct.hDC;
-        let mut rcItem = lpDrawItemStruct.rcItem;
-
-        let _bDisabled = (lpDrawItemStruct.itemState.0 & ODS_GRAYED.0) != 0;
-        let bSelected = (lpDrawItemStruct.itemState.0 & ODS_SELECTED.0) != 0;
-        let bChecked = (lpDrawItemStruct.itemState.0 & ODS_CHECKED.0) != 0;
-
-        DrawThemeBackgroundEx(theme, dc, MENU_POPUPGUTTER.0, 0, &mut rcItem, None)?;
+        DrawThemeBackgroundEx(theme, dc, MENU_POPUPGUTTER.0, 0, &mut item_rect, None)?;
 
         // paint background
-        if bSelected || (lpDrawItemStruct.itemAction == ODA_SELECT)
-        {
-          if bSelected {
-            DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_HOT.0, &mut rcItem, None)?;
-          }else{
-            DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_NORMAL.0, &mut rcItem, None)?;
-          }
+        if selected || (draw_item_struct.itemAction == ODA_SELECT){
+            if selected {
+                DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_HOT.0, &mut item_rect, None)?;
+            }else{
+                DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_NORMAL.0, &mut item_rect, None)?;
+            }
         }
 
-        match pmd.menu_type {
+        match item_data.menu_type {
             XMT_SEPARATOR => {
-                draw_separator(dc, rcItem)?;
+                draw_separator(dc, item_rect)?;
             },
 
-            XMT_DUMMY => {
-                DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_NORMAL.0, &mut rcItem, None)?;
+            XMT_MARGIN => {
+                DrawThemeBackgroundEx(theme, dc, MENU_POPUPITEM.0, MPI_NORMAL.0, &mut item_rect, None)?;
             },
 
             _ => {
 
-                // button rect
-                let mut rcButn = RECT{ left: rcItem.left, top:rcItem.top, right:rcItem.left + m_szButton.cx, bottom:rcItem.top + m_szButton.cy };
-                // center vertically
-                OffsetRect(&mut rcButn, 0, ((rcItem.bottom - rcItem.top) - (rcButn.bottom - rcButn.top)) / 2);
-
-                // draw background and border for checked items
-                if bChecked
-                {
-                    let mut rcCheck = rcButn.clone();
-                    InflateRect(&mut rcCheck as *mut _ as *mut RECT, -1, -1);
-                    DrawThemeBackgroundEx(theme, dc, MENU_POPUPCHECK.0, MC_CHECKMARKNORMAL.0, &mut rcCheck, None)?;
+                if checked{
+                    // button rect
+                    let mut rect = RECT{ left: item_rect.left, top:item_rect.top, right:item_rect.left + BASE_SIZE.cx, bottom:item_rect.top + BASE_SIZE.cy };
+                    // center vertically
+                    OffsetRect(&mut rect, 0, ((item_rect.bottom - item_rect.top) - (rect.bottom - rect.top)) / 2);
+                    let mut check_rect = rect.clone();
+                    InflateRect(&mut check_rect as *mut _ as *mut RECT, -1, -1);
+                    DrawThemeBackgroundEx(theme, dc, MENU_POPUPCHECK.0, MC_CHECKMARKNORMAL.0, &mut check_rect, None)?;
                 }
 
-                // draw item text
-                let cxButn = m_szButton.cx;
-                // calc text rectangle and colors
-                let mut rcText = rcItem.clone();
-                rcText.left += cxButn + s_kcxGap + s_kcxTextMargin;
-                rcText.right -= cxButn;
+                let mut text_rect = item_rect.clone();
+                text_rect.left += BASE_SIZE.cx + V_MARGIN + H_MARGIN;
+                text_rect.right -= BASE_SIZE.cx;
 
-                let mut textRect = rcText.clone();
-
-                if pmd.menu_type == XMT_SUBMENU {
-                    let mut arrowR  = rcItem.clone();
-                    let arrowSize = GetSystemMetrics(SM_CXHSCROLL);
-                    textRect.right -= arrowSize;
-                    arrowR.left = rcItem.right - arrowSize;
+                if item_data.menu_type == XMT_SUBMENU {
+                    let mut arrow_rect  = item_rect.clone();
+                    let arrow_size = GetSystemMetrics(SM_CXHSCROLL);
+                    text_rect.right -= arrow_size;
+                    arrow_rect.left = item_rect.right - arrow_size;
 
                     // center vertically
-                    OffsetRect(&mut arrowR as *mut _ as *mut RECT, 0, ((rcItem.bottom - rcItem.top) - (arrowR.bottom - arrowR.top)) / 2);
-                    DrawThemeBackgroundEx(theme, dc, MENU_POPUPSUBMENU.0, MSM_NORMAL.0, &mut arrowR, None)?;
+                    OffsetRect(&mut arrow_rect as *mut _ as *mut RECT, 0, ((item_rect.bottom - item_rect.top) - (arrow_rect.bottom - arrow_rect.top)) / 2);
+                    DrawThemeBackgroundEx(theme, dc, MENU_POPUPSUBMENU.0, MSM_NORMAL.0, &mut arrow_rect, None)?;
 
                 }
 
-                DrawMenuText(dc, &textRect, PCWSTR::from_raw(pmd.label.as_ptr()))?;
-
-                ExcludeClipRect(dc, rcItem.left, rcItem.top, rcItem.right, rcItem.bottom);
-
+                draw_menu_text(dc, &text_rect, PCWSTR::from_raw(item_data.label.as_ptr()))?;
+                ExcludeClipRect(dc, item_rect.left, item_rect.top, item_rect.right, item_rect.bottom);
             }
         }
-
     }
 
     Ok(())
 }
 
-#[allow(non_snake_case)]
-fn draw_separator(dc:HDC, rcItem:RECT) -> Result<(), windows_core::Error> {
+fn draw_separator(dc:HDC, rect:RECT) -> Result<(), windows_core::Error> {
     unsafe {
+        let mut separator_rect = rect.clone();
 
         if is_dark() {
+            separator_rect.top += (rect.bottom - rect.top) / 2;
 
-            let mut rc = rcItem.clone();
-            rc.top += (rcItem.bottom - rcItem.top) / 2;
-
-            let hPen:HPEN = CreatePen(PS_SOLID, 1, COLORREF(DARK_COLOR_SCHEMA.border));
-            let hFontOld:HGDIOBJ = SelectObject(dc,hPen);
-            MoveToEx(dc, rc.left, rc.top, None);
-            LineTo(dc, rc.right, rc.top);
-            SelectObject(dc,hFontOld);
-
+            let pen:HPEN = CreatePen(PS_SOLID, 1, COLORREF(DARK_COLOR_SCHEMA.border));
+            let old_pen:HGDIOBJ = SelectObject(dc,pen);
+            MoveToEx(dc, separator_rect.left, separator_rect.top, None);
+            LineTo(dc, separator_rect.right, separator_rect.top);
+            SelectObject(dc,old_pen);
         } else {
-
-            let mut rc = rcItem.clone();
-            let size = (rc.bottom - rc.top) / 2;
-            rc.bottom -= size / 2;
-            rc.top += size / 2;
-            DrawThemeBackgroundEx(*THEME.lock().unwrap(), dc, MENU_POPUPSEPARATOR.0, 0, &mut rc, None)?;
-
+            let size = (separator_rect.bottom - separator_rect.top) / 2;
+            separator_rect.bottom -= size / 2;
+            separator_rect.top += size / 2;
+            DrawThemeBackgroundEx(*THEME.lock().unwrap(), dc, MENU_POPUPSEPARATOR.0, 0, &mut separator_rect, None)?;
         }
     }
 
     Ok(())
 }
 
-#[allow(non_snake_case)]
-fn DrawMenuText(dc:HDC, rc:&RECT, lpstrText:PCWSTR) -> Result<(), windows_core::Error>{
+fn draw_menu_text(dc:HDC, rect:&RECT, raw_text:PCWSTR) -> Result<(), windows_core::Error> {
     unsafe {
 
-        let text = lpstrText.to_string().unwrap();
-        let nTab = text.contains("\t");
+        let text = raw_text.to_string().unwrap();
+        let has_tab = text.contains("\t");
         let texts = text.split("\t").collect::<Vec::<&str>>();
 
-        let mut rect = rc.clone();
+        let mut text_rect = rect.clone();
         let mut first = encode_wide(texts[0]);
-        let mut second = if nTab { encode_wide(texts[1]) } else { encode_wide("") };
+        let mut second = if has_tab { encode_wide(texts[1]) } else { encode_wide("") };
 
         if is_dark() {
-            let mut info:NONCLIENTMETRICSW = NONCLIENTMETRICSW::default();
-            info.cbSize = size_of::<NONCLIENTMETRICSW>() as u32;
-            SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, size_of::<NONCLIENTMETRICSW>() as u32, Some(&mut info as *mut _ as *mut c_void), SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0))?;
 
             SetBkMode(dc, TRANSPARENT);
             SetTextColor(dc, COLORREF(DARK_COLOR_SCHEMA.color));
 
-            let mut font = info.lfMenuFont;
-            font.lfWeight = 700;
+            let menu_font = get_font()?;
+            let font:HFONT = CreateFontIndirectW(&menu_font);
+            let old_font:HGDIOBJ = SelectObject(dc,font);
 
-            let m_fontMenu:HFONT = CreateFontIndirectW(&font);
-            let hFontOld:HGDIOBJ = SelectObject(dc,m_fontMenu);
-
-            DrawTextW(dc, &mut first, &mut rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
+            DrawTextW(dc, &mut first, &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
 
             SetTextColor(dc, COLORREF(DARK_COLOR_SCHEMA.disabled));
-            DrawTextW(dc, &mut second, &mut rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER);
+            DrawTextW(dc, &mut second, &mut text_rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER);
 
-            SelectObject(dc,hFontOld);
+            SelectObject(dc,old_font);
 
         } else {
-            DrawThemeTextEx(*THEME.lock().unwrap(), dc, MENU_POPUPITEM.0, MPI_NORMAL.0, first.as_mut(), DT_SINGLELINE | DT_LEFT | DT_VCENTER, &mut rect, None)?;
-            DrawThemeTextEx(*THEME.lock().unwrap(), dc, MENU_POPUPITEM.0, MPI_NORMAL.0, second.as_mut(), DT_SINGLELINE | DT_RIGHT | DT_VCENTER, &mut rect, None)?;
+            DrawThemeTextEx(*THEME.lock().unwrap(), dc, MENU_POPUPITEM.0, MPI_NORMAL.0, first.as_mut(), DT_SINGLELINE | DT_LEFT | DT_VCENTER, &mut text_rect, None)?;
+            DrawThemeTextEx(*THEME.lock().unwrap(), dc, MENU_POPUPITEM.0, MPI_NORMAL.0, second.as_mut(), DT_SINGLELINE | DT_RIGHT | DT_VCENTER, &mut text_rect, None)?;
         }
     }
 
     Ok(())
+}
+
+fn get_font() -> Result<LOGFONTW, windows_core::Error> {
+    let mut info:NONCLIENTMETRICSW = NONCLIENTMETRICSW::default();
+    info.cbSize = size_of::<NONCLIENTMETRICSW>() as u32;
+    unsafe { SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, size_of::<NONCLIENTMETRICSW>() as u32, Some(&mut info as *mut _ as *mut c_void), SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0))? };
+
+    let mut menu_font = info.lfMenuFont;
+    menu_font.lfWeight = 700;
+
+    Ok(menu_font)
 }
 
 #[allow(non_snake_case)]
@@ -694,6 +667,7 @@ struct Info {
 }
 
 #[allow(non_snake_case)]
+#[allow(dead_code)]
 fn GetSystemSettings(hWnd: HWND) -> Info
 {
     let mut sysinfo:Info = Info{m_fontMenu:HFONT::default(), m_cxExtraSpacing:10};

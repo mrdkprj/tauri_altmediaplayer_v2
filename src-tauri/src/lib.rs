@@ -8,6 +8,7 @@ pub mod settings;
 pub mod helper;
 pub mod util;
 pub mod menu;
+pub mod custom;
 
 static PLAYER:&str = "Player";
 static PLAY_LIST:&str = "Playlist";

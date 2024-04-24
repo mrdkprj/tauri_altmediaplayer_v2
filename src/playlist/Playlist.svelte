@@ -701,7 +701,7 @@
         ipc.receive("ready", prepare);
         ipc.receive("contextmenu-event", handleContextMenu)
         ipc.receive("load-playlist", initPlaylist)
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://file-drop", onFileDrop)
+        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
         ipc.receive("change-playlist", changeIndex)
         ipc.receive("restart", clearPlaylist)
         ipc.receive("file-released", onReleaseFile)

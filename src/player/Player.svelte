@@ -96,7 +96,7 @@
     }
 
     const onFileDrop = (e:Mp.FileDropEvent) => {
-        console.log(e)
+
         const files = getDropFiles(e)
 
         if(files.length){
@@ -554,7 +554,7 @@
         ipc.receiveOnce("ready", prepare)
         ipc.receive("load-file", load)
         ipc.receive("contextmenu-event", handleContextMenu)
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://file-drop", onFileDrop)
+        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
         ipc.receive("toggle-play", togglePlay)
         ipc.receive("restart", initPlayer)
         ipc.receive("release-file", releaseFile)
