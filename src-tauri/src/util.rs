@@ -3,7 +3,7 @@ use tauri::Manager;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2_13, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK,COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT,
 };
-use windows::Win32::{Foundation::{HMODULE, LPARAM, WPARAM}, System::LibraryLoader::{GetProcAddress, LoadLibraryW}, UI::WindowsAndMessaging::{PostMessageW, WM_APP}};
+use windows::Win32::{Foundation::{HMODULE, LPARAM, WPARAM}, System::LibraryLoader::{GetProcAddress, LoadLibraryW}, UI::WindowsAndMessaging::{PostMessageW, WM_APP, WM_THEMECHANGED}};
 use windows_core::{w, Interface, PCSTR, PCWSTR};
 use std::{os::windows::ffi::OsStrExt, sync::atomic::{AtomicU32, Ordering}};
 use crate::settings::Theme;
@@ -40,6 +40,7 @@ pub fn change_theme(window:&tauri::WebviewWindow, theme:Theme){
     change_webview_theme(window, theme);
     allow_dark_mode_for_app(theme);
     unsafe { PostMessageW(window.hwnd().unwrap(), WM_APPTHEMECHANGE, WPARAM(theme as usize), LPARAM(0)).unwrap() };
+    unsafe { PostMessageW(window.hwnd().unwrap(), WM_THEMECHANGED, WPARAM(0), LPARAM(0)).unwrap() };
 }
 
 fn change_webview_theme(window:&tauri::WebviewWindow, theme:Theme){

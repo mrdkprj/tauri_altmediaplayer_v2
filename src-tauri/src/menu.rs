@@ -1,9 +1,25 @@
 use serde::Serialize;
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, SIZE, TRUE, WPARAM};
-use windows::Win32::Graphics::Gdi::{CreateCompatibleDC, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, ExcludeClipRect, GetDC, GetObjectW, GetPixel, InflateRect, LineTo, MoveToEx, OffsetRect, ReleaseDC, SelectObject, SetBkMode, SetRectEmpty, SetTextColor, DT_CALCRECT, DT_LEFT, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HDC, HFONT, HGDIOBJ, HPEN, LOGFONTW, PS_SOLID, TRANSPARENT};
-use windows::Win32::UI::Controls::{CloseThemeData, DrawThemeBackgroundEx, DrawThemeTextEx, GetThemeBitmap, OpenThemeDataEx, DRAWITEMSTRUCT, GBF_DIRECT, HTHEME, MC_CHECKMARKNORMAL, MEASUREITEMSTRUCT, MENU_POPUPBACKGROUND, MENU_POPUPCHECK, MENU_POPUPGUTTER, MENU_POPUPITEM, MENU_POPUPSEPARATOR, MENU_POPUPSUBMENU, MPI_HOT, MPI_NORMAL, MSM_NORMAL, ODA_SELECT, ODS_CHECKED, ODS_GRAYED, ODS_SELECTED, OTD_NONCLIENT, TMT_DIBDATA};
+use windows::Win32::Graphics::Gdi::{
+    CreateCompatibleDC, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, ExcludeClipRect, GetDC,
+    GetObjectW, GetPixel, InflateRect, LineTo, MoveToEx, OffsetRect, ReleaseDC, SelectObject, SetBkMode, SetTextColor,
+    DT_CALCRECT, DT_LEFT, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HDC, HFONT, HGDIOBJ, HPEN, LOGFONTW, PS_SOLID, TRANSPARENT
+};
+use windows::Win32::UI::Controls::{
+    CloseThemeData, DrawThemeBackgroundEx, DrawThemeTextEx, GetThemeBitmap, OpenThemeDataEx,
+    DRAWITEMSTRUCT, GBF_DIRECT, HTHEME, MC_CHECKMARKNORMAL, MEASUREITEMSTRUCT, MENU_POPUPBACKGROUND,
+    MENU_POPUPCHECK, MENU_POPUPGUTTER, MENU_POPUPITEM, MENU_POPUPSEPARATOR, MENU_POPUPSUBMENU, MPI_HOT,
+    MPI_NORMAL, MSM_NORMAL, ODA_SELECT, ODS_CHECKED, ODS_GRAYED, ODS_SELECTED, OTD_NONCLIENT, TMT_DIBDATA
+};
 use windows::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
-use windows::Win32::UI::WindowsAndMessaging::{CreatePopupMenu, GetMenuInfo, GetMenuItemCount, GetMenuItemInfoW, GetSystemMetrics, InsertMenuItemW, SetMenuInfo, SetMenuItemInfoW, SystemParametersInfoW, TrackPopupMenu, HMENU, MENUINFO, MENUITEMINFOW, MFS_CHECKED, MFS_UNCHECKED, MFT_OWNERDRAW, MFT_SEPARATOR, MFT_STRING, MIIM_DATA, MIIM_FTYPE, MIIM_ID, MIIM_STATE, MIIM_SUBMENU, MIM_APPLYTOSUBMENUS, MIM_BACKGROUND, MIM_MENUDATA, NONCLIENTMETRICSW, SM_CXHSCROLL, SM_CXMENUCHECK, SM_CYMENU, SPI_GETNONCLIENTMETRICS, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_TOPALIGN, WM_DESTROY, WM_DRAWITEM, WM_INITMENUPOPUP, WM_MEASUREITEM};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreatePopupMenu, GetMenuInfo, GetMenuItemCount, GetMenuItemInfoW, GetSystemMetrics,SetForegroundWindow,
+    InsertMenuItemW, SetMenuInfo, SetMenuItemInfoW, SystemParametersInfoW, TrackPopupMenu,
+    HMENU, MENUINFO, MENUITEMINFOW, MFS_CHECKED, MFS_UNCHECKED, MFT_OWNERDRAW, MFT_SEPARATOR, MFT_STRING, MIIM_DATA,
+    MIIM_FTYPE, MIIM_ID, MIIM_STATE, MIIM_SUBMENU, MIM_APPLYTOSUBMENUS, MIM_BACKGROUND, MIM_MENUDATA, NONCLIENTMETRICSW,
+    SM_CXHSCROLL, SM_CXMENUCHECK, SM_CYMENU, SPI_GETNONCLIENTMETRICS, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, TPM_LEFTALIGN,
+    TPM_RETURNCMD, TPM_TOPALIGN, WM_DESTROY, WM_DRAWITEM, WM_INITMENUPOPUP, WM_MEASUREITEM
+};
 use windows_core::{PCWSTR, PWSTR};
 
 use once_cell::sync::Lazy;
@@ -21,16 +37,22 @@ static THEME:Lazy<Mutex<HTHEME>> = Lazy::new(|| Mutex::new(HTHEME(0)));
 static HWNDS:Lazy<Mutex<Vec<HWND>>> = Lazy::new(|| Mutex::new( Vec::new()));
 static COUNTER: Counter = Counter::new_with_start(100);
 
+const V_MARGIN:i32 = 1;
+const H_MARGIN:i32 = 2;
+const BASE_SIZE:SIZE = SIZE {cx:16 + 2 * 3, cy:15 + 2 * 3};
+
 struct ColorSchema {
     color:u32,
     border:u32,
     disabled:u32,
+    //bgcolor:u32,
 }
 
 const DARK_COLOR_SCHEMA:ColorSchema = ColorSchema {
     color:0x00e7e0e0,
     border:0x00565659,
     disabled:0x00565659,
+    //bgcolor:0x00000000
 };
 
 #[allow(dead_code)]
@@ -38,6 +60,7 @@ const LIGHT_COLOR_SCHEMA:ColorSchema = ColorSchema {
     color:0xc7bfbf99,
     border:0x00565659,
     disabled:0x00565659,
+    //bgcolor:0x00FFFFFF
 };
 
 #[allow(non_camel_case_types)]
@@ -57,6 +80,12 @@ pub struct Menu {
     menu:HMENU,
     menus:Vec<HMENU>,
     mode:i32,
+}
+
+impl Default for Menu{
+    fn default() -> Self {
+        Self { hwnd: HWND(0), menu: HMENU(0), menus: Vec::new(), mode: 0 }
+    }
 }
 
 #[allow(dead_code)]
@@ -96,7 +125,6 @@ impl Menu {
     pub fn new_with_theme(hwnd:HWND, theme:Theme) -> Self {
 
         let menu = unsafe { CreatePopupMenu().unwrap() };
-
         let mode = theme as i32;
         *MODE.lock().unwrap() = mode;
         draw_background_color(hwnd, menu).unwrap();
@@ -111,6 +139,7 @@ impl Menu {
 
     pub fn popup_at(&self, x:i32, y:i32) -> Option<MenuEvent> {
 
+        unsafe { SetForegroundWindow(self.hwnd) };
         let id = unsafe { TrackPopupMenu(self.menu, TPM_TOPALIGN | TPM_LEFTALIGN | TPM_RETURNCMD, x, y, 0, self.hwnd, None) };
 
         if id.0 > 0 {
@@ -416,15 +445,6 @@ fn toggle_radio(hmenu:HMENU, selected_id:u32, selected_item_info:&mut MENUITEMIN
     }
 }
 
-const V_MARGIN:i32 = 1;
-const H_MARGIN:i32 = 2;
-static BASE_SIZE:Lazy<SIZE> = Lazy::new(|| {
-    let mut size = SIZE::default();
-    size.cx = 16 + 2 * 3;
-    size.cy = 15 + 2 * 3;
-    size
-});
-
 fn measure_item(hwnd:HWND, measure_item_struct:&mut MEASUREITEMSTRUCT) -> Result<(), windows_core::Error> {
 
     unsafe {
@@ -453,8 +473,8 @@ fn measure_item(hwnd:HWND, measure_item_struct:&mut MEASUREITEMSTRUCT) -> Result
                 let old_font:HGDIOBJ = SelectObject(dc, font);
                 let mut text_rect = RECT::default();
 
-                let mut text = item_data.label.clone();
-                DrawTextW(dc, text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
+                let mut raw_text = item_data.label.clone();
+                DrawTextW(dc, raw_text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
 
                 let mut cx = text_rect.right - text_rect.left;
                 SelectObject(dc, old_font);
@@ -479,12 +499,15 @@ fn measure_item(hwnd:HWND, measure_item_struct:&mut MEASUREITEMSTRUCT) -> Result
                 // button width (L=button; R=empty margin)
                 cx += 2 * BASE_SIZE.cx;
                 // extra padding
-                cx += 20;
+                let text = PCWSTR::from_raw(item_data.label.as_ptr()).to_string().unwrap();
+                if text.contains("\t") {
+                    cx += 30;
+                }
 
                 // Windows adds 1 to returned value
                 cx -= GetSystemMetrics(SM_CXMENUCHECK) - 1;
 
-                measure_item_struct.itemWidth = (cx + 10) as u32;
+                measure_item_struct.itemWidth = cx as u32;
 
                 ReleaseDC(hwnd, dc);
             }
@@ -495,6 +518,7 @@ fn measure_item(hwnd:HWND, measure_item_struct:&mut MEASUREITEMSTRUCT) -> Result
 }
 
 fn draw_background_color(hwnd:HWND, menu:HMENU) -> Result<(), windows_core::Error> {
+
     unsafe{
         let mut info = MENUINFO::default();
         info.cbSize = size_of::<MENUINFO>() as u32;
@@ -566,8 +590,8 @@ fn draw_item(theme:HTHEME, draw_item_struct:&DRAWITEMSTRUCT) -> Result<(), windo
                 }
 
                 let mut text_rect = item_rect.clone();
-                text_rect.left += BASE_SIZE.cx + V_MARGIN + H_MARGIN;
-                text_rect.right -= BASE_SIZE.cx;
+                text_rect.left += BASE_SIZE.cx;// + V_MARGIN + H_MARGIN;
+                text_rect.right -= BASE_SIZE.cy;
 
                 if item_data.menu_type == XMT_SUBMENU {
                     let mut arrow_rect  = item_rect.clone();
@@ -659,52 +683,3 @@ fn get_font() -> Result<LOGFONTW, windows_core::Error> {
 
     Ok(menu_font)
 }
-
-#[allow(non_snake_case)]
-struct Info {
-    m_fontMenu:HFONT,
-    m_cxExtraSpacing:i32,
-}
-
-#[allow(non_snake_case)]
-#[allow(dead_code)]
-fn GetSystemSettings(hWnd: HWND) -> Info
-{
-    let mut sysinfo:Info = Info{m_fontMenu:HFONT::default(), m_cxExtraSpacing:10};
-    unsafe {
-        // refresh our font
-        let mut info:NONCLIENTMETRICSW = NONCLIENTMETRICSW::default();
-        info.cbSize = size_of::<NONCLIENTMETRICSW>() as u32;
-        let bRet = SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, size_of::<NONCLIENTMETRICSW>() as u32, Some(&mut info as *mut _ as *mut c_void), SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0));
-
-        if bRet.is_ok()
-        {
-            let mut font = info.lfMenuFont;
-            font.lfWeight = 700;
-
-            let hFontMenu:HFONT = CreateFontIndirectW(&font);
-
-            sysinfo.m_fontMenu = hFontMenu;
-        }
-
-        // check if we need extra spacing for menu item text
-        let dc:HDC = GetDC(hWnd);
-        let hFontOld:HGDIOBJ = SelectObject(dc,sysinfo.m_fontMenu);
-        let mut rcText = RECT::default();
-
-        DrawTextW(dc, encode_wide("\t").as_mut(), &mut rcText, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-        if(rcText.right - rcText.left) < 4
-        {
-            SetRectEmpty(&mut rcText);
-            DrawTextW(dc, encode_wide("x").as_mut(), &mut rcText, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-            sysinfo.m_cxExtraSpacing = std::cmp::max(10, rcText.right - rcText.left);
-        }
-        SelectObject(dc,hFontOld);
-
-        ReleaseDC(hWnd, dc);
-    }
-
-    sysinfo
-}
-
-

@@ -17,9 +17,9 @@ static COUNTER:AtomicUsize = AtomicUsize::new(300);
 const SUBMENU_TIMEOUT_MSEC:u32 = 400;
 const LR_BUTTON_SIZE:i32 = 25;
 
+const WM_INACTIVATE:u32 = WM_APP + 0x0004;
 const WM_MENUSELECTED:u32 = WM_APP + 0x0002;
 const WM_CLOSEMENU:u32 = WM_APP + 0x0003;
-const WM_INACTIVATE:u32 = WM_APP + 0x0004;
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -215,7 +215,6 @@ impl MenuX {
     }
 
     pub fn new_with_theme(parent:HWND, is_dark:bool) -> Self {
-        println!("parent:{:?}", parent);
         let mut menu = MenuX::default();
         menu.parent = parent;
         menu.theme.is_dark = is_dark;
@@ -280,7 +279,7 @@ impl MenuX {
 
         let is_dark = should_apps_use_dark_mode();
         let mut width = 0;
-        let mut height = self.size.vertical_margin;
+        let mut height = 2;
 
         for i in 0..self.items.len() {
 
@@ -296,7 +295,7 @@ impl MenuX {
 
         }
 
-        height += self.size.vertical_margin;
+        height += 2;
 
         width += self.size.border_width * 2;
         height += self.size.border_width * 2;
@@ -318,7 +317,7 @@ impl MenuX {
         };
 
         if self.is_main {
-            Self::attach_owner_subclass(self, data.win_subclass_id.unwrap());
+            Self::attach_menu_subclass_for_hwnd(self, data.win_subclass_id.unwrap());
         }
 
         unsafe { SetWindowLongPtrW(self.hwnd, GWL_USERDATA, Box::into_raw(Box::new(data)) as _) };
@@ -330,10 +329,18 @@ impl MenuX {
         unsafe {
 
             let pt = get_display_point(self.hwnd, x, y, self.width, self.height);
-            SetWindowPos(self.hwnd, HWND_NOTOPMOST, pt.x, pt.y, self.width, self.height, SWP_ASYNCWINDOWPOS | SWP_NOOWNERZORDER | SWP_NOACTIVATE).unwrap();
+            SetWindowPos(self.hwnd, HWND::default(), pt.x, pt.y, self.width, self.height, SWP_ASYNCWINDOWPOS | SWP_NOOWNERZORDER | SWP_NOACTIVATE).unwrap();
 
             ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
-            SetCapture(self.hwnd);
+            //ShowWindow(self.hwnd, SW_SHOWNORMAL);
+            let parent = GetParent(self.parent) ;
+            if parent.0 != 0 {
+                SetCapture(parent);
+            }else{
+                SetCapture(self.parent);
+            }
+            //SetCapture(self.hwnd);
+            SetCapture(self.parent);
 
             let mut msg = MSG::default();
             let mut selected_item:Option<&MenuItem> = None;
@@ -355,10 +362,19 @@ impl MenuX {
                         break;
                     }
 
+                    // no need to handle. so break.
+                    WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MBUTTONDBLCLK |
+                    WM_NCLBUTTONDOWN | WM_NCLBUTTONUP | WM_NCLBUTTONDBLCLK | WM_NCRBUTTONDOWN | WM_NCRBUTTONUP |
+                    WM_NCRBUTTONDBLCLK | WM_NCMBUTTONDOWN | WM_NCMBUTTONUP | WM_NCMBUTTONDBLCLK => {
+                        println!("nontclient");
+                        break;
+                    }
+
                     _ => {
+                        msg.hwnd = self.hwnd;
                         TranslateMessage(&msg);
                         DispatchMessageW(&msg);
-                    }
+                     }
                 }
 
             }
@@ -372,18 +388,19 @@ impl MenuX {
         }
     }
 
-    fn attach_owner_subclass(&self, id:usize) {
+    fn attach_menu_subclass_for_hwnd(&self, id:usize) {
         unsafe {
-            let ancestor = GetAncestor(self.parent, GA_ROOTOWNER);
+            let parent = GetParent(self.parent);
+            let owner = if parent.0 == 0 { self.parent } else { parent };
+
             SetWindowSubclass(
-                if ancestor.0 == 0 { self.parent } else { ancestor },
-                Some(menu_owner_subclass_proc),
+                owner,
+                Some(menu_subclass_proc),
                 id,
                 Box::into_raw(Box::new(self.hwnd)) as _
             );
         }
     }
-
 }
 
 impl InnerMenuItem {
@@ -449,185 +466,6 @@ impl InnerMenuItem {
                     submenu:None,
                 }
             }
-        }
-    }
-}
-
-unsafe extern "system" fn default_window_proc(
-    window: HWND,
-    msg: u32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-) -> LRESULT {
-
-    match msg {
-
-        WM_INACTIVATE => {
-            if IsWindowVisible(window).as_bool() {
-                init_menu_data(window);
-                PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
-            }
-            LRESULT(0)
-        }
-
-        WM_DESTROY => {
-
-            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
-            let data = transmute::<isize, &mut MenuData>(userdata);
-            if data.main {
-                RemoveWindowSubclass(window, Some(menu_owner_subclass_proc), data.win_subclass_id.unwrap());
-                unsafe { CloseThemeData(data.htheme.unwrap()).unwrap() };
-            }
-            DefWindowProcW(window, msg, wparam, lparam)
-        }
-
-        WM_ERASEBKGND => {
-            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
-            let data = transmute::<isize, &MenuData>(userdata);
-            paint_background(window, data);
-            LRESULT(1)
-        }
-
-        WM_PAINT => {
-            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
-            let data = transmute::<isize, &mut MenuData>(userdata);
-            let theme = get_theme(window, data);
-            ColorPick_OnPaint(window, data, theme).unwrap();
-            LRESULT(0)
-        }
-
-        WM_MOUSEMOVE | WM_NCMOUSEMOVE => {
-            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
-            let data = transmute::<isize, &mut MenuData>(userdata);
-            let should_show_submenu = on_mouse_move(data, window, to_screen_point(window, lparam));
-            SetWindowLongPtrW(window, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
-
-            if should_show_submenu {
-                show_submenu(window, 0);
-            }
-
-            if data.visible_submenu_index >= 0 {
-                let hwnd = data.items[data.visible_submenu_index as usize].submenu.unwrap();
-                let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
-                let data = transmute::<isize, &mut MenuData>(userdata);
-                on_mouse_move(data, hwnd, to_screen_point(window, lparam));
-                SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
-            }
-
-            LRESULT(0)
-        }
-
-        WM_LBUTTONUP | WM_RBUTTONUP => {
-            let hwnd_opt = get_hwnd_from_point(window, lparam);
-            if hwnd_opt.is_none() {
-                return LRESULT(0);
-            }
-
-            let hwnd = hwnd_opt.unwrap();
-            let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
-            let data = transmute::<isize, &mut MenuData>(userdata);
-            let index = index_from_point(hwnd, to_screen_point(window, lparam), data);
-
-            // toggle checkbox
-            if data.items[index as usize].menu_type == XMT_CHECKBOX {
-                let checked = data.items[index as usize].state == MENU_CHECKED;
-                toggle_checked(&mut data.items[index as usize], !checked);
-            }
-
-            // toggle radio checkbox
-            if data.items[index as usize].menu_type == XMT_RADIO {
-                toggle_radio(data, index as usize);
-            }
-
-
-            SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
-            init_menu_data(window);
-            let menu_item = MenuItem::from(&data.items[index as usize]);
-            PostMessageW(hwnd, WM_MENUSELECTED, WPARAM(0), LPARAM(Box::into_raw(Box::new(menu_item)) as _)).unwrap();
-
-            LRESULT(0)
-        }
-
-        WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
-            if get_hwnd_from_point(window, lparam).is_none() {
-                init_menu_data(window);
-                PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
-                send_mouse_input(window, msg);
-                return LRESULT(0);
-            }
-            DefWindowProcW(window, msg, wparam, lparam)
-        }
-
-        _ => {
-            DefWindowProcW(window, msg, wparam, lparam)
-        }
-    }
-
-}
-
-fn send_mouse_input(hwnd:HWND, msg: u32){
-    unsafe {
-        let mut count = 0;
-        let mut parent = GetParent(hwnd);
-        let mut pt = POINT::default();
-        GetCursorPos(&mut pt).unwrap();
-        while parent.0 != 0 {
-            let mut rect = RECT::default();
-            GetWindowRect(parent, &mut rect).unwrap();
-            if PtInRect(&mut rect as *const _ as _, pt).as_bool() {
-                count += 1;
-            }
-            parent = GetParent(parent);
-        }
-
-        if count > 0 {
-            println!("send");
-            let mut flags = MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
-            flags |= if msg == WM_LBUTTONDOWN { MOUSEEVENTF_LEFTDOWN } else { MOUSEEVENTF_RIGHTDOWN };
-
-            let input = INPUT{
-                r#type:INPUT_MOUSE,
-                Anonymous:INPUT_0 {
-                    mi: MOUSEINPUT{
-                        dx:pt.x,
-                        dy:pt.y,
-                        mouseData:0,
-                        dwFlags: flags,
-                        time:0,
-                        dwExtraInfo:0
-                        }
-                }
-            };
-            SendInput(&[input], size_of::<INPUT>() as i32);
-        }
-    }
-}
-
-unsafe extern "system" fn menu_owner_subclass_proc(
-    window: HWND,
-    msg: u32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-    _uidsubclass: usize,
-    _dwrefdata: usize,
-) -> LRESULT {
-    match msg {
-
-        WM_LBUTTONDOWN | WM_RBUTTONDOWN =>  {
-            println!("WM_LBUTTONDOWN");
-            DefWindowProcW(window, msg, wparam, lparam)
-        }
-
-        WM_THEMECHANGED => {
-            unsafe {
-                let hwnd = transmute::<usize, &HWND>(_dwrefdata);
-                on_theme_change(*hwnd, None);
-            }
-            DefSubclassProc(window, msg, wparam, lparam)
-        }
-
-        _ => {
-            DefSubclassProc(window, msg, wparam, lparam)
         }
     }
 }
@@ -1044,7 +882,12 @@ fn to_screen_point(hwnd:HWND, lparam:LPARAM) -> POINT {
     let mut pt = POINT::default();
     pt.x = LOWORD(lparam.0 as u32) as i32;
     pt.y = HIWORD(lparam.0 as u32) as i32;
-    unsafe { ClientToScreen(hwnd, &mut pt) };
+    let parent = unsafe { GetParent(hwnd)};
+    if parent.0 != 0 {
+        unsafe { ClientToScreen(parent, &mut pt) };
+    }else{
+        unsafe { ClientToScreen(hwnd, &mut pt) };
+    }
     pt
 }
 
@@ -1067,7 +910,7 @@ fn index_from_point(hwnd:HWND, screen_pt:POINT, data:&MenuData) -> i32 {
     let mut selected_index = -1;
     let mut pt = screen_pt.clone();
     unsafe { ScreenToClient(hwnd, &mut pt)};
-
+println!("index_from_point:{:?}", pt);
     if pt.x >= 0 && pt.x < data.width && pt.y >= 0 && pt.y < data.height {
         for item in &data.items {
             if pt.y >= item.top && pt.y <= item.bottom {
@@ -1150,6 +993,201 @@ fn toggle_radio(data:&mut MenuData, index:usize){
     }
 }
 
+fn send_mouse_input(hwnd:HWND, msg:u32, lparam:LPARAM){
+    // let mut pt = POINT::default();
+    // pt.x = LOWORD(lparam.0 as u32) as i32;
+    // pt.y = HIWORD(lparam.0 as u32) as i32;
+    // println!("pt:{:?}", pt);
+    // unsafe { ScreenToClient(hwnd, &mut pt) };
+    // println!("pt2:{:?}", pt);
+    // let parent = unsafe { GetParent(hwnd) };
+    // pt = to_screen_point(parent, lparam);
+    // println!("pt3:{:?}", pt);
+    // let window = unsafe { WindowFromPoint(pt)};
+    // println!("window:{:?}", window);
+    // let active = unsafe { GetActiveWindow() };
+    // println!("hwnd:{:?}", hwnd);
+    // println!("parent:{:?}", parent);
+    // println!("active:{:?}", active);
+    // if window.0 == 0 {
+    //     return;
+    // }
+    // if window == parent || unsafe { IsChild(window, parent).as_bool() } {
+    //     println!("enter");
+    //     let pt = to_screen_point(window, lparam);
+    //     let input = INPUT{
+    //         r#type:INPUT_MOUSE,
+    //         Anonymous:INPUT_0 {
+    //             mi: MOUSEINPUT{
+    //                 dx:pt.x,
+    //                 dy:pt.y,
+    //                 mouseData:0,
+    //                 dwFlags:MOUSEEVENTF_LEFTDOWN,
+    //                 time:0,
+    //                 dwExtraInfo:0
+    //                 }
+    //         }
+    //     };
+    //     unsafe { SendInput(&[input], size_of::<INPUT>() as i32) };
+    // }
+    let pt = to_screen_point(hwnd, lparam);
+    let input = INPUT{
+        r#type:INPUT_MOUSE,
+        Anonymous:INPUT_0 {
+            mi: MOUSEINPUT{
+                dx:pt.x,
+                dy:pt.y,
+                mouseData:0,
+                dwFlags: if msg == WM_LBUTTONUP { MOUSEEVENTF_LEFTDOWN } else { MOUSEEVENTF_RIGHTDOWN },
+                time:0,
+                dwExtraInfo:0
+                }
+        }
+    };
+    unsafe { SendInput(&[input], size_of::<INPUT>() as i32) };
+}
+
+unsafe extern "system" fn default_window_proc(
+    window: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+
+    match msg {
+
+        // WM_ACTIVATE => {
+        //     println!("act");
+        //     if LOWORD(wparam.0 as u32) as u32 == WA_INACTIVE {
+        //         if IsWindowVisible(window).as_bool() {
+        //             init_menu_data(window);
+        //             PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
+        //         }
+        //         return LRESULT(0);
+        //     }
+        //     DefWindowProcW(window, msg, wparam, lparam)
+        // }
+
+        WM_INACTIVATE => {
+            if IsWindowVisible(window).as_bool() {
+                init_menu_data(window);
+                PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
+            }
+            LRESULT(0)
+        }
+
+        WM_DESTROY => {
+
+            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
+            let data = transmute::<isize, &mut MenuData>(userdata);
+            if data.htheme.is_some() {
+                RemoveWindowSubclass(window, Some(menu_subclass_proc), data.win_subclass_id.unwrap());
+                unsafe { CloseThemeData(data.htheme.unwrap()).unwrap() };
+            }
+            DefWindowProcW(window, msg, wparam, lparam)
+        }
+
+        WM_ERASEBKGND => {
+            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
+            let data = transmute::<isize, &MenuData>(userdata);
+            paint_background(window, data);
+            LRESULT(1)
+        }
+
+        WM_PAINT => {
+            println!("paint");
+            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
+            let data = transmute::<isize, &mut MenuData>(userdata);
+            let theme = get_theme(window, data);
+            ColorPick_OnPaint(window, data, theme).unwrap();
+            LRESULT(0)
+        }
+
+        WM_MOUSEMOVE | WM_NCMOUSEMOVE => {
+            let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
+            let data = transmute::<isize, &mut MenuData>(userdata);
+            println!("to_screen_point(window, lparam):{:?}", to_screen_point(window, lparam));
+            let should_show_submenu = on_mouse_move(data, window, to_screen_point(window, lparam));
+            SetWindowLongPtrW(window, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
+
+            if should_show_submenu {
+                show_submenu(window, 0);
+            }
+
+            if data.visible_submenu_index >= 0 {
+                let hwnd = data.items[data.visible_submenu_index as usize].submenu.unwrap();
+                let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
+                let data = transmute::<isize, &mut MenuData>(userdata);
+                on_mouse_move(data, hwnd, to_screen_point(window, lparam));
+                SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
+            }
+
+            LRESULT(0)
+        }
+
+        WM_LBUTTONUP | WM_RBUTTONUP => {
+
+            let hwnd_opt = get_hwnd_from_point(window, lparam);
+            if hwnd_opt.is_none() {
+                return LRESULT(0);
+            }
+
+            let hwnd = hwnd_opt.unwrap();
+            let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
+            let data = transmute::<isize, &mut MenuData>(userdata);
+            let index = index_from_point(hwnd, to_screen_point(window, lparam), data);
+
+            // toggle checkbox
+            if data.items[index as usize].menu_type == XMT_CHECKBOX {
+                let checked = data.items[index as usize].state == MENU_CHECKED;
+                toggle_checked(&mut data.items[index as usize], !checked);
+            }
+
+            // toggle radio checkbox
+            if data.items[index as usize].menu_type == XMT_RADIO {
+                toggle_radio(data, index as usize);
+            }
+
+
+            SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
+            init_menu_data(window);
+            let menu_item = MenuItem::from(&data.items[index as usize]);
+            PostMessageW(hwnd, WM_MENUSELECTED, WPARAM(0), LPARAM(Box::into_raw(Box::new(menu_item)) as _)).unwrap();
+
+            DefWindowProcW(window, msg, wparam, lparam)
+        }
+
+        WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
+            if get_hwnd_from_point(window, lparam).is_none() {
+                let mut pt = POINT::default();
+                pt.x = LOWORD(lparam.0 as u32) as i32;
+                pt.y = HIWORD(lparam.0 as u32) as i32;
+                println!("pt1:{:?}", pt);
+                let mut pt3 = pt.clone();
+                ScreenToClient(window, &mut pt3);
+                println!("pt3:{:?}", pt3);
+
+                //send_mouse_input(window, msg, lparam);
+                pt = to_screen_point(window, lparam);
+                let mut pt2 = pt.clone();
+                ScreenToClient(window, &mut pt2);
+                println!("pt:{:?}", pt);
+                println!("pt2:{:?}", pt2);
+                let hw = unsafe { WindowFromPoint(pt)};
+                println!("hw{:?}", hw);
+                init_menu_data(window);
+                PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
+            }
+            DefWindowProcW(window, msg, wparam, lparam)
+        }
+
+        _ => {
+            DefWindowProcW(window, msg, wparam, lparam)
+        }
+    }
+
+}
+
 fn on_theme_change(hwnd:HWND, force_dark:Option<bool>){
     unsafe {
 
@@ -1201,7 +1239,7 @@ fn create_container_hwnd(parent: HWND, is_dark:bool) -> Result<HWND> {
     unsafe { RegisterClassExW(&class) };
 
     let window_styles = WS_POPUP | WS_CLIPSIBLINGS;
-    let ex_style = WS_EX_TOOLWINDOW;
+    let ex_style = WS_EX_TOOLWINDOW | WS_EX_TOPMOST;
 
     let hwnd = unsafe {
       CreateWindowExW(
@@ -1223,6 +1261,35 @@ fn create_container_hwnd(parent: HWND, is_dark:bool) -> Result<HWND> {
     allow_dark_mode_for_window(hwnd, is_dark);
 
     Ok(hwnd)
+}
+
+unsafe extern "system" fn menu_subclass_proc(
+    window: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    _uidsubclass: usize,
+    _dwrefdata: usize,
+) -> LRESULT {
+    match msg {
+
+        WM_THEMECHANGED => {
+            unsafe {
+                let hwnd = transmute::<usize, &HWND>(_dwrefdata);
+                on_theme_change(*hwnd, None);
+            }
+            DefSubclassProc(window, msg, wparam, lparam)
+        }
+
+        WM_LBUTTONDOWN => {
+            println!("WM_LBUTTONDOWN");
+            DefSubclassProc(window, msg, wparam, lparam)
+        }
+
+        _ => {
+            DefSubclassProc(window, msg, wparam, lparam)
+        }
+    }
 }
 
 static HUXTHEME: Lazy<HMODULE> = Lazy::new(|| unsafe { LoadLibraryA(s!("uxtheme.dll")).unwrap_or_default() });
