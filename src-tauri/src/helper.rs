@@ -55,7 +55,8 @@ pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> t
 
     let hwnd = window.hwnd().unwrap();
 
-    let mut menu = MenuX::new_with_theme(hwnd, settings.theme == Theme::dark);
+    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let mut menu = MenuX::new_with_theme(hwnd, theme);
 
     create_playback_speed_submenu(&mut menu, settings);
     create_seek_speed_submenu(&mut menu, settings);
@@ -145,7 +146,8 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 
     // *MENUX.lock().unwrap() = menu;
 
-    let mut menu = MenuX::new_with_theme(hwnd, settings.theme == Theme::dark);
+    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let mut menu = MenuX::new_with_theme(hwnd, theme);
 
     menu.text(&PlaylistMenu::Remove.to_string(), "Remove\tDelete");
     menu.text(&PlaylistMenu::Trash.to_string(), "Trash\tShift+Delete");
@@ -181,7 +183,8 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 pub fn create_sort_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
 
     let hwnd = window.hwnd().unwrap();
-    let mut menu = MenuX::new_with_theme(hwnd, settings.theme == Theme::dark);
+    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let mut menu = MenuX::new_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 
     menu.check(id, "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy);

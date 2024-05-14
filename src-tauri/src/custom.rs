@@ -1,18 +1,17 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(non_snake_case)]
-//#![allow(unused_variables)]
-use std::{ffi::c_void, mem::{size_of, transmute}, ops::BitOrAssign, sync::atomic::{AtomicUsize, Ordering}};
-
+use std::{ffi::c_void, mem::{size_of, transmute}, sync::atomic::{AtomicUsize, Ordering}};
 use once_cell::sync::Lazy;
 use serde::Serialize;
-use windows::Win32::{Foundation::*, Graphics::Gdi::*, System::LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryA}, UI::{Input::KeyboardAndMouse::{GetActiveWindow, GetCapture, ReleaseCapture, SetCapture}, Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass}, WindowsAndMessaging::*}};
-use windows_core::*;
-use windows::Win32::UI::Controls::*;
-use windows::Win32::UI::Input::KeyboardAndMouse::*;
-use crate::{menu::Menu, util::{decode_wide, encode_wide, HIWORD, LOWORD, WM_APPTHEMECHANGE}};
+use windows::Win32::{Foundation::{COLORREF, HINSTANCE, HMODULE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM}, Graphics::Gdi::{BeginPaint, ClientToScreen, CreateFontIndirectW, CreatePen, CreateSolidBrush, DeleteObject, DrawTextW, EndPaint, ExcludeClipRect, FillRect, FrameRect, GetDC, GetMonitorInfoW, GetObjectW, GetWindowDC, InflateRect, InvalidateRect, LineTo, MonitorFromPoint, MonitorFromWindow, MoveToEx, OffsetRect, PtInRect, ReleaseDC, ScreenToClient, SelectObject, SetBkMode, SetTextColor, UpdateWindow, DT_CALCRECT, DT_LEFT, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, HBRUSH, HDC, HFONT, HGDIOBJ, HPEN, LOGFONTW, MONITORINFO, MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL, PAINTSTRUCT, PS_SOLID, TRANSPARENT}, System::LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryA}, UI::{Controls::{CloseThemeData, DrawThemeBackgroundEx, OpenThemeDataEx, HTHEME, MC_CHECKMARKNORMAL, MENU_POPUPCHECK, MENU_POPUPSUBMENU, MSM_NORMAL, OTD_NONCLIENT}, Input::KeyboardAndMouse::{GetActiveWindow, ReleaseCapture, SendInput, SetCapture, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT}, Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass}, WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetAncestor, GetClientRect, GetCursorPos, GetMessageW, GetParent, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, IsWindowVisible, KillTimer, PostMessageW, RegisterClassExW, SetTimer, SetWindowLongPtrW, SetWindowPos, ShowWindow, SystemParametersInfoW, TranslateMessage, WindowFromPoint, CS_DROPSHADOW, CS_HREDRAW, CS_VREDRAW, GA_ROOTOWNER, GWL_USERDATA, HCURSOR, HICON, HWND_TOP, MSG, NONCLIENTMETRICSW, SM_CXHSCROLL, SM_CXMENUCHECK, SM_CYMENU, SPI_GETNONCLIENTMETRICS, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOOWNERZORDER, SW_HIDE, SW_SHOWNOACTIVATE, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, TIMERPROC, WM_APP, WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCMOUSEMOVE, WM_PAINT, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_THEMECHANGED, WNDCLASSEXW, WS_CLIPSIBLINGS, WS_EX_TOOLWINDOW, WS_POPUP}}};
+use windows_core::{s, w, PCSTR, PCWSTR};
+use crate::util::{decode_wide, encode_wide, HIWORD, LOWORD};
 
 static COUNTER:AtomicUsize = AtomicUsize::new(300);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Theme {
+    Dark,
+    Light,
+}
 
 const SUBMENU_TIMEOUT_MSEC:u32 = 400;
 const LR_BUTTON_SIZE:i32 = 25;
@@ -192,7 +191,6 @@ impl MenuItem {
 
 #[derive(Debug, Clone)]
 struct MenuData {
-    parent:HWND,
     main:bool,
     items:Vec<InnerMenuItem>,
     htheme:Option<HTHEME>,
@@ -214,9 +212,9 @@ impl MenuX {
         menu
     }
 
-    pub fn new_with_theme(parent:HWND, is_dark:bool) -> Self {
-        println!("parent:{:?}", parent);
+    pub fn new_with_theme(parent:HWND, theme:Theme) -> Self {
         let mut menu = MenuX::default();
+        let is_dark = theme == Theme::Dark;
         menu.parent = parent;
         menu.theme.is_dark = is_dark;
         menu.hwnd = create_container_hwnd(parent, is_dark).unwrap();
@@ -233,15 +231,14 @@ impl MenuX {
         menu
     }
 
-    pub fn is_dark(&self) -> bool {
-        unsafe {
-            let userdata = GetWindowLongPtrW(self.hwnd, GWL_USERDATA);
-            let data = transmute::<isize, &MenuData>(userdata);
-            data.theme.is_dark
-        }
+    pub fn theme(&self) -> Theme {
+        let userdata = unsafe { GetWindowLongPtrW(self.hwnd, GWL_USERDATA) };
+        let data = unsafe { transmute::<isize, &MenuData>(userdata) };
+        if data.theme.is_dark { Theme::Dark } else { Theme::Light }
     }
 
-    pub fn set_theme(self, is_dark:bool){
+    pub fn set_theme(self, theme:Theme){
+        let is_dark = theme == Theme::Dark;
         on_theme_change(self.hwnd, Some(is_dark));
     }
 
@@ -276,10 +273,10 @@ impl MenuX {
         self
     }
 
-    pub fn build(&mut self) -> Result<()> {
+    pub fn build(&mut self) -> Result<(), windows_core::Error> {
 
         let is_dark = should_apps_use_dark_mode();
-        let mut width = 0;
+        let mut width = self.size.horizontal_margin;
         let mut height = self.size.vertical_margin;
 
         for i in 0..self.items.len() {
@@ -296,6 +293,7 @@ impl MenuX {
 
         }
 
+        width += self.size.horizontal_margin;
         height += self.size.vertical_margin;
 
         width += self.size.border_width * 2;
@@ -304,14 +302,13 @@ impl MenuX {
         self.height = height;
 
         let data = MenuData {
-            parent:self.parent,
             main:self.is_main,
             items:self.items.clone(),
             htheme: if self.is_main { Some(unsafe { OpenThemeDataEx(self.hwnd, w!("Menu"), OTD_NONCLIENT) }) } else { None },
             win_subclass_id: if self.is_main { Some(COUNTER.fetch_add(1, Ordering::Relaxed)) } else { None },
             selected_index:-1,
-            height:height,
-            width:width,
+            height,
+            width,
             visible_submenu_index:-1,
             size:self.size.clone(),
             theme:self.theme.clone(),
@@ -327,49 +324,48 @@ impl MenuX {
     }
 
     pub fn popup_at(&self, x:i32, y:i32) -> Option<&MenuItem> {
+
+        let pt = get_display_point(self.hwnd, x, y, self.width, self.height);
         unsafe {
-
-            let pt = get_display_point(self.hwnd, x, y, self.width, self.height);
-            SetWindowPos(self.hwnd, HWND_NOTOPMOST, pt.x, pt.y, self.width, self.height, SWP_ASYNCWINDOWPOS | SWP_NOOWNERZORDER | SWP_NOACTIVATE).unwrap();
-
+            let _ = SetWindowPos(self.hwnd, HWND_TOP, pt.x, pt.y, self.width, self.height, SWP_ASYNCWINDOWPOS | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
             ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
-            SetCapture(self.hwnd);
+            SetCapture(self.hwnd) ;
+        };
 
-            let mut msg = MSG::default();
-            let mut selected_item:Option<&MenuItem> = None;
+        let mut msg = MSG::default();
+        let mut selected_item:Option<&MenuItem> = None;
 
-            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+        while unsafe { GetMessageW(&mut msg, None, 0, 0) }.as_bool() {
 
-                if self.parent != GetActiveWindow() {
-                    let _ = PostMessageW(self.hwnd, WM_INACTIVATE, WPARAM(0), LPARAM(0));
-                }
-
-                match msg.message {
-
-                    WM_MENUSELECTED => {
-                        selected_item = Some(transmute::<isize, &MenuItem>(msg.lParam.0));
-                        break;
-                    }
-
-                    WM_CLOSEMENU => {
-                        break;
-                    }
-
-                    _ => {
-                        TranslateMessage(&msg);
-                        DispatchMessageW(&msg);
-                    }
-                }
-
+            if self.parent != unsafe { GetActiveWindow() } {
+                let _ = unsafe { PostMessageW(self.hwnd, WM_INACTIVATE, WPARAM(0), LPARAM(0)) };
             }
 
-            let _ = ReleaseCapture();
+            match msg.message {
 
-            ShowWindow(self.hwnd, SW_HIDE);
+                WM_MENUSELECTED => {
+                    selected_item = Some(unsafe { transmute::<isize, &MenuItem>(msg.lParam.0) });
+                    break;
+                }
 
-            selected_item
+                WM_CLOSEMENU => {
+                    break;
+                }
+
+                _ => {
+                    unsafe { TranslateMessage(&msg) };
+                    unsafe { DispatchMessageW(&msg) };
+                }
+            }
 
         }
+
+        let _ = unsafe { ReleaseCapture() };
+
+        unsafe { ShowWindow(self.hwnd, SW_HIDE) };
+
+        selected_item
+
     }
 
     fn attach_owner_subclass(&self, id:usize) {
@@ -471,12 +467,11 @@ unsafe extern "system" fn default_window_proc(
         }
 
         WM_DESTROY => {
-
             let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
             let data = transmute::<isize, &mut MenuData>(userdata);
             if data.main {
                 RemoveWindowSubclass(window, Some(menu_owner_subclass_proc), data.win_subclass_id.unwrap());
-                unsafe { CloseThemeData(data.htheme.unwrap()).unwrap() };
+                CloseThemeData(data.htheme.unwrap()).unwrap();
             }
             DefWindowProcW(window, msg, wparam, lparam)
         }
@@ -492,7 +487,7 @@ unsafe extern "system" fn default_window_proc(
             let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
             let data = transmute::<isize, &mut MenuData>(userdata);
             let theme = get_theme(window, data);
-            ColorPick_OnPaint(window, data, theme).unwrap();
+            on_paint(window, data, theme).unwrap();
             LRESULT(0)
         }
 
@@ -549,9 +544,11 @@ unsafe extern "system" fn default_window_proc(
         }
 
         WM_LBUTTONDOWN | WM_RBUTTONDOWN => {
+            // If mouse down outside of menu, exit
             if get_hwnd_from_point(window, lparam).is_none() {
                 init_menu_data(window);
                 PostMessageW(window, WM_CLOSEMENU, WPARAM(0), LPARAM(0)).unwrap();
+                // If mouse down at window concerned, send mouse input
                 send_mouse_input(window, msg);
                 return LRESULT(0);
             }
@@ -566,41 +563,41 @@ unsafe extern "system" fn default_window_proc(
 }
 
 fn send_mouse_input(hwnd:HWND, msg: u32){
-    unsafe {
-        let mut count = 0;
-        let mut parent = GetParent(hwnd);
-        let mut pt = POINT::default();
-        GetCursorPos(&mut pt).unwrap();
-        while parent.0 != 0 {
-            let mut rect = RECT::default();
-            GetWindowRect(parent, &mut rect).unwrap();
-            if PtInRect(&mut rect as *const _ as _, pt).as_bool() {
-                count += 1;
-            }
-            parent = GetParent(parent);
-        }
 
-        if count > 0 {
-            println!("send");
-            let mut flags = MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
-            flags |= if msg == WM_LBUTTONDOWN { MOUSEEVENTF_LEFTDOWN } else { MOUSEEVENTF_RIGHTDOWN };
-
-            let input = INPUT{
-                r#type:INPUT_MOUSE,
-                Anonymous:INPUT_0 {
-                    mi: MOUSEINPUT{
-                        dx:pt.x,
-                        dy:pt.y,
-                        mouseData:0,
-                        dwFlags: flags,
-                        time:0,
-                        dwExtraInfo:0
-                        }
-                }
-            };
-            SendInput(&[input], size_of::<INPUT>() as i32);
+    let mut count = 0;
+    let mut parent = unsafe { GetParent(hwnd) };
+    let mut pt = POINT::default();
+    let _ = unsafe { GetCursorPos(&mut pt) };
+    while parent.0 != 0 {
+        let mut rect = RECT::default();
+        let _ = unsafe { GetWindowRect(parent, &mut rect) };
+        if unsafe { PtInRect(&mut rect as *const _ as _, pt) }.as_bool() {
+            count += 1;
         }
+        parent = unsafe { GetParent(parent) };
     }
+
+    if count > 0 {
+        println!("send");
+        let mut flags = MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
+        flags |= if msg == WM_LBUTTONDOWN { MOUSEEVENTF_LEFTDOWN } else { MOUSEEVENTF_RIGHTDOWN };
+
+        let input = INPUT{
+            r#type:INPUT_MOUSE,
+            Anonymous:INPUT_0 {
+                mi: MOUSEINPUT{
+                    dx:pt.x,
+                    dy:pt.y,
+                    mouseData:0,
+                    dwFlags: flags,
+                    time:0,
+                    dwExtraInfo:0
+                    }
+            }
+        };
+        unsafe { SendInput(&[input], size_of::<INPUT>() as i32) };
+    }
+
 }
 
 unsafe extern "system" fn menu_owner_subclass_proc(
@@ -613,16 +610,9 @@ unsafe extern "system" fn menu_owner_subclass_proc(
 ) -> LRESULT {
     match msg {
 
-        WM_LBUTTONDOWN | WM_RBUTTONDOWN =>  {
-            println!("WM_LBUTTONDOWN");
-            DefWindowProcW(window, msg, wparam, lparam)
-        }
-
         WM_THEMECHANGED => {
-            unsafe {
-                let hwnd = transmute::<usize, &HWND>(_dwrefdata);
-                on_theme_change(*hwnd, None);
-            }
+            let hwnd = transmute::<usize, &HWND>(_dwrefdata);
+            on_theme_change(*hwnd, None);
             DefSubclassProc(window, msg, wparam, lparam)
         }
 
@@ -632,62 +622,61 @@ unsafe extern "system" fn menu_owner_subclass_proc(
     }
 }
 
-fn measure_item(hwnd:HWND, size:&MenuSize, item_data:&InnerMenuItem, is_dark:bool) -> Result<(i32,i32)> {
+fn measure_item(hwnd:HWND, size:&MenuSize, item_data:&InnerMenuItem, is_dark:bool) -> Result<(i32,i32), windows_core::Error> {
 
     let mut width = 0;
     let height;
-    unsafe {
 
-        match item_data.menu_type {
+    match item_data.menu_type {
 
-            XMT_SEPARATOR => {
-                // separator - use half system height and zero width
-                height = (GetSystemMetrics(SM_CYMENU) as i32 + 4) / 2;
-            },
+        XMT_SEPARATOR => {
+            // separator - use half system height and zero width
+            height = unsafe { (GetSystemMetrics(SM_CYMENU) as i32 + 4) / 2 };
+        },
 
-            _ => {
+        _ => {
 
-                let dc:HDC = GetDC(hwnd);
-                let menu_font = get_font(is_dark)?;
-                let font:HFONT = CreateFontIndirectW(&menu_font);
-                let old_font:HGDIOBJ = SelectObject(dc, font);
-                let mut text_rect = RECT::default();
+            let dc:HDC = unsafe { GetDC(hwnd) };
+            let menu_font = get_font(is_dark)?;
+            let font:HFONT = unsafe { CreateFontIndirectW(&menu_font) };
+            let old_font:HGDIOBJ = unsafe { SelectObject(dc, font) };
+            let mut text_rect = RECT::default();
 
-                let mut raw_text = item_data.label.clone();
+            let mut raw_text = item_data.label.clone();
 
-                DrawTextW(dc, raw_text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-                SelectObject(dc, old_font);
+            unsafe { DrawTextW(dc, raw_text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT) };
+            unsafe { SelectObject(dc, old_font) };
 
-                let mut cx = text_rect.right - text_rect.left;
+            let mut cx = text_rect.right - text_rect.left;
 
-                let mut log_font = LOGFONTW::default();
-                GetObjectW(font, size_of::<LOGFONTW>() as i32, Some(&mut log_font as *mut _ as *mut c_void));
+            let mut log_font = LOGFONTW::default();
+            unsafe { GetObjectW(font, size_of::<LOGFONTW>() as i32, Some(&mut log_font as *mut _ as *mut c_void)) };
 
-                let mut cy = log_font.lfHeight;
-                if cy < 0 {
-                    cy = -cy;
-                }
-                cy += size.item_vertical_padding;
-
-                height = cy;
-
-                cx += size.item_horizontal_padding * 2;
-                cx += LR_BUTTON_SIZE * 2;
-                // extra padding
-                let text = PCWSTR::from_raw(item_data.label.as_ptr()).to_string().unwrap();
-                if text.contains("\t") {
-                    cx += 30;
-                }
-
-                // Windows adds 1 to returned value
-                cx -= GetSystemMetrics(SM_CXMENUCHECK) - 1;
-
-                width = cx;
-
-                ReleaseDC(hwnd, dc);
+            let mut cy = log_font.lfHeight;
+            if cy < 0 {
+                cy = -cy;
             }
+            cy += size.item_vertical_padding;
+
+            height = cy;
+
+            cx += size.item_horizontal_padding * 2;
+            cx += LR_BUTTON_SIZE * 2;
+            // extra padding
+            let text = unsafe { PCWSTR::from_raw(item_data.label.as_ptr()).to_string()? };
+            if text.contains("\t") {
+                cx += 30;
+            }
+
+            // Windows adds 1 to returned value
+            cx -= unsafe { GetSystemMetrics(SM_CXMENUCHECK) - 1 };
+
+            width = cx;
+
+            unsafe { ReleaseDC(hwnd, dc) };
         }
     }
+
 
     Ok((width,height))
 }
@@ -736,7 +725,7 @@ fn paint_background(hwnd:HWND, data:&MenuData) {
     }
 }
 
-fn ColorPick_OnPaint(hwnd:HWND, data:&MenuData, theme:HTHEME) -> Result<()> {
+fn on_paint(hwnd:HWND, data:&MenuData, theme:HTHEME) -> Result<(), windows_core::Error> {
 
     let mut ps = PAINTSTRUCT::default();
     let dc = unsafe { BeginPaint(hwnd, &mut ps) };
@@ -758,114 +747,112 @@ fn ColorPick_OnPaint(hwnd:HWND, data:&MenuData, theme:HTHEME) -> Result<()> {
     Ok(())
 }
 
-fn paint(dc:HDC, data:&MenuData, items:&Vec<InnerMenuItem>, theme:HTHEME) -> Result<()> {
+fn paint(dc:HDC, data:&MenuData, items:&Vec<InnerMenuItem>, theme:HTHEME) -> Result<(), windows_core::Error> {
 
-    unsafe {
+    let scheme = get_color_scheme(data);
+    let selected_color = unsafe { CreateSolidBrush(COLORREF(scheme.border)) };
+    let normal_color = unsafe { CreateSolidBrush(COLORREF(scheme.background_color)) };
 
-        let scheme = get_color_scheme(data);
-        let selected_color = CreateSolidBrush(COLORREF(scheme.border));
-        let normal_color = CreateSolidBrush(COLORREF(scheme.background_color));
+    for item in items {
 
-        for item in items {
+        let mut item_rect = get_item_rect(data, item);
 
-            let mut item_rect = get_item_rect(data, item);
+        let disabled = item.state == MENU_DISABLED;
+        let checked = item.state == MENU_CHECKED;
 
-            let _disabled = item.state == MENU_DISABLED;
-            let checked = item.state == MENU_CHECKED;
-
-            if item.index == data.selected_index {
-                FillRect(dc, &mut item_rect, selected_color);
-            }else{
-                FillRect(dc, &mut item_rect, normal_color);
-            }
-
-            match item.menu_type {
-                XMT_SEPARATOR => {
-                    draw_separator(dc, scheme, item_rect)?;
-                },
-                _ => {
-
-                    if checked{
-                        let mut rect = RECT{ left: item_rect.left, top:item_rect.top, right:item_rect.left + LR_BUTTON_SIZE, bottom:item_rect.top + LR_BUTTON_SIZE };
-                        // center vertically
-                        OffsetRect(&mut rect, 0, ((item_rect.bottom - item_rect.top) - (rect.bottom - rect.top)) / 2);
-                        let mut check_rect = rect.clone();
-                        InflateRect(&mut check_rect as *mut _ as *mut RECT, -1, -1);
-                        DrawThemeBackgroundEx(theme, dc, MENU_POPUPCHECK.0, MC_CHECKMARKNORMAL.0, &mut check_rect, None)?;
-                    }
-
-                    let mut text_rect = item_rect.clone();
-                    text_rect.left += LR_BUTTON_SIZE;
-                    text_rect.right -= LR_BUTTON_SIZE;
-
-                    if item.menu_type == XMT_SUBMENU {
-                        let mut arrow_rect  = item_rect.clone();
-                        let arrow_size = GetSystemMetrics(SM_CXHSCROLL);
-                        text_rect.right -= arrow_size;
-                        arrow_rect.left = item_rect.right - arrow_size;
-
-                        // center vertically
-                        OffsetRect(&mut arrow_rect as *mut _ as *mut RECT, 0, ((item_rect.bottom - item_rect.top) - (arrow_rect.bottom - arrow_rect.top)) / 2);
-                        DrawThemeBackgroundEx(theme, dc, MENU_POPUPSUBMENU.0, MSM_NORMAL.0, &mut arrow_rect, None)?;
-
-                    }
-
-                    draw_menu_text(dc, scheme, &text_rect, PCWSTR::from_raw(item.label.as_ptr()), data.theme.is_dark)?;
-                    ExcludeClipRect(dc, item_rect.left, item_rect.top, item_rect.right, item_rect.bottom);
-                }
-            }
+        if item.index == data.selected_index {
+            unsafe { FillRect(dc, &mut item_rect, selected_color) };
+        }else{
+            unsafe { FillRect(dc, &mut item_rect, normal_color) };
         }
 
-        DeleteObject(selected_color);
-        DeleteObject(normal_color);
+        match item.menu_type {
 
+            XMT_SEPARATOR => {
+                draw_separator(dc, scheme, item_rect)?;
+            }
+
+            _ => {
+
+                if checked {
+                    let mut rect = RECT{ left: item_rect.left, top:item_rect.top, right:item_rect.left + LR_BUTTON_SIZE, bottom:item_rect.top + LR_BUTTON_SIZE };
+                    // center vertically
+                    unsafe { OffsetRect(&mut rect, 0, ((item_rect.bottom - item_rect.top) - (rect.bottom - rect.top)) / 2) };
+                    let mut check_rect = rect.clone();
+                    unsafe { InflateRect(&mut check_rect as *mut _ as *mut RECT, -1, -1) };
+                    unsafe { DrawThemeBackgroundEx(theme, dc, MENU_POPUPCHECK.0, MC_CHECKMARKNORMAL.0, &mut check_rect, None)? };
+                }
+
+                let mut text_rect = item_rect.clone();
+                text_rect.left += LR_BUTTON_SIZE;
+                text_rect.right -= LR_BUTTON_SIZE;
+
+                if item.menu_type == XMT_SUBMENU {
+                    let mut arrow_rect  = item_rect.clone();
+                    let arrow_size = unsafe { GetSystemMetrics(SM_CXHSCROLL) };
+                    text_rect.right -= arrow_size;
+                    arrow_rect.left = item_rect.right - arrow_size;
+
+                    // center vertically
+                    unsafe { OffsetRect(&mut arrow_rect as *mut _ as *mut RECT, 0, ((item_rect.bottom - item_rect.top) - (arrow_rect.bottom - arrow_rect.top)) / 2) };
+                    unsafe { DrawThemeBackgroundEx(theme, dc, MENU_POPUPSUBMENU.0, MSM_NORMAL.0, &mut arrow_rect, None)? };
+
+                }
+
+                draw_menu_text(dc, scheme, &text_rect, PCWSTR::from_raw(item.label.as_ptr()), data.theme.is_dark, disabled)?;
+                unsafe { ExcludeClipRect(dc, item_rect.left, item_rect.top, item_rect.right, item_rect.bottom) };
+            }
+        }
     }
+
+    unsafe { DeleteObject(selected_color) };
+    unsafe { DeleteObject(normal_color); }
 
     Ok(())
 }
 
-fn draw_separator(dc:HDC, scheme:&ColorScheme, rect:RECT) -> Result<()> {
-    unsafe {
-        let mut separator_rect = rect.clone();
+fn draw_separator(dc:HDC, scheme:&ColorScheme, rect:RECT) -> Result<(), windows_core::Error> {
 
-        separator_rect.top += (rect.bottom - rect.top) / 2;
+    let mut separator_rect = rect.clone();
 
-        let pen:HPEN = CreatePen(PS_SOLID, 1, COLORREF(scheme.border));
-        let old_pen:HGDIOBJ = SelectObject(dc,pen);
-        MoveToEx(dc, separator_rect.left, separator_rect.top, None);
-        LineTo(dc, separator_rect.right, separator_rect.top);
-        SelectObject(dc,old_pen);
-    }
+    separator_rect.top += (rect.bottom - rect.top) / 2;
+
+    let pen:HPEN = unsafe { CreatePen(PS_SOLID, 1, COLORREF(scheme.border)) };
+    let old_pen:HGDIOBJ = unsafe { SelectObject(dc,pen) };
+    unsafe { MoveToEx(dc, separator_rect.left, separator_rect.top, None) };
+    unsafe { LineTo(dc, separator_rect.right, separator_rect.top) };
+    unsafe { SelectObject(dc,old_pen) };
 
     Ok(())
 }
 
-fn draw_menu_text(dc:HDC, scheme:&ColorScheme, rect:&RECT, raw_text:PCWSTR, is_dark:bool) -> Result<()> {
-    unsafe {
+fn draw_menu_text(dc:HDC, scheme:&ColorScheme, rect:&RECT, raw_text:PCWSTR, is_dark:bool, disabled:bool) -> Result<(), windows_core::Error> {
 
-        let text = raw_text.to_string().unwrap();
-        let has_tab = text.contains("\t");
-        let texts = text.split("\t").collect::<Vec::<&str>>();
+    let text = unsafe { raw_text.to_string()? };
+    let has_tab = text.contains("\t");
+    let texts = text.split("\t").collect::<Vec::<&str>>();
 
-        let mut text_rect = rect.clone();
-        let mut first = encode_wide(texts[0]);
-        let mut second = if has_tab { encode_wide(texts[1]) } else { encode_wide("") };
+    let mut text_rect = rect.clone();
+    let mut first = encode_wide(texts[0]);
+    let mut second = if has_tab { encode_wide(texts[1]) } else { encode_wide("") };
 
-        SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, COLORREF(scheme.color));
-
-        let menu_font = get_font(is_dark)?;
-        let font:HFONT = CreateFontIndirectW(&menu_font);
-        let old_font:HGDIOBJ = SelectObject(dc,font);
-
-        DrawTextW(dc, &mut first, &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-        SetTextColor(dc, COLORREF(scheme.disabled));
-        DrawTextW(dc, &mut second, &mut text_rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER);
-
-        SelectObject(dc,old_font);
-
+    unsafe { SetBkMode(dc, TRANSPARENT) };
+    if disabled {
+        unsafe { SetTextColor(dc, COLORREF(scheme.disabled)) };
+    } else {
+        unsafe { SetTextColor(dc, COLORREF(scheme.color)) };
     }
+
+    let menu_font = get_font(is_dark)?;
+    let font:HFONT = unsafe { CreateFontIndirectW(&menu_font) };
+    let old_font:HGDIOBJ = unsafe { SelectObject(dc,font) };
+
+    unsafe { DrawTextW(dc, &mut first, &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER) };
+
+    unsafe { SetTextColor(dc, COLORREF(scheme.disabled)) };
+    unsafe { DrawTextW(dc, &mut second, &mut text_rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER) };
+
+    unsafe { SelectObject(dc,old_font) };
 
     Ok(())
 }
@@ -875,8 +862,9 @@ fn show_submenu(main:HWND, _newindex:i32){
     unsafe { SetTimer(main, 400 as usize, SUBMENU_TIMEOUT_MSEC, proc) };
 }
 
-unsafe extern "system" fn delay_show_submenu(main: HWND, _uMsg: u32, nIDEvent: usize, _dwTime: u32){
-    KillTimer(main, nIDEvent).unwrap();
+unsafe extern "system" fn delay_show_submenu(main: HWND, _msg: u32, id: usize, _time: u32){
+
+    KillTimer(main, id).unwrap();
 
     let userdata = GetWindowLongPtrW(main, GWL_USERDATA);
     let data = transmute::<isize, &MenuData>(userdata);
@@ -1083,41 +1071,37 @@ fn index_from_point(hwnd:HWND, screen_pt:POINT, data:&MenuData) -> i32 {
 }
 
 fn get_hwnd_from_point(hwnd:HWND, lparam:LPARAM) -> Option<HWND> {
-    unsafe {
-        let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
-        let data = transmute::<isize, &MenuData>(userdata);
-        let submenu = if data.visible_submenu_index >= 0 { data.items[data.visible_submenu_index as usize].submenu.unwrap() } else { HWND(0) };
+    let userdata = unsafe { GetWindowLongPtrW(hwnd, GWL_USERDATA) };
+    let data = unsafe { transmute::<isize, &MenuData>(userdata) };
+    let submenu = if data.visible_submenu_index >= 0 { data.items[data.visible_submenu_index as usize].submenu.unwrap() } else { HWND(0) };
 
-        let pt = to_screen_point(hwnd, lparam);
+    let pt = to_screen_point(hwnd, lparam);
 
-        let window = WindowFromPoint(pt);
+    let window = unsafe { WindowFromPoint(pt) };
 
-        if submenu.0 != 0 && window == submenu {
-            return Some(submenu);
-        }
-
-        if hwnd == window {
-            return Some(hwnd);
-        }
-
-        None
+    if submenu.0 != 0 && window == submenu {
+        return Some(submenu);
     }
+
+    if hwnd == window {
+        return Some(hwnd);
+    }
+
+    None
 }
 
 fn init_menu_data(window:HWND){
-    unsafe {
-        let userdata = GetWindowLongPtrW(window, GWL_USERDATA);
-        let data = transmute::<isize, &mut MenuData>(userdata);
-        data.selected_index = -1;
+    let userdata = unsafe { GetWindowLongPtrW(window, GWL_USERDATA) };
+    let data = unsafe { transmute::<isize, &mut MenuData>(userdata) };
+    data.selected_index = -1;
 
-        if data.visible_submenu_index >= 0 {
-            let hwnd = data.items[data.visible_submenu_index as usize].submenu.unwrap();
-            hide_submenu(hwnd);
-        }
-
-        data.visible_submenu_index = -1;
-        SetWindowLongPtrW(window, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
+    if data.visible_submenu_index >= 0 {
+        let hwnd = data.items[data.visible_submenu_index as usize].submenu.unwrap();
+        hide_submenu(hwnd);
     }
+
+    data.visible_submenu_index = -1;
+    unsafe { SetWindowLongPtrW(window, GWL_USERDATA, transmute::<&mut MenuData, isize>(data)) };
 }
 
 fn get_theme(hwnd:HWND, data:&MenuData) -> HTHEME {
@@ -1125,12 +1109,11 @@ fn get_theme(hwnd:HWND, data:&MenuData) -> HTHEME {
         return data.htheme.unwrap();
     }
 
-    unsafe {
-        let parent = GetParent(hwnd);
-        let userdata = GetWindowLongPtrW(parent, GWL_USERDATA);
-        let parent_data = transmute::<isize, &MenuData>(userdata);
-        parent_data.htheme.unwrap()
-    }
+    let parent = unsafe { GetParent(hwnd) };
+    let userdata = unsafe { GetWindowLongPtrW(parent, GWL_USERDATA) };
+    let parent_data = unsafe { transmute::<isize, &MenuData>(userdata) };
+
+    parent_data.htheme.unwrap()
 }
 
 fn toggle_checked(item:&mut InnerMenuItem, checked:bool){
@@ -1151,35 +1134,34 @@ fn toggle_radio(data:&mut MenuData, index:usize){
 }
 
 fn on_theme_change(hwnd:HWND, force_dark:Option<bool>){
-    unsafe {
 
-        let is_dark = if force_dark.is_some() { force_dark.unwrap() } else { should_apps_use_dark_mode() };
-        allow_dark_mode_for_window(hwnd, is_dark);
-        let userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
-        let data = transmute::<isize, &mut MenuData>(userdata);
-        let old_theme = data.htheme.unwrap();
-        CloseThemeData(old_theme).unwrap();
-        let theme = OpenThemeDataEx(hwnd, w!("Menu"), OTD_NONCLIENT);
-        data.htheme = Some(theme);
+    let is_dark = if force_dark.is_some() { force_dark.unwrap() } else { should_apps_use_dark_mode() };
+    allow_dark_mode_for_window(hwnd, is_dark);
+    let userdata = unsafe { GetWindowLongPtrW(hwnd, GWL_USERDATA) };
+    let data = unsafe { transmute::<isize, &mut MenuData>(userdata) };
+    let old_theme = data.htheme.unwrap();
+    unsafe { CloseThemeData(old_theme).unwrap() };
+    let theme = unsafe { OpenThemeDataEx(hwnd, w!("Menu"), OTD_NONCLIENT) };
+    data.htheme = Some(theme);
 
-        data.theme.is_dark = is_dark;
-        SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
-        UpdateWindow(hwnd);
+    data.theme.is_dark = is_dark;
+    unsafe { SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data)) };
+    unsafe { UpdateWindow(hwnd) };
 
-        for item in &data.items {
-            if item.menu_type == XMT_SUBMENU {
-                let submenu = item.submenu.unwrap();
-                let userdata = GetWindowLongPtrW(submenu, GWL_USERDATA);
-                let data = transmute::<isize, &mut MenuData>(userdata);
-                data.theme.is_dark = is_dark;
-                SetWindowLongPtrW(submenu, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
-                UpdateWindow(submenu);
-            }
+    for item in &data.items {
+        if item.menu_type == XMT_SUBMENU {
+            let submenu = item.submenu.unwrap();
+            let userdata = unsafe { GetWindowLongPtrW(submenu, GWL_USERDATA) };
+            let data = unsafe { transmute::<isize, &mut MenuData>(userdata) };
+            data.theme.is_dark = is_dark;
+            unsafe { SetWindowLongPtrW(submenu, GWL_USERDATA, transmute::<&mut MenuData, isize>(data)) };
+            unsafe { UpdateWindow(submenu) };
         }
     }
+
 }
 
-fn create_container_hwnd(parent: HWND, is_dark:bool) -> Result<HWND> {
+fn create_container_hwnd(parent: HWND, is_dark:bool) -> Result<HWND, windows_core::Error> {
 
     let class_name = w!("CUSTOM_POPUPMENU");
 
