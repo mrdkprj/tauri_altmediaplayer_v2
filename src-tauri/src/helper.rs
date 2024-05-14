@@ -60,13 +60,13 @@ pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> t
 
     create_playback_speed_submenu(&mut menu, settings);
     create_seek_speed_submenu(&mut menu, settings);
-    menu.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", "", settings.video.fitToWindow);
+    menu.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", "", settings.video.fitToWindow, None);
     menu.separator();
-    menu.text(&PlayerMenu::TogglePlaylistWindow.to_string(), "Playlist\tCtrl+P");
-    menu.text(&PlayerMenu::ToggleFullscreen.to_string(), "Toggle Fullscreen\tF11");
-    menu.text(&PlayerMenu::PictureInPicture.to_string(), "Picture In Picture");
+    menu.text_with_accelerator(&PlayerMenu::TogglePlaylistWindow.to_string(), "Playlist", None, "Ctrl+P");
+    menu.text_with_accelerator(&PlayerMenu::ToggleFullscreen.to_string(), "Toggle Fullscreen", None, "F11");
+    menu.text(&PlayerMenu::PictureInPicture.to_string(), "Picture In Picture", None);
     menu.separator();
-    menu.text(&PlayerMenu::Capture.to_string(), "Capture\tCtrl+S");
+    menu.text_with_accelerator(&PlayerMenu::Capture.to_string(), "Capture", None, "Ctrl+S");
     menu.separator();
     create_theme_submenu(&mut menu, settings);
 
@@ -85,7 +85,7 @@ fn create_playback_speed_submenu(menu:&mut MenuX, settings:&Settings){
 
     for (_, speed) in PLAYBACK_SPEEDS.iter().enumerate() {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.playbackSpeed);
+        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.playbackSpeed, None);
     };
 
     parent.build().unwrap();
@@ -98,7 +98,7 @@ fn create_seek_speed_submenu(menu:&mut MenuX, settings:&Settings){
 
     for (_, speed) in SEEK_SPEEDS.iter().enumerate() {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.seekSpeed);
+        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.seekSpeed, None);
     }
 
     parent.build().unwrap();
@@ -111,7 +111,7 @@ fn create_theme_submenu(menu:&mut MenuX, settings:&Settings){
 
     for (_, theme) in Theme::iter().enumerate() {
         let theme_str = if theme.to_string() == "dark" { "Dark" } else { "Light" };
-        parent.radio(&id, theme_str, &theme.to_string(), &id, theme == settings.theme);
+        parent.radio(&id, theme_str, &theme.to_string(), &id, theme == settings.theme, None);
     }
 
     parent.build().unwrap();
@@ -121,56 +121,31 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 
     let hwnd = window.hwnd().unwrap();
 
-    // let menu = Menu::new_with_theme(hwnd, settings.theme);
-
-    // menu.text(&PlaylistMenu::Remove.to_string(), "Remove\tDelete");
-    // menu.text(&PlaylistMenu::Trash.to_string(), "Trash\tShift+Delete");
-    // menu.separator();
-    // menu.text(&PlaylistMenu::CopyFileName.to_string(), "Copy Name\tCtrl+C");
-    // menu.text(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path\tCtrl+Shift+C");
-    // menu.text(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer\tCtrl+R");
-    // menu.separator();
-    // menu.text(&PlaylistMenu::Rename.to_string(), "Rename\tF2");
-    // menu.text(&PlaylistMenu::Metadata.to_string(), "View Metadata");
-    // menu.text(&PlaylistMenu::Convert.to_string(), "Convert");
-    // menu.separator();
-    // menu.text(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment");
-    // menu.text(&PlaylistMenu::ManageTags.to_string(), "Manage Tags");
-    // menu.separator();
-    // menu.text(&PlaylistMenu::LoadList.to_string(), "Load Playlist");
-    // menu.text(&PlaylistMenu::SaveList.to_string(), "Save Playlist");
-    // menu.separator();
-    // menu.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist");
-
-    // menu.build_and_attach().unwrap();
-
-    // *MENUX.lock().unwrap() = menu;
-
     let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
     let mut menu = MenuX::new_with_theme(hwnd, theme);
 
-    menu.text(&PlaylistMenu::Remove.to_string(), "Remove\tDelete");
-    menu.text(&PlaylistMenu::Trash.to_string(), "Trash\tShift+Delete");
+    menu.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
+    menu.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", None, "Shift+Delete");
     menu.separator();
-    menu.text(&PlaylistMenu::CopyFileName.to_string(), "Copy Name\tCtrl+C");
-    menu.text(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path\tCtrl+Shift+C");
-    menu.text(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer\tCtrl+R");
+    menu.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", None, "Ctrl+C");
+    menu.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", None, "Ctrl+Shift+C");
+    menu.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", None, "Ctrl+R");
     menu.separator();
-    menu.text(&PlaylistMenu::Rename.to_string(), "Rename\tF2");
-    menu.text(&PlaylistMenu::Metadata.to_string(), "View Metadata");
-    menu.text(&PlaylistMenu::Convert.to_string(), "Convert");
+    menu.text_with_accelerator(&PlaylistMenu::Rename.to_string(), "Rename", None, "F2");
+    menu.text(&PlaylistMenu::Metadata.to_string(), "View Metadata", None);
+    menu.text(&PlaylistMenu::Convert.to_string(), "Convert", None);
     menu.separator();
-    menu.text(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment");
+    menu.text(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment", None);
     let mut sub = menu.submenu("Manage Tags");
-    sub.text(&PlaylistMenu::CopyFileName.to_string(), "Copy Name\tCtrl+C");
-    sub.text(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path\tCtrl+Shift+C");
-    sub.text(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer\tCtrl+R");
+    sub.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", None, "Ctrl+C");
+    sub.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", None, "Ctrl+Shift+C");
+    sub.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", None, "Ctrl+R");
     sub.build().unwrap();
     menu.separator();
-    menu.text(&PlaylistMenu::LoadList.to_string(), "Load Playlist");
-    menu.text(&PlaylistMenu::SaveList.to_string(), "Save Playlist");
+    menu.text(&PlaylistMenu::LoadList.to_string(), "Load Playlist", None);
+    menu.text(&PlaylistMenu::SaveList.to_string(), "Save Playlist", None);
     menu.separator();
-    menu.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist");
+    menu.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", None);
 
     menu.build().unwrap();
 
@@ -187,12 +162,12 @@ pub fn create_sort_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tau
     let mut menu = MenuX::new_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 
-    menu.check(id, "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy);
+    menu.check(id, "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy, None);
     menu.separator();
-    menu.radio(id, "Name(Asc)", &SortMenu::NameAsc.to_string(), id, settings.sort.order == SortOrder::NameAsc);
-    menu.radio(id, "Name(Desc)", &SortMenu::NameDesc.to_string(), id, settings.sort.order == SortOrder::NameDesc);
-    menu.radio(id, "Date(Asc)", &SortMenu::DateAsc.to_string(), id, settings.sort.order == SortOrder::DateAsc);
-    menu.radio(id, "Date(Desc", &SortMenu::DateDesc.to_string(), id, settings.sort.order == SortOrder::DateDesc);
+    menu.radio(id, "Name(Asc)", &SortMenu::NameAsc.to_string(), id, settings.sort.order == SortOrder::NameAsc, None);
+    menu.radio(id, "Name(Desc)", &SortMenu::NameDesc.to_string(), id, settings.sort.order == SortOrder::NameDesc, None);
+    menu.radio(id, "Date(Asc)", &SortMenu::DateAsc.to_string(), id, settings.sort.order == SortOrder::DateAsc, None);
+    menu.radio(id, "Date(Desc", &SortMenu::DateDesc.to_string(), id, settings.sort.order == SortOrder::DateDesc, None);
 
     menu.build().unwrap();
 

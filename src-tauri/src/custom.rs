@@ -5,7 +5,7 @@ use windows::Win32::{Foundation::{COLORREF, HINSTANCE, HMODULE, HWND, LPARAM, LR
 use windows_core::{s, w, PCSTR, PCWSTR};
 use crate::util::{decode_wide, encode_wide, HIWORD, LOWORD};
 
-static COUNTER:AtomicUsize = AtomicUsize::new(300);
+static COUNTER:AtomicUsize = AtomicUsize::new(400);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Theme {
@@ -22,18 +22,18 @@ const WM_INACTIVATE:u32 = WM_APP + 0x0004;
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct X_MENU_TYPE(pub i32);
-pub const XMT_STRING:X_MENU_TYPE = X_MENU_TYPE(0);
-pub const XMT_CHECKBOX:X_MENU_TYPE = X_MENU_TYPE(1);
-pub const XMT_RADIO:X_MENU_TYPE = X_MENU_TYPE(2);
-pub const XMT_SUBMENU:X_MENU_TYPE = X_MENU_TYPE(3);
-pub const XMT_SEPARATOR:X_MENU_TYPE = X_MENU_TYPE(4);
+pub struct MENU_TYPE(pub i32);
+pub const XMT_STRING:MENU_TYPE = MENU_TYPE(0);
+pub const XMT_CHECKBOX:MENU_TYPE = MENU_TYPE(1);
+pub const XMT_RADIO:MENU_TYPE = MENU_TYPE(2);
+pub const XMT_SUBMENU:MENU_TYPE = MENU_TYPE(3);
+pub const XMT_SEPARATOR:MENU_TYPE = MENU_TYPE(4);
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 pub struct MenuItemState(pub i32);
-pub const MENU_NORMAL:MenuItemState = MenuItemState(0);
-pub const MENU_CHECKED:MenuItemState = MenuItemState(1);
-pub const MENU_DISABLED:MenuItemState = MenuItemState(2);
+pub const MENU_NORMAL:MenuItemState = MenuItemState(1);
+pub const MENU_CHECKED:MenuItemState = MenuItemState(2);
+pub const MENU_DISABLED:MenuItemState = MenuItemState(4);
 
 struct DisplayPoint{
     x:i32,
@@ -161,29 +161,45 @@ struct InnerMenuItem {
     id:Vec<u16>,
     label:Vec<u16>,
     value:Vec<u16>,
+    accelerator:Option<Vec<u16>>,
     name:Option<Vec<u16>>,
     state:MenuItemState,
-    menu_type:X_MENU_TYPE,
+    menu_type:MENU_TYPE,
     index:i32,
     top:i32,
     bottom:i32,
     submenu:Option<HWND>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct MenuItem {
+    index:usize,
+    hwnd:HWND,
     pub id:String,
     pub label:String,
     pub value:String,
+    pub accelerator:String,
+    pub name:String,
+    pub state:MenuItemState,
+    pub menu_type:MENU_TYPE,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SelectedMenuItem {
+    pub id:String,
+    pub label:String,
+    pub value:String,
+    pub name:String,
     pub state:MenuItemState,
 }
 
-impl MenuItem {
+impl SelectedMenuItem {
     fn from(item: &InnerMenuItem) -> Self {
         Self {
             id: decode_wide(&item.id),
             label: decode_wide(&item.label),
             value: decode_wide(&item.value),
+            name: if item.name.is_none() { String::new() } else { decode_wide(item.name.as_ref().unwrap()) },
             state: item.state.clone(),
         }
     }
@@ -231,6 +247,12 @@ impl MenuX {
         menu
     }
 
+    pub fn items(&self) -> Vec<MenuItem> {
+        let userdata = unsafe { GetWindowLongPtrW(self.hwnd, GWL_USERDATA) };
+        let data = unsafe { transmute::<isize, &MenuData>(userdata) };
+        data.items.iter().map(|item| MenuItem::new(self.hwnd, item)).collect()
+    }
+
     pub fn theme(&self) -> Theme {
         let userdata = unsafe { GetWindowLongPtrW(self.hwnd, GWL_USERDATA) };
         let data = unsafe { transmute::<isize, &MenuData>(userdata) };
@@ -242,23 +264,51 @@ impl MenuX {
         on_theme_change(self.hwnd, Some(is_dark));
     }
 
-    pub fn text(&mut self, id:&str, label:&str) -> &Self {
-        self.items.push(InnerMenuItem::new(id, label, "", None, None, XMT_STRING));
+    fn get_state(disabled:Option<bool>, checked:Option<bool>) -> MenuItemState {
+        let mut state = MENU_NORMAL.0;
+        if disabled.is_some() && disabled.unwrap() {
+            state |= MENU_DISABLED.0;
+        }
+
+        if checked.is_some() && checked.unwrap() {
+            state |= MENU_CHECKED.0;
+        }
+
+        MenuItemState(state)
+    }
+
+    pub fn text(&mut self, id:&str, label:&str, disabled:Option<bool>) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, "", None, None, Self::get_state(disabled, None), XMT_STRING));
         self
     }
 
-    pub fn check(&mut self, id:&str, label:&str, value:&str, checked:bool) -> &Self {
-        self.items.push(InnerMenuItem::new(id, label, value, None, Some(checked), XMT_CHECKBOX));
+    pub fn text_with_accelerator(&mut self, id:&str, label:&str, disabled:Option<bool>, accelerator:&str) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, "", Some(accelerator), None, Self::get_state(disabled, None), XMT_STRING));
         self
     }
 
-    pub fn radio(&mut self, id:&str, label:&str, value:&str, name:&str, checked:bool) -> &Self {
-        self.items.push(InnerMenuItem::new(id, label, value, Some(name), Some(checked), XMT_RADIO));
+    pub fn check(&mut self, id:&str, label:&str, value:&str, checked:bool, disabled:Option<bool>) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, value, None, None, Self::get_state(disabled, Some(checked)), XMT_CHECKBOX));
+        self
+    }
+
+    pub fn check_with_accelerator(&mut self, id:&str, label:&str, value:&str, checked:bool, disabled:Option<bool>, accelerator:&str) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, value, Some(accelerator), None, Self::get_state(disabled, Some(checked)), XMT_CHECKBOX));
+        self
+    }
+
+    pub fn radio(&mut self, id:&str, label:&str, value:&str, name:&str, checked:bool, disabled:Option<bool>) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, value, None, Some(name), Self::get_state(disabled, Some(checked)), XMT_RADIO));
+        self
+    }
+
+    pub fn radio_with_accelerator(&mut self, id:&str, label:&str, value:&str, name:&str, checked:bool, disabled:Option<bool>, accelerator:&str) -> &Self {
+        self.items.push(InnerMenuItem::new(id, label, value, Some(accelerator), Some(name), Self::get_state(disabled, Some(checked)), XMT_RADIO));
         self
     }
 
     pub fn submenu(&mut self, label:&str) -> Self {
-        let mut item = InnerMenuItem::new(label, label, "", None, None, XMT_SUBMENU);
+        let mut item = InnerMenuItem::new(label, label, "", None, None, MENU_NORMAL, XMT_SUBMENU);
         let mut submenu = MenuX::new(self.hwnd);
         submenu.is_main = false;
         submenu.theme = self.theme.clone();
@@ -269,7 +319,7 @@ impl MenuX {
     }
 
     pub fn separator(&mut self) -> &Self {
-        self.items.push(InnerMenuItem::new("", "", "", None, None, XMT_SEPARATOR));
+        self.items.push(InnerMenuItem::new("","","",None, None, MENU_NORMAL, XMT_SEPARATOR));
         self
     }
 
@@ -323,7 +373,7 @@ impl MenuX {
         Ok(())
     }
 
-    pub fn popup_at(&self, x:i32, y:i32) -> Option<&MenuItem> {
+    pub fn popup_at(&self, x:i32, y:i32) -> Option<&SelectedMenuItem> {
 
         let pt = get_display_point(self.hwnd, x, y, self.width, self.height);
         unsafe {
@@ -333,7 +383,7 @@ impl MenuX {
         };
 
         let mut msg = MSG::default();
-        let mut selected_item:Option<&MenuItem> = None;
+        let mut selected_item:Option<&SelectedMenuItem> = None;
 
         while unsafe { GetMessageW(&mut msg, None, 0, 0) }.as_bool() {
 
@@ -344,7 +394,7 @@ impl MenuX {
             match msg.message {
 
                 WM_MENUSELECTED => {
-                    selected_item = Some(unsafe { transmute::<isize, &MenuItem>(msg.lParam.0) });
+                    selected_item = Some(unsafe { transmute::<isize, &SelectedMenuItem>(msg.lParam.0) });
                     break;
                 }
 
@@ -382,17 +432,80 @@ impl MenuX {
 
 }
 
+impl MenuItem {
+
+    fn new(hwnd:HWND, item:&InnerMenuItem) -> Self {
+        Self {
+            index:item.index as usize,
+            hwnd,
+            id:decode_wide(&item.id),
+            label:decode_wide(&item.label),
+            value: decode_wide(&item.value),
+            accelerator: if item.accelerator.is_none() { String::new() } else { decode_wide(item.accelerator.as_ref().unwrap()) },
+            name: if item.name.is_none() { String::new() } else { decode_wide(item.name.as_ref().unwrap()) },
+            state:item.state.clone(),
+            menu_type:item.menu_type.clone(),
+        }
+    }
+
+    fn get_data(&self) -> &mut MenuData {
+        let userdata = unsafe { GetWindowLongPtrW(self.hwnd, GWL_USERDATA) };
+        unsafe { transmute::<isize, &mut MenuData>(userdata) }
+    }
+
+    fn set_data(&self, data:&mut MenuData){
+        unsafe { SetWindowLongPtrW(self.hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data)) };
+    }
+
+    pub fn checked(&self) -> bool {
+        let data = Self::get_data(self);
+        (data.items[self.index].state.0 & MENU_CHECKED.0) != 0
+    }
+
+    pub fn set_checked(&self, checked:bool){
+        let data = Self::get_data(self);
+        if checked {
+            data.items[self.index].state.0 |= MENU_CHECKED.0;
+        } else {
+            data.items[self.index].state.0 &= !MENU_CHECKED.0;
+        }
+        Self::set_data(self, data);
+    }
+
+    pub fn disabled(&self) -> bool {
+        let data = Self::get_data(self);
+        (data.items[self.index].state.0 & MENU_DISABLED.0) != 0
+    }
+
+    pub fn set_disabled(&self, disabled:bool){
+        let data = Self::get_data(self);
+        if disabled {
+            data.items[self.index].state.0 |= MENU_DISABLED.0;
+        } else {
+            data.items[self.index].state.0 &= !MENU_DISABLED.0;
+        }
+        Self::set_data(self, data);
+    }
+
+    pub fn set_label(&self, label:&str){
+        let data = Self::get_data(self);
+        data.items[self.index].label = encode_wide(label);
+        Self::set_data(self, data);
+    }
+}
+
 impl InnerMenuItem {
 
-    pub fn new(id:&str, label:&str, value:&str, name:Option<&str>, checked:Option<bool>, menu_type:X_MENU_TYPE) -> Self {
+    pub fn new(id:&str, label:&str, value:&str, accelerator:Option<&str>, name:Option<&str>, state:MenuItemState, menu_type:MENU_TYPE) -> Self {
         match menu_type {
             XMT_CHECKBOX | XMT_RADIO => {
                 Self {
                     id: encode_wide(id),
                     label:encode_wide(label),
-                    value:encode_wide(value),
+                    value: encode_wide(value),
+                    accelerator: if accelerator.is_some() { Some(encode_wide(accelerator.unwrap())) } else { None },
                     name: if name.is_some() { Some(encode_wide(name.unwrap())) } else { None },
-                    state: if checked.unwrap() { MENU_CHECKED } else { MENU_NORMAL },
+                    state,
                     menu_type,
                     index:-1,
                     top:0,
@@ -403,11 +516,12 @@ impl InnerMenuItem {
 
             XMT_SUBMENU => {
                 Self {
-                    id: Vec::new(),
+                    id: encode_wide(id),
                     label:encode_wide(label),
                     value:Vec::new(),
+                    accelerator:None,
                     name:None,
-                    state:MENU_NORMAL,
+                    state,
                     menu_type,
                     index:-1,
                     top:0,
@@ -421,8 +535,9 @@ impl InnerMenuItem {
                     id: Vec::new(),
                     label:Vec::new(),
                     value:Vec::new(),
+                    accelerator:None,
                     name:None,
-                    state:MENU_NORMAL,
+                    state,
                     menu_type,
                     index:-1,
                     top:0,
@@ -435,9 +550,10 @@ impl InnerMenuItem {
                 Self {
                     id: encode_wide(id),
                     label:encode_wide(label),
-                    value:encode_wide(value),
+                    value:Vec::new(),
+                    accelerator: if accelerator.is_some() { Some(encode_wide(accelerator.unwrap())) } else { None },
                     name:None,
-                    state:MENU_NORMAL,
+                    state,
                     menu_type,
                     index:-1,
                     top:0,
@@ -525,7 +641,7 @@ unsafe extern "system" fn default_window_proc(
 
             // toggle checkbox
             if data.items[index as usize].menu_type == XMT_CHECKBOX {
-                let checked = data.items[index as usize].state == MENU_CHECKED;
+                let checked = (data.items[index as usize].state.0 & MENU_CHECKED.0) != 0;
                 toggle_checked(&mut data.items[index as usize], !checked);
             }
 
@@ -537,7 +653,7 @@ unsafe extern "system" fn default_window_proc(
 
             SetWindowLongPtrW(hwnd, GWL_USERDATA, transmute::<&mut MenuData, isize>(data));
             init_menu_data(window);
-            let menu_item = MenuItem::from(&data.items[index as usize]);
+            let menu_item = SelectedMenuItem::from(&data.items[index as usize]);
             PostMessageW(hwnd, WM_MENUSELECTED, WPARAM(0), LPARAM(Box::into_raw(Box::new(menu_item)) as _)).unwrap();
 
             LRESULT(0)
@@ -643,6 +759,9 @@ fn measure_item(hwnd:HWND, size:&MenuSize, item_data:&InnerMenuItem, is_dark:boo
             let mut text_rect = RECT::default();
 
             let mut raw_text = item_data.label.clone();
+            if item_data.accelerator.is_some() {
+                raw_text.extend(item_data.accelerator.as_ref().unwrap());
+            }
 
             unsafe { DrawTextW(dc, raw_text.as_mut_slice(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT) };
             unsafe { SelectObject(dc, old_font) };
@@ -663,8 +782,7 @@ fn measure_item(hwnd:HWND, size:&MenuSize, item_data:&InnerMenuItem, is_dark:boo
             cx += size.item_horizontal_padding * 2;
             cx += LR_BUTTON_SIZE * 2;
             // extra padding
-            let text = unsafe { PCWSTR::from_raw(item_data.label.as_ptr()).to_string()? };
-            if text.contains("\t") {
+            if item_data.accelerator.is_some() {
                 cx += 30;
             }
 
@@ -757,8 +875,8 @@ fn paint(dc:HDC, data:&MenuData, items:&Vec<InnerMenuItem>, theme:HTHEME) -> Res
 
         let mut item_rect = get_item_rect(data, item);
 
-        let disabled = item.state == MENU_DISABLED;
-        let checked = item.state == MENU_CHECKED;
+        let disabled = (item.state.0 & MENU_DISABLED.0) != 0;
+        let checked = (item.state.0 & MENU_CHECKED.0) != 0;
 
         if item.index == data.selected_index {
             unsafe { FillRect(dc, &mut item_rect, selected_color) };
@@ -799,7 +917,7 @@ fn paint(dc:HDC, data:&MenuData, items:&Vec<InnerMenuItem>, theme:HTHEME) -> Res
 
                 }
 
-                draw_menu_text(dc, scheme, &text_rect, PCWSTR::from_raw(item.label.as_ptr()), data.theme.is_dark, disabled)?;
+                draw_menu_text(dc, scheme, &text_rect, item, data.theme.is_dark, disabled)?;
                 unsafe { ExcludeClipRect(dc, item_rect.left, item_rect.top, item_rect.right, item_rect.bottom) };
             }
         }
@@ -826,15 +944,9 @@ fn draw_separator(dc:HDC, scheme:&ColorScheme, rect:RECT) -> Result<(), windows_
     Ok(())
 }
 
-fn draw_menu_text(dc:HDC, scheme:&ColorScheme, rect:&RECT, raw_text:PCWSTR, is_dark:bool, disabled:bool) -> Result<(), windows_core::Error> {
-
-    let text = unsafe { raw_text.to_string()? };
-    let has_tab = text.contains("\t");
-    let texts = text.split("\t").collect::<Vec::<&str>>();
+fn draw_menu_text(dc:HDC, scheme:&ColorScheme, rect:&RECT, item:&InnerMenuItem, is_dark:bool, disabled:bool) -> Result<(), windows_core::Error> {
 
     let mut text_rect = rect.clone();
-    let mut first = encode_wide(texts[0]);
-    let mut second = if has_tab { encode_wide(texts[1]) } else { encode_wide("") };
 
     unsafe { SetBkMode(dc, TRANSPARENT) };
     if disabled {
@@ -847,10 +959,12 @@ fn draw_menu_text(dc:HDC, scheme:&ColorScheme, rect:&RECT, raw_text:PCWSTR, is_d
     let font:HFONT = unsafe { CreateFontIndirectW(&menu_font) };
     let old_font:HGDIOBJ = unsafe { SelectObject(dc,font) };
 
-    unsafe { DrawTextW(dc, &mut first, &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER) };
+    unsafe { DrawTextW(dc, &mut item.label.clone(), &mut text_rect, DT_SINGLELINE | DT_LEFT | DT_VCENTER) };
 
-    unsafe { SetTextColor(dc, COLORREF(scheme.disabled)) };
-    unsafe { DrawTextW(dc, &mut second, &mut text_rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER) };
+    if item.accelerator.is_some() {
+        unsafe { SetTextColor(dc, COLORREF(scheme.disabled)) };
+        unsafe { DrawTextW(dc, &mut item.accelerator.as_ref().unwrap().clone(), &mut text_rect, DT_SINGLELINE | DT_RIGHT | DT_VCENTER) };
+    }
 
     unsafe { SelectObject(dc,old_font) };
 
@@ -1117,7 +1231,11 @@ fn get_theme(hwnd:HWND, data:&MenuData) -> HTHEME {
 }
 
 fn toggle_checked(item:&mut InnerMenuItem, checked:bool){
-    item.state = if checked { MENU_CHECKED } else { MENU_NORMAL };
+    if checked {
+        item.state.0 |= MENU_CHECKED.0
+    }else{
+        item.state.0 &= !MENU_CHECKED.0;
+    }
 }
 
 fn toggle_radio(data:&mut MenuData, index:usize){
