@@ -1,6 +1,5 @@
-use crate::custom::*;
-// use crate::menu::*;
 use crate::settings::{Settings, Theme, SortOrder};
+use rpopup::{RMenu, config::Theme as MenuTheme};
 use serde::Deserialize;
 use tauri::Manager;
 use std::collections::HashMap;
@@ -54,7 +53,7 @@ pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> t
 
     let hwnd = window.hwnd().unwrap();
 
-    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let theme = if settings.theme == Theme::dark { MenuTheme::Dark } else { MenuTheme::Light };
     let mut menu = RMenu::new_with_theme(hwnd, theme);
 
     create_playback_speed_submenu(&mut menu, settings);
@@ -120,7 +119,7 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 
     let hwnd = window.hwnd().unwrap();
 
-    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let theme = if settings.theme == Theme::dark { MenuTheme::Dark } else { MenuTheme::Light };
     let mut menu = RMenu::new_with_theme(hwnd, theme);
 
     menu.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
@@ -158,7 +157,7 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
 pub fn create_sort_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
 
     let hwnd = window.hwnd().unwrap();
-    let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
+    let theme = if settings.theme == Theme::dark { MenuTheme::Dark } else { MenuTheme::Light };
     let mut menu = RMenu::new_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 

@@ -2119,6 +2119,7 @@ version = "0.0.0"
 dependencies = [
  "http",
  "once_cell",
+ "rpopup",
  "serde",
  "serde_json",
  "strum",
@@ -3016,6 +3017,16 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "rpopup"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "serde",
+ "windows 0.54.0",
+ "windows-core 0.54.0",
 ]
 
 [[package]]
