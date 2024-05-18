@@ -5,7 +5,7 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
 };
 use windows::Win32::{Foundation::{HMODULE, LPARAM, WPARAM}, System::LibraryLoader::{GetProcAddress, LoadLibraryW}, UI::WindowsAndMessaging::{PostMessageW, WM_APP, WM_THEMECHANGED}};
 use windows_core::{w, Interface, PCSTR, PCWSTR};
-use std::{os::windows::ffi::OsStrExt, sync::atomic::{AtomicU32, Ordering}};
+use std::os::windows::ffi::OsStrExt;
 use crate::settings::Theme;
 
 pub const WM_APPTHEMECHANGE:u32 = WM_APP + 0x0001;
@@ -39,7 +39,6 @@ pub fn init_apply_theme(window:&tauri::WebviewWindow, theme:Theme){
 pub fn change_theme(window:&tauri::WebviewWindow, theme:Theme){
     change_webview_theme(window, theme);
     allow_dark_mode_for_app(theme);
-    unsafe { PostMessageW(window.hwnd().unwrap(), WM_APPTHEMECHANGE, WPARAM(theme as usize), LPARAM(0)).unwrap() };
     unsafe { PostMessageW(window.hwnd().unwrap(), WM_THEMECHANGED, WPARAM(0), LPARAM(0)).unwrap() };
 }
 
@@ -94,20 +93,3 @@ fn allow_dark_mode_for_app(theme:Theme) {
 
 }
 
-pub struct Counter(AtomicU32);
-
-impl Counter {
-    #[allow(unused)]
-    pub const fn new() -> Self {
-        Self(AtomicU32::new(1))
-    }
-
-    #[allow(unused)]
-    pub const fn new_with_start(start: u32) -> Self {
-        Self(AtomicU32::new(start))
-    }
-
-    pub fn next(&self) -> u32 {
-        self.0.fetch_add(1, Ordering::Relaxed)
-    }
-}

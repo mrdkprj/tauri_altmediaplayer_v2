@@ -7,7 +7,6 @@ use tauri::{webview::PageLoadEvent, Manager};
 pub mod settings;
 pub mod helper;
 pub mod util;
-pub mod menu;
 pub mod custom;
 
 static PLAYER:&str = "Player";

@@ -1,3 +1,4 @@
+use crate::custom::*;
 // use crate::menu::*;
 use crate::settings::{Settings, Theme, SortOrder};
 use serde::Deserialize;
@@ -8,7 +9,7 @@ use once_cell::sync::Lazy;
 use strum_macros::Display;
 use strum::IntoEnumIterator;
 
-static MENU_MAP:Lazy<Mutex<HashMap<String, MenuX>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static MENU_MAP:Lazy<Mutex<HashMap<String, RMenu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 //static MENUX:Lazy<Mutex<Menu>> = Lazy::new(|| Mutex::new(Menu::default()));
 
 const TAURI_EVENT_NAME:&str = "contextmenu-event";
@@ -37,8 +38,6 @@ pub enum SortMenu {
     GroupBy,NameAsc,NameDesc,DateAsc,DateDesc
 }
 
-use crate::custom::*;
-
 pub fn popup_menu(app:&tauri::AppHandle, label:&str, position:Position){
 
     let map = MENU_MAP.lock().unwrap();
@@ -56,7 +55,7 @@ pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> t
     let hwnd = window.hwnd().unwrap();
 
     let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
-    let mut menu = MenuX::new_with_theme(hwnd, theme);
+    let mut menu = RMenu::new_with_theme(hwnd, theme);
 
     create_playback_speed_submenu(&mut menu, settings);
     create_seek_speed_submenu(&mut menu, settings);
@@ -78,7 +77,7 @@ pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> t
     Ok(())
 }
 
-fn create_playback_speed_submenu(menu:&mut MenuX, settings:&Settings){
+fn create_playback_speed_submenu(menu:&mut RMenu, settings:&Settings){
 
     let id = PlayerMenu::PlaybackSpeed.to_string();
     let mut parent = menu.submenu("Playback Speed");
@@ -91,7 +90,7 @@ fn create_playback_speed_submenu(menu:&mut MenuX, settings:&Settings){
     parent.build().unwrap();
 }
 
-fn create_seek_speed_submenu(menu:&mut MenuX, settings:&Settings){
+fn create_seek_speed_submenu(menu:&mut RMenu, settings:&Settings){
 
     let id = PlayerMenu::SeekSpeed.to_string();
     let mut parent = menu.submenu("Seek Speed");
@@ -104,7 +103,7 @@ fn create_seek_speed_submenu(menu:&mut MenuX, settings:&Settings){
     parent.build().unwrap();
 }
 
-fn create_theme_submenu(menu:&mut MenuX, settings:&Settings){
+fn create_theme_submenu(menu:&mut RMenu, settings:&Settings){
 
     let id = PlayerMenu::Theme.to_string();
     let mut parent = menu.submenu("Theme");
@@ -122,7 +121,7 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
     let hwnd = window.hwnd().unwrap();
 
     let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
-    let mut menu = MenuX::new_with_theme(hwnd, theme);
+    let mut menu = RMenu::new_with_theme(hwnd, theme);
 
     menu.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
     menu.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", None, "Shift+Delete");
@@ -136,16 +135,17 @@ pub fn create_playlist_menu(window:&tauri::WebviewWindow, settings:&Settings) ->
     menu.text(&PlaylistMenu::Convert.to_string(), "Convert", None);
     menu.separator();
     menu.text(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment", None);
-    let mut sub = menu.submenu("Manage Tags");
-    sub.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", None, "Ctrl+C");
-    sub.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", None, "Ctrl+Shift+C");
-    sub.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", None, "Ctrl+R");
-    sub.build().unwrap();
+    menu.text(&PlaylistMenu::ManageTags.to_string(), "Manage Tags", None);
     menu.separator();
     menu.text(&PlaylistMenu::LoadList.to_string(), "Load Playlist", None);
     menu.text(&PlaylistMenu::SaveList.to_string(), "Save Playlist", None);
     menu.separator();
-    menu.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", None);
+    //menu.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", None);
+    let mut sub = menu.submenu("Clear Playlist");
+    sub.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", None, "Ctrl+C");
+    sub.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", None, "Ctrl+Shift+C");
+    sub.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", None, "Ctrl+R");
+    sub.build().unwrap();
 
     menu.build().unwrap();
 
@@ -159,7 +159,7 @@ pub fn create_sort_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tau
 
     let hwnd = window.hwnd().unwrap();
     let theme = if settings.theme == Theme::dark { crate::custom::Theme::Dark } else { crate::custom::Theme::Light };
-    let mut menu = MenuX::new_with_theme(hwnd, theme);
+    let mut menu = RMenu::new_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 
     menu.check(id, "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy, None);
