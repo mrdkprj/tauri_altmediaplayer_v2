@@ -3,33 +3,17 @@ use tauri::Manager;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2_13, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK,COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT,
 };
-use windows::Win32::{Foundation::{HMODULE, LPARAM, WPARAM}, System::LibraryLoader::{GetProcAddress, LoadLibraryW}, UI::WindowsAndMessaging::{PostMessageW, WM_APP, WM_THEMECHANGED}};
-use windows_core::{w, Interface, PCSTR, PCWSTR};
-use std::os::windows::ffi::OsStrExt;
+use windows::{
+    core::{w, Interface, PCSTR},
+    Win32::{
+        Foundation::{HMODULE, LPARAM, WPARAM},
+        System::LibraryLoader::{GetProcAddress, LoadLibraryW},
+        UI::WindowsAndMessaging::{PostMessageW,  WM_THEMECHANGED}
+    }
+};
 use crate::settings::Theme;
 
-pub const WM_APPTHEMECHANGE:u32 = WM_APP + 0x0001;
 static HUXTHEME: Lazy<HMODULE> = Lazy::new(|| unsafe { LoadLibraryW(w!("uxtheme.dll")).unwrap_or_default() });
-
-pub fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
-    string.as_ref().encode_wide().chain(std::iter::once(0)).collect()
-}
-
-pub fn decode_wide(wide: &Vec<u16>) -> String {
-    let len = unsafe { windows::Win32::Globalization::lstrlenW(PCWSTR::from_raw(wide.as_ptr())) } as usize;
-    let w_str_slice = unsafe { std::slice::from_raw_parts(wide.as_ptr(), len) };
-    String::from_utf16_lossy(w_str_slice)
-}
-
-#[allow(non_snake_case)]
-pub fn LOWORD(dword: u32) -> u16 {
-  (dword & 0xFFFF) as u16
-}
-
-#[allow(non_snake_case)]
-pub fn HIWORD(dword: u32) -> u16 {
-  ((dword & 0xFFFF_0000) >> 16) as u16
-}
 
 pub fn init_apply_theme(window:&tauri::WebviewWindow, theme:Theme){
     change_webview_theme(window, theme);

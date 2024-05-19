@@ -38,15 +38,18 @@ pub enum SortMenu {
 }
 
 pub fn popup_menu(app:&tauri::AppHandle, label:&str, position:Position){
-
     let map = MENU_MAP.lock().unwrap();
     let menu = (*map).get(label).unwrap();
     let result = menu.popup_at(position.x, position.y);
 
     if result.is_some() {
+        if result.unwrap().id == PlayerMenu::FitToWindow.to_string() {
+            let items = menu.items();
+            let item = &items[0];
+            item.set_label("abc");
+        }
         app.emit_to(tauri::EventTarget::WebviewWindow { label: label.to_string() }, TAURI_EVENT_NAME, result.unwrap()).unwrap();
     }
-
 }
 
 pub fn create_player_menu(window:&tauri::WebviewWindow, settings:&Settings) -> tauri::Result<()> {
