@@ -6,7 +6,6 @@ type AppState = {
     currentFile:Mp.MediaFile;
     isMaximized:boolean;
     isFullScreen:boolean;
-    isPlaylistVisible:boolean;
     playing:boolean;
     converting:boolean;
     tooltipVisible:boolean;
@@ -21,7 +20,6 @@ type AppAction =
 | { type: "currentFile", value: Mp.MediaFile}
 | { type: "isMaximized", value: boolean}
 | { type: "isFullScreen", value: boolean}
-| { type: "isPlaylistVisible", value:boolean}
 | { type: "playStatus", value: Mp.PlayStatus}
 | { type: "converting"}
 | { type: "tooltipVisible", value: boolean}
@@ -42,7 +40,6 @@ export const initialAppState : AppState = {
     currentFile:EmptyFile,
     isMaximized:false,
     isFullScreen:false,
-    isPlaylistVisible:false,
     playing:false,
     converting:false,
     tooltipVisible:false,
@@ -94,9 +91,6 @@ const updater = (state: AppState, action: AppAction): AppState => {
 
         case "isFullScreen":
             return {...state, isFullScreen:action.value};
-
-        case "isPlaylistVisible":
-            return {...state, isPlaylistVisible:action.value};
 
         case "playStatus":{
             const playing = action.value == "playing"

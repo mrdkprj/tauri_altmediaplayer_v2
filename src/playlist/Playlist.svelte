@@ -29,7 +29,6 @@
 
     const onContextMenu = (e:MouseEvent) => {
         e.preventDefault()
-        //ipc.sendTo("ContextMenu", "open-context-menu", {type:"Playlist", position:{x:e.screenX, y:e.screenY} })
         ipc.invoke("open_context_menu", {x:e.screenX, y:e.screenY})
     }
 
@@ -109,7 +108,7 @@
 
         shuffleList();
 
-        loadMediaFile(false);
+        loadMediaFile(true);
 
     }
 
@@ -602,7 +601,8 @@
     }
 
     const close = () => {
-        WebviewWindow.getCurrent().close()
+        ipc.sendTo("Player", "playlist-closed", {})
+        WebviewWindow.getCurrent().hide()
     }
 
     const onKeydown = (e:KeyboardEvent) => {

@@ -47,9 +47,9 @@ fn save(app:tauri::AppHandle, payload:settings::Settings) -> tauri::Result<bool>
 }
 
 #[tauri::command]
-fn change_theme(_window: tauri::WebviewWindow, payload:&str){
+fn change_theme(window: tauri::WebviewWindow, payload:&str){
     let theme = if payload == THEME_DARK { settings::Theme::dark } else { settings::Theme::light };
-    util::change_theme(&_window, theme);
+    util::change_theme(&window, theme);
 }
 
 #[tauri::command]

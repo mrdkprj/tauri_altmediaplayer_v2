@@ -16,15 +16,17 @@ const handlePlayerShortcut = (e:KeyboardEvent):Mp.ContextMenuEvent | null => {
 
     if(e.key === "F11"){
         e.preventDefault();
-        return {label:"Player", id:"ToggleFullscreen", value:""}
+        return {id:"ToggleFullscreen", value:""}
     }
 
     if(e.ctrlKey && e.key === "s"){
-        return {label:"Player", id:"Capture", value:""}
+        e.preventDefault();
+        return {id:"Capture", value:""}
     }
 
     if(e.ctrlKey && e.key === "p"){
-        return {label:"Player", id:"TogglePlaylistWindow", value:""}
+        e.preventDefault();
+        return {id:"TogglePlaylistWindow", value:""}
     }
 
     return null;
@@ -35,28 +37,33 @@ const handlePlaylistShortcut = (e:KeyboardEvent):Mp.ContextMenuEvent | null => {
 
 
     if(e.key === "Delete"){
-        return {label:"Playlist", id:"Remove", value:""}
+        e.preventDefault();
+        return {id:"Remove", value:""}
     }
 
     if(e.shiftKey && e.key === "Delete"){
-        return {label:"Playlist", id:"Trash", value:""}
+        e.preventDefault();
+        return {id:"Trash", value:""}
     }
 
     if(e.ctrlKey && e.shiftKey && e.key === "C"){
-        return {label:"Playlist", id:"CopyFullpath", value:""}
+        e.preventDefault();
+        return {id:"CopyFullpath", value:""}
     }
 
     if(e.ctrlKey && e.key === "c"){
-        return {label:"Playlist", id:"CopyFileName", value:""}
+        e.preventDefault();
+        return {id:"CopyFileName", value:""}
     }
 
     if(e.ctrlKey && e.key === "r"){
         e.preventDefault();
-        return {label:"Playlist", id:"Reveal", value:""}
+        return {id:"Reveal", value:""}
     }
 
     if(e.key == "F2"){
-        return {label:"Playlist", id:"Rename", value:""}
+        e.preventDefault();
+        return {id:"Rename", value:""}
     }
 
     return null;

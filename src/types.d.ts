@@ -67,6 +67,7 @@ declare global {
         "after-convert": Mp.Event;
         "picture-in-picture":Mp.Event;
         "open-tag-editor":Mp.OpenTagEditorEvent;
+        "playlist-closed": Mp.Event;
     }
 
     interface Api {

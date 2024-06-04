@@ -140,7 +140,7 @@
     }
 
     const onLoadError = async () => {
-
+        console.log("onLoadError");
         dispatch({type:"loaded", value:false})
         dispatch({type:"playStatus", value:"stopped"})
 
@@ -167,6 +167,7 @@
 
         if(data.fileIds.includes($appState.currentFile.id)){
             const currentTime = $appState.media.currentTime;
+            console.log("release init");
             initPlayer();
             afterReleaseCallback = () => ipc.sendTo("Playlist", "file-released", {currentTime})
         }else{
@@ -347,7 +348,7 @@
         dispatch({type:"autohide", value:false})
 
         await WebviewWindow.getCurrent().setFullscreen(false)
-        if($appState.isPlaylistVisible){
+        if(settings.data.playlistVisible){
             WebviewWindow.getByLabel("Playlist")?.show();
         }
     }
@@ -402,7 +403,6 @@
         $lang = settings.data.locale.lang;
 
         dispatch({type:"isMaximized", value:settings.data.isMaximized})
-        dispatch({type:"isPlaylistVisible", value:settings.data.playlistVisible})
 
         updateVolume(settings.data.audio.volume);
         updateAmpLevel(settings.data.audio.ampLevel)
@@ -505,9 +505,9 @@
 
         const playlist = WebviewWindow.getByLabel("Playlist");
 
-        dispatch({type:"isPlaylistVisible", value:!$appState.isPlaylistVisible})
+        settings.data.playlistVisible = !settings.data.playlistVisible;
 
-        if($appState.isPlaylistVisible){
+        if(settings.data.playlistVisible){
             await playlist?.show()
         }else{
             await playlist?.hide()
@@ -561,6 +561,7 @@
         ipc.receive("after-toggle-maximize", onWindowSizeChanged)
         ipc.receive("toggle-convert", toggleConvert)
         ipc.receive("toggle-fullscreen", toggleFullscreen)
+        ipc.receive("playlist-closed", togglePlaylistWindow);
         ipc.receive("log", data => console.log(data.log))
 
         return () => {
