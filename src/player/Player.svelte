@@ -140,7 +140,9 @@
     }
 
     const onLoadError = async () => {
-        console.log("onLoadError");
+
+        let loaded = $appState.loaded;
+
         dispatch({type:"loaded", value:false})
         dispatch({type:"playStatus", value:"stopped"})
 
@@ -150,7 +152,9 @@
 
         video.autoplay = false;
 
-        await util.showErrorMessage($t("unsupportedMedia"));
+        if(loaded){
+            await util.showErrorMessage($t("unsupportedMedia"));
+        }
 
     }
 
