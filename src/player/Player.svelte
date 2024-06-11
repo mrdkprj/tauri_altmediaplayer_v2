@@ -238,7 +238,6 @@
 
     const togglePlay = async () => {
 
-        await ipc.invoke("change_theme", "dark");
         if(!$appState.loaded) return;
 
         if(video.paused){
@@ -588,7 +587,7 @@
         ipc.receive("toggle-fullscreen", toggleFullscreen)
         ipc.receive("log", data => console.log(data.log))
 
-        ipc.invoke("sync_settings", undefined);
+        ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release();

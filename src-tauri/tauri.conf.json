@@ -9,6 +9,9 @@
       },
       "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost"
     },
+    "trayIcon": {
+      "iconPath": "icons/icon.ico"
+    },
     "windows": [
       {
         "title":"",
@@ -71,6 +74,7 @@
   },
   "bundle": {
     "active": true,
+    "category": "Video",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -78,7 +82,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "targets": "all",
+    "targets": "nsis",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      }
+    },
     "externalBin": [
       "binaries/ffmpeg"
     ]

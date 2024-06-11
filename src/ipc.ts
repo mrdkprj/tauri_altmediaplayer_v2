@@ -7,7 +7,7 @@ type TauriCommand<Req,Res> = {
 }
 
 type TauriCommandMap = {
-    "sync_settings": TauriCommand<undefined, undefined>;
+    "retrieve_settings": TauriCommand<undefined, undefined>;
     "restart": TauriCommand<undefined, undefined>;
     "save": TauriCommand<Mp.Settings, boolean>;
     "open_context_menu": TauriCommand<Mp.Position, undefined>;

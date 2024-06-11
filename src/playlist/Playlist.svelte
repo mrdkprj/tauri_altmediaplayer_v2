@@ -757,7 +757,7 @@
         ipc.receive("restart", clearPlaylist)
         ipc.receive("file-released", onReleaseFile)
 
-        ipc.invoke("sync_settings", undefined);
+        ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release()

@@ -7,9 +7,13 @@
     import { t, lang } from "../translation/useTranslation"
     import { IPC } from "../ipc";
     import { WebviewWindow } from "@tauri-apps/api/webview";
+    import { open, save } from "@tauri-apps/plugin-dialog";
     import util from "../util";
+    import { exists } from "@tauri-apps/plugin-fs";
+    import { basename, dirname, join } from "@tauri-apps/api/path";
 
     const ipc = new IPC("Convert");
+    let settings:Mp.Settings;
 
     const beforeOpen = async (e:Mp.OpenConvertDialogEvent) => {
         if(!$appState.converting && e.opener == "user"){
@@ -38,7 +42,7 @@
         document.querySelectorAll("input").forEach(element => element.disabled = false)
     }
 
-    const requestConvert = () => {
+    const requestConvert = async () => {
 
         if(!$appState.sourceFile) return;
 
@@ -56,21 +60,81 @@
             }
         }
 
-        ipc.send("request-convert", args)
+        await startConvert(args);
+    }
+
+    const startConvert = async (data:Mp.ConvertRequest) => {
+
+        const file = await util.toFile(data.sourcePath);
+
+        const fileExists = await exists(file.fullPath);
+        if(!fileExists) return endConvert();
+
+        const extension = data.convertFormat.toLocaleLowerCase();
+        const fileName =  file.name.replace(util.extname(file.name), "")
+
+        const selectedPath = await save({
+            defaultPath: (await join(settings.defaultPath, `${fileName}.${extension}`)),
+            filters: [
+                {
+                    name:data.convertFormat === "MP4" ? "Video" : "Audio",
+                    extensions: [extension]
+                },
+            ],
+        })
+
+        if(!selectedPath) return endConvert()
+
+        settings.defaultPath = await dirname(selectedPath)
+
+        const shouldReplace = file.fullPath === selectedPath
+
+        const timestamp = String(new Date().getTime());
+        const savePath = shouldReplace ? (await join( (await dirname(selectedPath)), (await basename(selectedPath)) + timestamp)) : selectedPath
+
+        await WebviewWindow.getCurrent().hide();
+
+        await ipc.sendTo("Player", "toggle-convert", {})
+
+        try{
+
+            if(data.convertFormat === "MP4"){
+                await util.convertVideo(data.sourcePath, savePath, data.options)
+            }else{
+                await util.convertAudio(data.sourcePath, savePath, data.options)
+            }
+
+            // if(shouldReplace){
+            //     await ipc.send("rename", {filePath:savePath, newPath:selectedPath})
+            // }
+
+            await endConvert();
+
+        }catch(ex:any){
+
+            await endConvert(ex.message)
+
+        }finally{
+
+            await WebviewWindow.getCurrent().show();
+            await ipc.sendTo("Player", "toggle-convert", {})
+
+        }
+
+    }
+
+    const endConvert = async (message?:string) => {
+
+        if(message){
+            await util.showErrorMessage(message)
+        }
+
+        unlock();
+
     }
 
     const requestCancelConvert = async () => {
         await util.cancelConvert();
-    }
-
-    const onAfterConvert = () => unlock()
-
-    const onSourceFileSelect = async (data:Mp.FileSelectResult) => {
-        if(VideoExtensions.concat(AudioExtensions).includes(data.file.extension)){
-            changeSourceFile(data.file);
-        }else{
-            await util.showErrorMessage($t("unsupportedMedia"))
-        }
     }
 
     const onChangeFormat = (e:Mp.RadioGroupChangeEvent<Mp.ConvertFormat>) => {
@@ -97,8 +161,24 @@
         dispatch({type:"frameSize", value:e.value})
     }
 
-    const openDialog = () => {
-        ipc.send("open-convert-sourcefile-dialog", {fullPath:$appState.sourceFile})
+    const openDialog = async () => {
+        const selectedFile = await open({
+            title: "Select file to convert",
+            multiple: false,
+            filters: [
+                { name: "Media File", extensions: VideoExtensions.concat(AudioExtensions) },
+            ],
+        })
+
+        if(!selectedFile) return;
+
+        const file = await util.toFile(selectedFile.path);
+        if(VideoExtensions.concat(AudioExtensions).includes(file.extension)){
+            changeSourceFile(file);
+        }else{
+            await util.showErrorMessage($t("unsupportedMedia"))
+        }
+
     }
 
     const onKeydown = async (e:KeyboardEvent) => {
@@ -109,14 +189,15 @@
 
     const prepare = (e:Mp.ReadyEvent) => {
         $lang = e.settings.locale.lang
+        settings = e.settings;
     }
 
     onMount(() => {
 
         ipc.receive("ready", prepare);
         ipc.receive("open-convert", beforeOpen)
-        ipc.receive("after-convert", onAfterConvert)
-        ipc.receive("after-sourcefile-select", onSourceFileSelect)
+
+        ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release()

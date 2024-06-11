@@ -40,11 +40,6 @@ struct MetadataRequest {
 }
 
 #[tauri::command]
-fn restart(app: tauri::AppHandle) {
-    app.restart();
-}
-
-#[tauri::command]
 fn save(app: tauri::AppHandle, mut payload: settings::Settings) -> tauri::Result<bool> {
     let dir = app.path().app_data_dir().unwrap();
     let player = app.get_webview_window(PLAYER).unwrap();
@@ -90,7 +85,7 @@ fn get_media_metadata(payload: MetadataRequest) -> tauri::Result<HashMap<String,
 }
 
 #[tauri::command]
-fn sync_settings(window: tauri::WebviewWindow) {
+fn retrieve_settings(window: tauri::WebviewWindow) {
     if let Some(state) = window.app_handle().try_state::<settings::Settings>() {
         window
             .emit_to(
@@ -182,7 +177,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![sync_settings, restart, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
+        .invoke_handler(tauri::generate_handler![retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }
