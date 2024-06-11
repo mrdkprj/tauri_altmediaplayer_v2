@@ -2035,6 +2035,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "wcpopup",
  "webview2-com",
+ "win32props",
  "windows 0.56.0",
 ]
 
@@ -4491,9 +4492,9 @@ dependencies = [
 
 [[package]]
 name = "wcpopup"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f112a87b175d2c59275f897f2ab55cc2a209abcb017382f9f699ce21d9b722c"
+checksum = "7aef103c0b98dd93eab0d75a775220ac789316eea9e13bc34f8cf7cdfef64134"
 dependencies = [
  "once_cell",
  "serde",
@@ -4595,6 +4596,14 @@ name = "weezl"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53a85b86a771b1c87058196170769dd264f66c0782acf1ae6cc51bfd64b39082"
+
+[[package]]
+name = "win32props"
+version = "0.1.0"
+source = "git+https://github.com/mrdkprj/r_win32props.git#24a4fdced3e417f6c4e5f7c268afdefcc6d68958"
+dependencies = [
+ "windows 0.56.0",
+]
 
 [[package]]
 name = "winapi"

@@ -7,6 +7,7 @@ type TauriCommand<Req,Res> = {
 }
 
 type TauriCommandMap = {
+    "sync_settings": TauriCommand<undefined, undefined>;
     "restart": TauriCommand<undefined, undefined>;
     "save": TauriCommand<Mp.Settings, boolean>;
     "open_context_menu": TauriCommand<Mp.Position, undefined>;
@@ -15,23 +16,26 @@ type TauriCommandMap = {
     // "rename":TauriCommand<Mp.TauriRenamePayload, undefined>;
     // "clickthru":TauriCommand<Mp.TauriClickthruPayload, undefined>;
     // "stat": TauriCommand<Mp.TauriStatPayload, Mp.TauriStatResponse>;
-    // "get_media_metadata": TauriCommand<Mp.TauriMetadataPayload, Mp.TauriMetadataResponse>;
+    "get_media_metadata": TauriCommand<Mp.MetadataRequest, any>;
     // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
     // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
     // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;
 }
 
-export class IPC {
+export class IPCBase {
+    invoke = async <K extends keyof TauriCommandMap>(channel:K, data:TauriCommandMap[K]["Request"]): Promise<TauriCommandMap[K]["Response"]> => {
+        return await invoke<TauriCommandMap[K]["Response"]>(channel, {payload:data});
+    }
+}
+
+export class IPC extends IPCBase{
 
     private label:string;
     private funcs:UnlistenFn[] = [];
 
     constructor(label:RendererName){
+        super();
         this.label = label;
-    }
-
-    invoke = async <K extends keyof TauriCommandMap>(channel:K, data:TauriCommandMap[K]["Request"]): Promise<TauriCommandMap[K]["Response"]> => {
-        return await invoke<TauriCommandMap[K]["Response"]>(channel, {payload:data});
     }
 
     receiveOnce = async <K extends keyof RendererChannelEventMap>(channel:K, handler: (e: RendererChannelEventMap[K]) => void) => {

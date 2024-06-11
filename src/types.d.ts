@@ -4,11 +4,12 @@ declare global {
         api: Api;
     }
 
-    type RendererName = "Player" | "Playlist" | "Convert" | "Tag" | "ContextMenu"
+    type RendererName = "Player" | "Playlist" | "Convert" | "Tag";
     type Renderer = {[key in RendererName] : Electron.BrowserWindow | null}
 
     type MainChannelEventMap = {
         "minimize": Mp.Event;
+        "sync-settings":Mp.Settings;
         "toggle-maximize": Mp.Event;
         "close": Mp.Event;
         "shortcut": Mp.ShortcutEvent;
@@ -39,6 +40,7 @@ declare global {
 
     type RendererChannelEventMap = {
         "ready": Mp.ReadyEvent;
+        "sync-settings":Mp.Settings;
         "contextmenu-event": Mp.ContextMenuEvent;
         "open-context-menu":Mp.PopupContextMenuRequest;
         "load-playlist": Mp.LoadPlaylistEvent;
@@ -67,7 +69,6 @@ declare global {
         "after-convert": Mp.Event;
         "picture-in-picture":Mp.Event;
         "open-tag-editor":Mp.OpenTagEditorEvent;
-        "playlist-closed": Mp.Event;
     }
 
     interface Api {
@@ -85,7 +86,6 @@ declare global {
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
         type SeekSpeed = 0.03 | 0.05 | 0.1 | 0.5 | 1 | 3 | 5 | 10 | 20;
         type SortOrder = "NameAsc" | "NameDesc" | "DateAsc" | "DateDesc"
-        type FileDialogType = "Read" | "Write";
 
         type PlayerContextMenuSubTypeMap = {
             "PlaybackSpeed": Mp.PlaybackSpeed;
@@ -96,6 +96,7 @@ declare global {
             "Theme": Mp.Theme;
             "Capture": null;
             "PictureInPicture": null;
+            "ViewSettingsJson":null;
         }
 
         type PlaylistContextMenuSubTypeMap = {
@@ -111,19 +112,17 @@ declare global {
             "ManageTags":null;
             "Sort": Mp.SortOrder;
             "Rename": null;
-            "LoadList": FileDialogType;
-            "SaveList": FileDialogType;
+            "Move": null;
             "GroupBy": null;
         };
-
-        type PlayerContextMenuCallback<K extends keyof PlayerContextMenuSubTypeMap> = (menu:K, args?:Mp.PlayerContextMenuSubTypeMap[K]) => void
-        type PlaylistContextMenuCallback<K extends keyof PlaylistContextMenuSubTypeMap> = (menu:K, args?:Mp.PlaylistContextMenuSubTypeMap[K]) => void
 
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";
         type VideoRotation = "RotationNone" | "90Clockwise" | "90CounterClockwise"
         type AudioBitrate = "BitrateNone" | "128" | "160" | "192" | "320"
 
         type PlayStatus = "playing" | "paused" | "stopped"
+
+        type DialogOpener = "system"|"user"
 
         type SecondInstanceState = {
             timeout:NodeJS.Timeout | null;
@@ -251,6 +250,108 @@ declare global {
             name:string;
         }
 
+        type MetadataRequest = {
+            fullPath:string;
+            format:boolean;
+        }
+
+        type Property = {
+            AppUserModelID?: string;
+            AppUserModelParentID?: string;
+            AppZoneIdentifier?: string;
+            AudioChannelCount?: string;
+            AudioEncodingBitrate?: string;
+            AudioFormat?: string;
+            AudioSampleRate?: string;
+            AudioSampleSize?: string;
+            AudioStreamNumber?: string;
+            Author?: string;
+            Comment?: string;
+            ComputerName?: string;
+            ContentType?: string;
+            DRMIsProtected?: string;
+            DateAccessed?: string;
+            DateCreated?: string;
+            DateImported?: string;
+            DateModified?: string;
+            DocumentDateCreated?: string;
+            DocumentDateSaved?: string;
+            ExpandoProperties?: string;
+            FileAttributes?: string;
+            FileAttributesDisplay?: string;
+            FileExtension?: string;
+            FileName?: string;
+            FileOwner?: string;
+            FilePlaceholderStatus?: string;
+            IsFolder?: string;
+            IsShared?: string;
+            ItemAuthors?: string;
+            ItemDate?: string;
+            ItemFolderNameDisplay?: string;
+            ItemFolderPathDisplay?: string;
+            ItemFolderPathDisplayNarrow?: string;
+            ItemName?: string;
+            ItemNameDisplay?: string;
+            ItemNameDisplayWithoutExtension?: string;
+            ItemParticipants?: string;
+            ItemPathDisplay?: string;
+            ItemPathDisplayNarrow?: string;
+            ItemType?: string;
+            ItemTypeText?: string;
+            Kind?: string;
+            KindText?: string;
+            LastWriterPackageFamilyName?: string;
+            LinkTargetExtension?: string;
+            LinkTargetParsingPath?: string;
+            LinkTargetSFGAOFlags?: string;
+            LinkTargetSFGAOFlagsStrings?: string;
+            MIMEType?: string;
+            MediaDuration?: string;
+            MusicAlbumID?: string;
+            MusicAlbumTitle?: string;
+            MusicDisplayArtist?: string;
+            NetworkLocation?: string;
+            NotUserContent?: string;
+            OfflineAvailability?: string;
+            OfflineStatus?: string;
+            ParsingName?: string;
+            ParsingPath?: string;
+            PerceivedType?: string;
+            Rating?:string;
+            SFGAOFlags?: string;
+            SecurityAllowedEnterpriseDataProtectionIdentities?: string;
+            SecurityEncryptionOwners?: string;
+            SecurityEncryptionOwnersDisplay?: string;
+            ShareScope?: string;
+            SharedWith?: string;
+            SharingStatus?: string;
+            ShellSFGAOFlagsStrings?: string;
+            Size?: string;
+            StorageProviderAggregatedCustomStates?: string;
+            SyncTransferStatusFlags?: string;
+            ThumbnailCacheId?: string;
+            Title?: string;
+            VideoCompression?: string;
+            VideoEncodingBitrate?: string;
+            VideoFourCC?: string;
+            VideoFrameHeight?: string;
+            VideoFrameRate?: string;
+            VideoFrameWidth?: string;
+            VideoHorizontalAspectRatio?: string;
+            VideoIsSpherical?: string;
+            VideoIsStereo?: string;
+            VideoOrientation?: string;
+            VideoStreamNumber?: string;
+            VideoTotalBitrate?: string;
+            VideoVerticalAspectRatio?: string;
+            VolumeId?: string;
+            ZoneIdentifier?: string;
+        }
+
+        type Metadata = Property & {
+            Volume:MediaVolume;
+        }
+
         type ConvertOptions = {
             frameSize:VideoFrameSize;
             audioBitrate:AudioBitrate;
@@ -339,6 +440,7 @@ declare global {
 
         type OpenConvertDialogEvent = {
             file:MediaFile;
+            opener:DialogOpener;
         }
 
         type ConvertRequest = {

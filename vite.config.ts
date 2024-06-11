@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { resolve } from 'path'
+import { resolve } from "path"
 import { svelte } from "@sveltejs/vite-plugin-svelte"
 
 // https://vitejs.dev/config/
@@ -21,8 +21,9 @@ export default defineConfig(async () => ({
     build:{
         rollupOptions: {
             input: {
-                player: resolve(__dirname, 'src/player/index.html'),
-                playlist: resolve(__dirname, 'src/playlist/index.html'),
+                player: resolve(__dirname, "src/player/index.html"),
+                playlist: resolve(__dirname, "src/playlist/index.html"),
+                convert: resolve(__dirname, "src/convert/index.html"),
             },
         }
     },

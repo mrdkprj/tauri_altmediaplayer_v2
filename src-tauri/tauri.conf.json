@@ -42,6 +42,23 @@
         "transparent":true,
         "theme": "Dark",
         "url":"src/playlist/index.html"
+      },
+      {
+        "title":"",
+        "label":"Convert",
+        "fullscreen": false,
+        "resizable": true,
+        "maximizable":false,
+        "minimizable":false,
+        "closable":true,
+        "focus":false,
+        "visible":false,
+        "decorations":false,
+        "skipTaskbar":true,
+        "parent":"Player",
+        "transparent":true,
+        "theme": "Dark",
+        "url":"src/convert/index.html"
       }
   ],
   "withGlobalTauri": true
@@ -61,7 +78,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "targets": "all"
+    "targets": "all",
+    "externalBin": [
+      "binaries/ffmpeg"
+    ]
   },
   "identifier": "com.mediaplayer.dev",
   "productName": "mediaplayer",

@@ -47,8 +47,7 @@ pub enum PlaylistMenu {
     ManageTags,
     Sort,
     Rename,
-    LoadList,
-    SaveList,
+    Move,
 }
 
 #[derive(Clone, Display)]
@@ -60,20 +59,21 @@ pub enum SortMenu {
     DateDesc,
 }
 
-pub fn popup_menu(app: &tauri::AppHandle, label: &str, position: Position) {
+pub fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position: Position) {
     let map = MENU_MAP.lock().unwrap();
-    let menu = map.get(label).unwrap();
+    let menu = map.get(menu_name).unwrap();
     let result = menu.popup_at(position.x, position.y);
 
     if result.is_some() {
-        app.emit_to(
-            tauri::EventTarget::WebviewWindow {
-                label: label.to_string(),
-            },
-            TAURI_EVENT_NAME,
-            result.unwrap(),
-        )
-        .unwrap();
+        window
+            .emit_to(
+                tauri::EventTarget::WebviewWindow {
+                    label: window.label().to_string(),
+                },
+                TAURI_EVENT_NAME,
+                result.unwrap(),
+            )
+            .unwrap();
     }
 }
 
@@ -168,11 +168,18 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     builder.text(&PlaylistMenu::Metadata.to_string(), "View Metadata", None);
     builder.text(&PlaylistMenu::Convert.to_string(), "Convert", None);
     builder.separator();
-    builder.text(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment", None);
+    builder.text(
+        &PlaylistMenu::Tag.to_string(),
+        "Add Tag to Comment",
+        if settings.tags.len() > 0 {
+            None
+        } else {
+            Some(true)
+        },
+    );
     builder.text(&PlaylistMenu::ManageTags.to_string(), "Manage Tags", None);
     builder.separator();
-    builder.text(&PlaylistMenu::LoadList.to_string(), "Load Playlist", None);
-    builder.text(&PlaylistMenu::SaveList.to_string(), "Save Playlist", None);
+    builder.text(&PlaylistMenu::Move.to_string(), "Move File", None);
     builder.separator();
     builder.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", None);
 
@@ -194,7 +201,7 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     let mut builder = MenuBuilder::new_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 
-    builder.check(id, "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy, None);
+    builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy, None);
     builder.separator();
     builder.radio(id, "Name(Asc)", &SortMenu::NameAsc.to_string(), id, settings.sort.order == SortOrder::NameAsc, None);
     builder.radio(id, "Name(Desc)", &SortMenu::NameDesc.to_string(), id, settings.sort.order == SortOrder::NameDesc, None);

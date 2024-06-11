@@ -1,21 +1,45 @@
 use crate::settings::Theme;
 use once_cell::sync::Lazy;
 use tauri::Manager;
-use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2_13, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT};
+use webview2_com::{
+    AcceleratorKeyPressedEventHandler,
+    Microsoft::Web::WebView2::Win32::{ICoreWebView2AcceleratorKeyPressedEventArgs, ICoreWebView2AcceleratorKeyPressedEventArgs2, ICoreWebView2Controller, ICoreWebView2_13, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK, COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT},
+};
 use windows::{
-    core::{w, Interface, PCSTR},
+    core::{w, Error, Interface, PCSTR},
     Win32::{
-        Foundation::{HMODULE, LPARAM, WPARAM},
-        System::LibraryLoader::{GetProcAddress, LoadLibraryW},
+        Foundation::{BOOL, HMODULE, LPARAM, WPARAM},
+        System::{
+            LibraryLoader::{GetProcAddress, LoadLibraryW},
+            WinRT::EventRegistrationToken,
+        },
         UI::WindowsAndMessaging::{PostMessageW, WM_THEMECHANGED},
     },
 };
 
 static HUXTHEME: Lazy<HMODULE> = Lazy::new(|| unsafe { LoadLibraryW(w!("uxtheme.dll")).unwrap_or_default() });
 
-pub fn init_apply_theme(window: &tauri::WebviewWindow, theme: Theme) {
+pub fn init_webview(window: &tauri::WebviewWindow, theme: Theme) {
+    for webview_window in window.webview_windows().values() {
+        webview_window
+            .with_webview(|webview| {
+                let mut token = EventRegistrationToken::default();
+                let handler = AcceleratorKeyPressedEventHandler::create(Box::new(on_accelerator_keypressed));
+                unsafe { webview.controller().add_AcceleratorKeyPressed(&handler, &mut token).unwrap() };
+            })
+            .unwrap();
+    }
+
     change_webview_theme(window, theme);
     allow_dark_mode_for_app(theme);
+}
+
+fn on_accelerator_keypressed(_: Option<ICoreWebView2Controller>, args: Option<ICoreWebView2AcceleratorKeyPressedEventArgs>) -> Result<(), Error> {
+    if let Some(args) = args {
+        let args2: ICoreWebView2AcceleratorKeyPressedEventArgs2 = args.cast()?;
+        unsafe { args2.SetIsBrowserAcceleratorKeyEnabled(BOOL(0))? };
+    }
+    Ok(())
 }
 
 pub fn change_theme(window: &tauri::WebviewWindow, theme: Theme) {

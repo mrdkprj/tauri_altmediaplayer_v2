@@ -10,7 +10,6 @@
     import { t, lang } from "../translation/useTranslation"
     import { IPC } from "../ipc";
     import util from "../util";
-    import settings from "../settings";
     import editor from "./editor";
     import Deferred from "../deferred";
 
@@ -19,6 +18,7 @@
     import { exists, rename, remove } from "@tauri-apps/plugin-fs";
     import { writeText } from "@tauri-apps/plugin-clipboard-manager";
     import { Command } from '@tauri-apps/plugin-shell';
+    import { ask, save } from "@tauri-apps/plugin-dialog";
 
     let fileListContainer:HTMLDivElement;
     let randomIndices:number[] = [];
@@ -26,6 +26,7 @@
 
     const ipc = new IPC("Playlist");
     const List_Item_Padding = 10;
+    let settings:Mp.Settings;
 
     const onContextMenu = (e:MouseEvent) => {
         e.preventDefault()
@@ -225,10 +226,10 @@
         const removeIndices = $appState.files.filter(file => $appState.selection.selectedIds.includes(file.id)).map(file => $appState.files.indexOf(file))
         const isCurrentFileRemoved = removeIndices.includes($appState.currentIndex);
 
-        dispatch({type:"removeFiles", value:removeIndices})
-
         const selectedIndex = $appState.files.findIndex(file => file.id == $appState.selection.selectedId)
         const shouldRestoreSelection = $appState.selection.selectedIds.length == 1;
+
+        dispatch({type:"removeFiles", value:removeIndices})
 
         clearSelection();
 
@@ -283,6 +284,32 @@
             await Promise.all(targetFilePaths.map(async item => await remove(item)))
 
             removeFromPlaylist();
+
+        }catch(ex:any){
+            await util.showErrorMessage(ex)
+        }
+    }
+
+    const moveFile = async () => {
+
+        if($appState.selection.selectedIds.length != 1) return;
+
+        await releaseFile($appState.selection.selectedIds);
+
+        try {
+            const files = $appState.files.filter(file => file.id == $appState.selection.selectedIds[0]);
+
+            if(!files.length) return;
+
+            const file = files[0];
+
+            const destPath = await save({defaultPath:file.fullPath});
+
+            if(!destPath || file.fullPath == destPath) return;
+
+            removeFromPlaylist();
+
+            await rename(file.fullPath, destPath, {});
 
         }catch(ex:any){
             await util.showErrorMessage(ex)
@@ -556,14 +583,16 @@
     }
 
     const changeSortOrder = (sortOrder:Mp.SortOrder) => {
-        settings.data.sort.order = sortOrder;
+        settings.sort.order = sortOrder;
+        ipc.send("sync-settings", settings);
         dispatch({type:"sortType", value:{order:sortOrder, groupBy:$appState.sortType.groupBy}})
         sortPlayList()
     }
 
     const toggleGroupBy = () => {
         const groupBy = !$appState.sortType.groupBy;
-        settings.data.sort.groupBy = groupBy;
+        settings.sort.groupBy = groupBy;
+        ipc.send("sync-settings", settings);
         dispatch({type:"sortType", value:{order:$appState.sortType.order, groupBy}})
     }
 
@@ -581,6 +610,19 @@
 
     }
 
+    const displayMetadata = async () => {
+        const file = $appState.files.find(file => file.id == $appState.selection.selectedId)
+        if(!file) return;
+
+        const metadata = await util.getMediaMetadata(file.fullPath, true)
+        console.log(metadata)
+        const metadataString = JSON.stringify(metadata, undefined, 2).replaceAll('"',"");
+        const result = await ask(metadataString, {kind:"info",  okLabel:"OK", cancelLabel:"Copy"})
+        if(!result){
+            await writeText(metadataString);
+        }
+    }
+
     const reveal = async () => {
 
         if(!$appState.selection.selectedId) return;
@@ -593,16 +635,13 @@
         await command.spawn()
     }
 
-    const prepare = (e:Mp.ReadyEvent) => {
-        settings.init(e.settings);
-        $lang = settings.data.locale.lang;
-        dispatch
-        dispatch({type:"sortType", value:e.settings.sort})
+    const openConvert = async (opener:Mp.DialogOpener) => {
+        const file = $appState.files.find(file => file.id == $appState.selection.selectedId) ?? EmptyFile
+        ipc.sendTo("Convert", "open-convert", {file, opener})
     }
 
-    const close = () => {
-        ipc.sendTo("Player", "playlist-closed", {})
-        WebviewWindow.getCurrent().hide()
+    const syncSettings = (newSettings:Mp.Settings) => {
+        settings = newSettings;
     }
 
     const onKeydown = (e:KeyboardEvent) => {
@@ -647,6 +686,7 @@
     }
 
     const handleContextMenu = (e:Mp.ContextMenuEvent) => {
+
         switch(e.id){
             case "Remove":
                 removeFromPlaylist();
@@ -667,10 +707,10 @@
                 reveal();
                 break;
             case "Metadata":
-                //displayMetadata();
+                displayMetadata();
                 break;
             case "Convert":
-                //openConvert("user");
+                openConvert("user");
                 break;
             case "Sort":
                 changeSortOrder(e.value as Mp.SortOrder);
@@ -678,11 +718,8 @@
             case "Rename":
                 startEditFileName()
                 break;
-            case "LoadList":
-                //loadPlaylistFile();
-                break;
-            case "SaveList":
-                //savePlaylistFile();
+            case "Move":
+                moveFile();
                 break;
             case "GroupBy":
                 toggleGroupBy();
@@ -696,15 +733,31 @@
         }
     }
 
+    const close = async () => {
+        settings.playlistVisible = false;
+        await ipc.send("sync-settings", settings);
+        await WebviewWindow.getCurrent().hide()
+    }
+
+    const prepare = (e:Mp.ReadyEvent) => {
+        settings = e.settings;
+        $lang = settings.locale.lang;
+        dispatch
+        dispatch({type:"sortType", value:e.settings.sort})
+    }
+
     onMount(() => {
 
         ipc.receive("ready", prepare);
+        ipc.receive("sync-settings", syncSettings);
         ipc.receive("contextmenu-event", handleContextMenu)
         ipc.receive("load-playlist", initPlaylist)
         ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
         ipc.receive("change-playlist", changeIndex)
         ipc.receive("restart", clearPlaylist)
         ipc.receive("file-released", onReleaseFile)
+
+        ipc.invoke("sync_settings", undefined);
 
         return () => {
             ipc.release()

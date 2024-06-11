@@ -10,6 +10,7 @@ type AppState = {
     converting:boolean;
     tooltipVisible:boolean;
     autohide:boolean;
+    preventAutohide:boolean;
     startFrom:number | undefined;
     media:Mp.MediaState;
 }
@@ -34,6 +35,7 @@ type AppAction =
 | { type: "seekSpeed", value: number}
 | { type: "startFrom", value:number | undefined}
 | { type: "autohide", value:boolean}
+| { type: "preventAutohide", value:boolean}
 
 export const initialAppState : AppState = {
     loaded:false,
@@ -45,6 +47,7 @@ export const initialAppState : AppState = {
     tooltipVisible:false,
     startFrom:0,
     autohide:false,
+    preventAutohide:false,
     media:{
         mute:false,
         fitToWindow:false,
@@ -108,6 +111,9 @@ const updater = (state: AppState, action: AppAction): AppState => {
 
         case "autohide":
             return {...state, autohide:action.value};
+
+        case "preventAutohide":
+            return {...state, preventAutohide:action.value};
 
         case "currentTime":
             return {...state, media:{...state.media, currentTime:action.value}};

@@ -24,6 +24,11 @@ const handlePlayerShortcut = (e:KeyboardEvent):Mp.ContextMenuEvent | null => {
         return {id:"Capture", value:""}
     }
 
+    if(e.ctrlKey && e.shiftKey && e.key === "P"){
+        e.preventDefault();
+        return {id:"ViewSettingsJson", value:""}
+    }
+
     if(e.ctrlKey && e.key === "p"){
         e.preventDefault();
         return {id:"TogglePlaylistWindow", value:""}
@@ -35,6 +40,10 @@ const handlePlayerShortcut = (e:KeyboardEvent):Mp.ContextMenuEvent | null => {
 
 const handlePlaylistShortcut = (e:KeyboardEvent):Mp.ContextMenuEvent | null => {
 
+    if(e.ctrlKey && e.key === "p"){
+        e.preventDefault();
+        return null;
+    }
 
     if(e.key === "Delete"){
         e.preventDefault();

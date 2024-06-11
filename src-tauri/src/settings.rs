@@ -1,14 +1,14 @@
-use std::path::{Path, PathBuf};
-use std::fs;
 use serde::{Deserialize, Serialize};
-use strum_macros::{EnumIter,Display};
+use std::fs;
+use std::path::{Path, PathBuf};
+use strum_macros::{Display, EnumIter};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Bounds {
-    pub width:u32,
-    pub height:u32,
-    pub x:i32,
-    pub y:i32,
+    pub width: u32,
+    pub height: u32,
+    pub x: i32,
+    pub y: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Display, EnumIter)]
@@ -23,23 +23,23 @@ pub enum SortOrder {
 #[allow(non_snake_case)]
 pub struct Sort {
     pub order: SortOrder,
-    pub groupBy:bool,
+    pub groupBy: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Video {
-    pub playbackSpeed:f64,
-    pub seekSpeed:f64,
+    pub playbackSpeed: f64,
+    pub seekSpeed: f64,
     pub fitToWindow: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Audio {
-    pub volume:f64,
-    pub ampLevel:f64,
-    pub mute:bool,
+    pub volume: f64,
+    pub ampLevel: f64,
+    pub mute: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Display, EnumIter)]
@@ -59,8 +59,8 @@ pub enum Lang {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Locale {
-    pub mode:Mode,
-    pub lang:Lang,
+    pub mode: Mode,
+    pub lang: Lang,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Display, EnumIter)]
@@ -76,38 +76,61 @@ pub struct Settings {
     pub bounds: Bounds,
     pub playlistBounds: Bounds,
     pub isMaximized: bool,
-    pub playlistVisible:bool,
-    pub theme:Theme,
-    pub sort:Sort,
-    pub video:Video,
-    pub audio:Audio,
-    pub defaultPath:String,
-    pub locale:Locale,
-    pub tags:Vec<String>,
+    pub playlistVisible: bool,
+    pub theme: Theme,
+    pub sort: Sort,
+    pub video: Video,
+    pub audio: Audio,
+    pub defaultPath: String,
+    pub locale: Locale,
+    pub tags: Vec<String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            bounds: Bounds{x:0, y:0, width:1200, height:800},
-            playlistBounds: Bounds{x:0, y:0, width:400, height:700},
+            bounds: Bounds {
+                x: 0,
+                y: 0,
+                width: 1200,
+                height: 800,
+            },
+            playlistBounds: Bounds {
+                x: 0,
+                y: 0,
+                width: 400,
+                height: 700,
+            },
             isMaximized: false,
             playlistVisible: true,
             theme: Theme::dark,
-            sort: Sort{order: SortOrder::NameAsc, groupBy:false},
-            video: Video{playbackSpeed:1.0, seekSpeed:5.0, fitToWindow:true},
-            audio: Audio{volume:1.0, ampLevel:0.07, mute:false },
+            sort: Sort {
+                order: SortOrder::NameAsc,
+                groupBy: false,
+            },
+            video: Video {
+                playbackSpeed: 1.0,
+                seekSpeed: 5.0,
+                fitToWindow: true,
+            },
+            audio: Audio {
+                volume: 1.0,
+                ampLevel: 0.07,
+                mute: false,
+            },
             defaultPath: "".to_string(),
-            locale: Locale{mode:Mode::system, lang:Lang::en},
-            tags:Vec::new()
+            locale: Locale {
+                mode: Mode::system,
+                lang: Lang::en,
+            },
+            tags: Vec::new(),
         }
     }
 }
 
-const SETTING_FILE_NAME:&str = "altmediaplayer.settings.json";
+const SETTING_FILE_NAME: &str = "altmediaplayer.settings.json";
 
-pub fn get_settings(app_dir:PathBuf) -> std::io::Result<Settings>{
-
+pub fn get_settings(app_dir: PathBuf) -> std::io::Result<Settings> {
     let temp_path = Path::new(&app_dir).join("temp");
     if !temp_path.exists() {
         fs::create_dir_all(&temp_path)?;
@@ -124,7 +147,7 @@ pub fn get_settings(app_dir:PathBuf) -> std::io::Result<Settings>{
     }
 }
 
-pub fn save_settings(app_dir:PathBuf, settings:&mut Settings, player:&tauri::WebviewWindow, list:&tauri::WebviewWindow) -> tauri::Result<bool> {
+pub fn save_settings(app_dir: PathBuf, settings: &mut Settings, player: &tauri::WebviewWindow, list: &tauri::WebviewWindow) -> tauri::Result<bool> {
     settings.bounds.height = player.outer_size()?.height;
     settings.bounds.width = player.outer_size()?.width;
     settings.bounds.x = player.outer_position()?.x;
@@ -138,6 +161,6 @@ pub fn save_settings(app_dir:PathBuf, settings:&mut Settings, player:&tauri::Web
     let data = serde_json::to_string::<Settings>(&settings).unwrap();
     match fs::write(file, data) {
         Ok(_) => Ok(true),
-        Err(_) => Ok(false)
+        Err(_) => Ok(false),
     }
 }

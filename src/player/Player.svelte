@@ -7,31 +7,24 @@
     import { appState, dispatch } from "./appStateReducer";
     import { t, lang } from "../translation/useTranslation"
     import { IPC } from "../ipc";
-    import settings from "../settings";
     import util from "../util";
     import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions } from "../constants";
     import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
+    import { appDataDir } from "@tauri-apps/api/path";
     import { WebviewWindow } from "@tauri-apps/api/webview";
     import { save } from '@tauri-apps/plugin-dialog';
     import { dirname, join } from "@tauri-apps/api/path";
     import { writeFile } from '@tauri-apps/plugin-fs';
+    import { open } from "@tauri-apps/plugin-shell";
 
     const ipc = new IPC("Player");
+    let settings:Mp.Settings;
     let video:HTMLVideoElement
     let container:HTMLDivElement
     let hideControlTimeout:number | null
     let afterReleaseCallback:(() => void) | undefined;
-
-    const updateSettings = () => {
-        settings.data.audio.mute = $appState.media.mute;
-        settings.data.video.fitToWindow = $appState.media.fitToWindow
-        settings.data.audio.volume = $appState.media.videoVolume;
-        settings.data.audio.ampLevel = $appState.media.ampLevel;
-        settings.data.video.playbackSpeed = $appState.media.playbackSpeed;
-        settings.data.video.seekSpeed = $appState.media.seekSpeed
-    }
 
     const updateTime = (progress:number) => {
 
@@ -310,7 +303,7 @@
         const data = canvas.toDataURL("image/jpeg").replace(/^data:image\/jpeg;base64,/, "");
 
         const savePath = await save({
-            defaultPath: (await join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`)),
+            defaultPath: (await join(settings.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`)),
             filters: [
                 { name: "Image", extensions: ["jpeg", "jpg"] },
             ],
@@ -318,9 +311,11 @@
 
         if(!savePath) return;
 
-        settings.data.defaultPath = await dirname(savePath);
+        settings.defaultPath = await dirname(savePath);
 
         writeFile(savePath, Uint8Array.from(atob(data), c => c.charCodeAt(0)))
+
+        await ipc.send("sync-settings", settings);
     }
 
     const minimize = async () => {
@@ -352,7 +347,7 @@
         dispatch({type:"autohide", value:false})
 
         await WebviewWindow.getCurrent().setFullscreen(false)
-        if(settings.data.playlistVisible){
+        if(settings.playlistVisible){
             WebviewWindow.getByLabel("Playlist")?.show();
         }
     }
@@ -375,11 +370,14 @@
 
     const showControl = () => {
 
-        if($appState.isFullScreen){
-            dispatch({type:"autohide", value:false})
-            if(hideControlTimeout){
-                window.clearTimeout(hideControlTimeout)
-            }
+        if(!$appState.isFullScreen) return;
+
+        dispatch({type:"autohide", value:false})
+        if(hideControlTimeout){
+            window.clearTimeout(hideControlTimeout)
+        }
+
+        if(!$appState.preventAutohide){
             hideControl();
         }
     }
@@ -392,33 +390,6 @@
         const mode = !$appState.media.fitToWindow
         dispatch({type:"fitToWindow", value:mode})
         changeVideoSize();
-    }
-
-    const close = async () => {
-        updateSettings();
-        await ipc.invoke("save", settings.data)
-        WebviewWindow.getCurrent().close()
-    }
-
-    const prepare = async (e:Mp.ReadyEvent) => {
-
-        settings.init(e.settings)
-
-        $lang = settings.data.locale.lang;
-
-        dispatch({type:"isMaximized", value:settings.data.isMaximized})
-
-        updateVolume(settings.data.audio.volume);
-        updateAmpLevel(settings.data.audio.ampLevel)
-
-        dispatch({type:"mute", value:settings.data.audio.mute})
-
-        dispatch({type:"fitToWindow", value:settings.data.video.fitToWindow})
-        dispatch({type:"playbackSpeed", value:settings.data.video.playbackSpeed})
-        dispatch({type:"seekSpeed", value:settings.data.video.seekSpeed})
-
-        initPlayer();
-
     }
 
     const load = (e:Mp.FileLoadEvent) => {
@@ -490,6 +461,7 @@
         }
 
         const shortcut = handleShortcut("Player", e);
+
         if(shortcut){
             return handleContextMenu(shortcut)
         }
@@ -509,19 +481,31 @@
 
         const playlist = WebviewWindow.getByLabel("Playlist");
 
-        settings.data.playlistVisible = !settings.data.playlistVisible;
+        settings.playlistVisible = !settings.playlistVisible;
 
-        if(settings.data.playlistVisible){
+        if(settings.playlistVisible){
             await playlist?.show()
         }else{
             await playlist?.hide()
         }
 
+        await ipc.send("sync-settings", settings);
     }
 
     const changeTheme = async (theme:Mp.Theme) => {
-        settings.data.theme = theme;
+        settings.theme = theme;
         await ipc.invoke("change_theme", theme)
+        await ipc.send("sync-settings", settings);
+    }
+
+    const showSettingsJson = async () => {
+        const dataDir = await appDataDir();
+        const fullpath = await join(dataDir, "temp", "altmediaplayer.settings.json")
+        await open(fullpath);
+    }
+
+    const syncSettings = (newSettings:Mp.Settings) => {
+        settings = newSettings;
     }
 
     const handleContextMenu = (e:Mp.ContextMenuEvent) => {
@@ -550,12 +534,49 @@
             case "Capture":
                 captureMedia();
                 break;
+            case "ViewSettingsJson":
+                showSettingsJson();
+                break;
         }
+    }
+
+    const close = async () => {
+        settings.audio.mute = $appState.media.mute;
+        settings.video.fitToWindow = $appState.media.fitToWindow
+        settings.audio.volume = $appState.media.videoVolume;
+        settings.audio.ampLevel = $appState.media.ampLevel;
+        settings.video.playbackSpeed = $appState.media.playbackSpeed;
+        settings.video.seekSpeed = $appState.media.seekSpeed
+
+        await ipc.invoke("save", settings)
+        WebviewWindow.getCurrent().close()
+    }
+
+    const prepare = async (e:Mp.ReadyEvent) => {
+
+        settings = e.settings;
+
+        $lang = settings.locale.lang;
+
+        dispatch({type:"isMaximized", value:settings.isMaximized})
+
+        updateVolume(settings.audio.volume);
+        updateAmpLevel(settings.audio.ampLevel)
+
+        dispatch({type:"mute", value:settings.audio.mute})
+
+        dispatch({type:"fitToWindow", value:settings.video.fitToWindow})
+        dispatch({type:"playbackSpeed", value:settings.video.playbackSpeed})
+        dispatch({type:"seekSpeed", value:settings.video.seekSpeed})
+
+        initPlayer();
+
     }
 
     onMount(() => {
 
         ipc.receiveOnce("ready", prepare)
+        ipc.receive("sync-settings", syncSettings);
         ipc.receive("load-file", load)
         ipc.receive("contextmenu-event", handleContextMenu)
         ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
@@ -565,8 +586,9 @@
         ipc.receive("after-toggle-maximize", onWindowSizeChanged)
         ipc.receive("toggle-convert", toggleConvert)
         ipc.receive("toggle-fullscreen", toggleFullscreen)
-        ipc.receive("playlist-closed", togglePlaylistWindow);
         ipc.receive("log", data => console.log(data.log))
+
+        ipc.invoke("sync_settings", undefined);
 
         return () => {
             ipc.release();
