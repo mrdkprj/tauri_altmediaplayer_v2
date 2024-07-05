@@ -61,13 +61,13 @@ fn change_theme(window: tauri::WebviewWindow, payload: &str) {
 }
 
 #[tauri::command]
-fn open_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    helper::popup_menu(&window, window.label(), payload);
+async fn open_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
+    helper::popup_menu(&window, window.label(), payload).await;
 }
 
 #[tauri::command]
-fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    helper::popup_menu(&window, helper::SORT_MENU_NAME, payload);
+async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
+    helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
 }
 
 #[tauri::command]

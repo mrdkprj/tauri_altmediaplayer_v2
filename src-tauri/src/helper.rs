@@ -2,7 +2,8 @@ use crate::settings::{Settings, SortOrder, Theme};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Mutex;
+//use std::sync::Mutex;
+use async_std::sync::Mutex;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tauri::Manager;
@@ -59,10 +60,11 @@ pub enum SortMenu {
     DateDesc,
 }
 
-pub fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position: Position) {
-    let map = MENU_MAP.lock().unwrap();
+pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position: Position) {
+    //let map = MENU_MAP.lock().unwrap();
+    let map = MENU_MAP.lock().await;
     let menu = map.get(menu_name).unwrap();
-    let result = menu.popup_at(position.x, position.y);
+    let result = menu.popup_at_async(position.x, position.y).await;
 
     if result.is_some() {
         window
@@ -101,7 +103,8 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
     let menu = builder.build().unwrap();
 
-    let mut map = MENU_MAP.lock().unwrap();
+    //let mut map = MENU_MAP.lock().unwrap();
+    let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(window.label().to_string(), menu);
 
     Ok(())
@@ -185,7 +188,8 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 
     let menu = builder.build().unwrap();
 
-    let mut map = MENU_MAP.lock().unwrap();
+    // let mut map = MENU_MAP.lock().unwrap();
+    let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(window.label().to_string(), menu);
 
     Ok(())
@@ -210,7 +214,8 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
 
     let menu = builder.build().unwrap();
 
-    let mut map = MENU_MAP.lock().unwrap();
+    // let mut map = MENU_MAP.lock().unwrap();
+    let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(SORT_MENU_NAME.to_string(), menu);
 
     Ok(())
