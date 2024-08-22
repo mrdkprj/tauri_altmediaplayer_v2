@@ -1,13 +1,12 @@
 use crate::settings::{Settings, SortOrder, Theme};
+use async_std::sync::Mutex;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
-//use std::sync::Mutex;
-use async_std::sync::Mutex;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
-use tauri::Manager;
-use wcpopup::{Menu, MenuBuilder, Theme as MenuTheme};
+use tauri::Emitter;
+use wcpopup::{Config, Menu, MenuBuilder, Theme as MenuTheme};
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -60,23 +59,43 @@ pub enum SortMenu {
     DateDesc,
 }
 
-pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position: Position) {
-    //let map = MENU_MAP.lock().unwrap();
+pub async fn popup_menu(window: &tauri::WebviewWindow, _menu_name: &str, position: Position) {
+    //let name = menu_name.clone().to_owned();
+    // let window = _window.clone();
+    let menu_name = _menu_name.to_owned();
+
+    // async_std::task::spawn(async move {
+    //     let map = MENU_MAP.lock().await;
+    //     let menu = map.get(&menu_name).unwrap();
+    //     let result = menu.popup_at_async(position.x, position.y).await;
+
+    //     if let Some(item) = result {
+    //         window
+    //             .emit_to(
+    //                 tauri::EventTarget::WebviewWindow {
+    //                     label: window.label().to_string(),
+    //                 },
+    //                 TAURI_EVENT_NAME,
+    //                 item,
+    //             )
+    //             .unwrap();
+    //     };
+    // });
     let map = MENU_MAP.lock().await;
-    let menu = map.get(menu_name).unwrap();
+    let menu = map.get(&menu_name).unwrap();
     let result = menu.popup_at_async(position.x, position.y).await;
 
-    if result.is_some() {
+    if let Some(item) = result {
         window
             .emit_to(
                 tauri::EventTarget::WebviewWindow {
                     label: window.label().to_string(),
                 },
                 TAURI_EVENT_NAME,
-                result.unwrap(),
+                item,
             )
             .unwrap();
-    }
+    };
 }
 
 pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
@@ -87,11 +106,17 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
     } else {
         MenuTheme::Light
     };
-    let mut builder = MenuBuilder::new_with_theme(hwnd, theme);
+
+    let c = Config {
+        theme,
+        ..Default::default()
+    };
+
+    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, c);
 
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
-    builder.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", "", settings.video.fitToWindow, None);
+    builder.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", settings.video.fitToWindow, None);
     builder.separator();
     builder.text_with_accelerator(&PlayerMenu::TogglePlaylistWindow.to_string(), "Playlist", None, "Ctrl+P");
     builder.text_with_accelerator(&PlayerMenu::ToggleFullscreen.to_string(), "Toggle Fullscreen", None, "F11");
@@ -103,7 +128,6 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
     let menu = builder.build().unwrap();
 
-    //let mut map = MENU_MAP.lock().unwrap();
     let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(window.label().to_string(), menu);
 
@@ -112,11 +136,11 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
 fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::PlaybackSpeed.to_string();
-    let mut parent = builder.submenu("Playback Speed", None);
+    let mut parent = builder.submenu("Playback Speed", "b", None);
 
-    for (_, speed) in PLAYBACK_SPEEDS.iter().enumerate() {
+    for speed in PLAYBACK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.playbackSpeed, None);
+        parent.radio(&id, speed_str, &id, speed == settings.video.playbackSpeed, None);
     }
 
     parent.build().unwrap();
@@ -124,11 +148,11 @@ fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings)
 
 fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::SeekSpeed.to_string();
-    let mut parent = builder.submenu("Seek Speed", None);
+    let mut parent = builder.submenu("Seek Speed", "", None);
 
-    for (_, speed) in SEEK_SPEEDS.iter().enumerate() {
+    for speed in SEEK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, speed_str, &id, speed == &settings.video.seekSpeed, None);
+        parent.radio(&id, speed_str, &id, speed == settings.video.seekSpeed, None);
     }
 
     parent.build().unwrap();
@@ -136,15 +160,15 @@ fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 
 fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::Theme.to_string();
-    let mut parent = builder.submenu("Theme", None);
+    let mut parent = builder.submenu("Theme", "", None);
 
-    for (_, theme) in Theme::iter().enumerate() {
+    for theme in Theme::iter() {
         let theme_str = if theme.to_string() == "dark" {
             "Dark"
         } else {
             "Light"
         };
-        parent.radio(&id, theme_str, &theme.to_string(), &id, theme == settings.theme, None);
+        parent.radio(&id, theme_str, &id, theme == settings.theme, None);
     }
 
     parent.build().unwrap();
@@ -158,7 +182,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     } else {
         MenuTheme::Light
     };
-    let mut builder = MenuBuilder::new_with_theme(hwnd, theme);
+    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, theme);
 
     builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
     builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", None, "Shift+Delete");
@@ -174,7 +198,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     builder.text(
         &PlaylistMenu::Tag.to_string(),
         "Add Tag to Comment",
-        if settings.tags.len() > 0 {
+        if settings.tags.is_empty() {
             None
         } else {
             Some(true)
@@ -188,7 +212,6 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 
     let menu = builder.build().unwrap();
 
-    // let mut map = MENU_MAP.lock().unwrap();
     let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(window.label().to_string(), menu);
 
@@ -202,19 +225,18 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     } else {
         MenuTheme::Light
     };
-    let mut builder = MenuBuilder::new_with_theme(hwnd, theme);
+    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, theme);
     let id = &PlaylistMenu::Sort.to_string();
 
-    builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", &SortMenu::GroupBy.to_string(), settings.sort.groupBy, None);
+    builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", settings.sort.groupBy, None);
     builder.separator();
-    builder.radio(id, "Name(Asc)", &SortMenu::NameAsc.to_string(), id, settings.sort.order == SortOrder::NameAsc, None);
-    builder.radio(id, "Name(Desc)", &SortMenu::NameDesc.to_string(), id, settings.sort.order == SortOrder::NameDesc, None);
-    builder.radio(id, "Date(Asc)", &SortMenu::DateAsc.to_string(), id, settings.sort.order == SortOrder::DateAsc, None);
-    builder.radio(id, "Date(Desc", &SortMenu::DateDesc.to_string(), id, settings.sort.order == SortOrder::DateDesc, None);
+    builder.radio(&SortMenu::NameDesc.to_string(), "Name(Asc)", id, settings.sort.order == SortOrder::NameAsc, None);
+    builder.radio(&SortMenu::NameDesc.to_string(), "Name(Desc)", id, settings.sort.order == SortOrder::NameDesc, None);
+    builder.radio(&SortMenu::NameDesc.to_string(), "Date(Asc)", id, settings.sort.order == SortOrder::DateAsc, None);
+    builder.radio(&SortMenu::NameDesc.to_string(), "Date(Desc", id, settings.sort.order == SortOrder::DateDesc, None);
 
     let menu = builder.build().unwrap();
 
-    // let mut map = MENU_MAP.lock().unwrap();
     let mut map = MENU_MAP.try_lock().unwrap();
     (*map).insert(SORT_MENU_NAME.to_string(), menu);
 

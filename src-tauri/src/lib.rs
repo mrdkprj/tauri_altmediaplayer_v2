@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Deserialize;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use serde::Serialize;
+use tauri::Emitter;
 use win32props::read_all;
 //use std::{env, sync::OnceLock};
 
@@ -105,7 +106,7 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
 
-    util::init_webview(&player, settings.theme.clone());
+    util::init_webview(&player, settings.theme);
 
     player.set_position(tauri::PhysicalPosition {
         x: settings.bounds.x,
@@ -162,8 +163,8 @@ pub fn run() {
             prepare_windows(app)?;
             Ok(())
         })
-        .on_window_event(|win, ev| match ev {
-            tauri::WindowEvent::Resized(_) => {
+        .on_window_event(|win, ev| {
+            if let tauri::WindowEvent::Resized(_) = ev {
                 if win.label() == PLAYER {
                     win.emit_to(
                         tauri::EventTarget::webview_window(win.label()),
@@ -175,7 +176,6 @@ pub fn run() {
                     .unwrap();
                 }
             }
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
         .run(tauri::generate_context!())

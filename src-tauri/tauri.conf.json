@@ -27,7 +27,9 @@
         "skipTaskbar":false,
         "transparent":true,
         "theme": "Dark",
-        "url":"src/player/index.html"
+        "dragDropEnabled":true,
+        "url":"src/player/index.html",
+        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       },
       {
         "title":"",
@@ -43,8 +45,10 @@
         "skipTaskbar":true,
         "parent":"Player",
         "transparent":true,
+        "dragDropEnabled":true,
         "theme": "Dark",
-        "url":"src/playlist/index.html"
+        "url":"src/playlist/index.html",
+        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       },
       {
         "title":"",
@@ -61,7 +65,8 @@
         "parent":"Player",
         "transparent":true,
         "theme": "Dark",
-        "url":"src/convert/index.html"
+        "url":"src/convert/index.html",
+        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       }
   ],
   "withGlobalTauri": true

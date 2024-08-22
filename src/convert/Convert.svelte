@@ -6,7 +6,7 @@
     import { appState, dispatch } from "./appStateReducer";
     import { t, lang } from "../translation/useTranslation"
     import { IPC } from "../ipc";
-    import { WebviewWindow } from "@tauri-apps/api/webview";
+    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { open, save } from "@tauri-apps/plugin-dialog";
     import util from "../util";
     import { exists } from "@tauri-apps/plugin-fs";

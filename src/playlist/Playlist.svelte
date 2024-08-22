@@ -13,7 +13,7 @@
     import editor from "./editor";
     import Deferred from "../deferred";
 
-    import { WebviewWindow } from "@tauri-apps/api/webview";
+    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { dirname, join } from "@tauri-apps/api/path";
     import { exists, rename, remove } from "@tauri-apps/plugin-fs";
     import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -752,7 +752,7 @@
         ipc.receive("sync-settings", syncSettings);
         ipc.receive("contextmenu-event", handleContextMenu)
         ipc.receive("load-playlist", initPlaylist)
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
+        ipc.receiveTauri<Mp.FileDropEvent>("tauri://file-drop", onFileDrop)
         ipc.receive("change-playlist", changeIndex)
         ipc.receive("restart", clearPlaylist)
         ipc.receive("file-released", onReleaseFile)

@@ -13,7 +13,7 @@
     import { handleShortcut } from "../shortcut";
 
     import { appDataDir } from "@tauri-apps/api/path";
-    import { WebviewWindow } from "@tauri-apps/api/webview";
+    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { save } from '@tauri-apps/plugin-dialog';
     import { dirname, join } from "@tauri-apps/api/path";
     import { writeFile } from '@tauri-apps/plugin-fs';
@@ -89,7 +89,7 @@
     }
 
     const onFileDrop = (e:Mp.FileDropEvent) => {
-
+console.log("drop");
         const files = getDropFiles(e)
 
         if(files.length){
@@ -164,7 +164,6 @@
 
         if(data.fileIds.includes($appState.currentFile.id)){
             const currentTime = $appState.media.currentTime;
-            console.log("release init");
             initPlayer();
             afterReleaseCallback = () => ipc.sendTo("Playlist", "file-released", {currentTime})
         }else{
@@ -404,7 +403,6 @@
     };
 
     const onKeydown = (e:KeyboardEvent) => {
-
         if(e.ctrlKey && e.key === "r") e.preventDefault();
 
         if(e.key === "F5") return ipc.invoke("restart", undefined);
@@ -540,7 +538,8 @@
     }
 
     const close = async () => {
-        settings.audio.mute = $appState.media.mute;
+/*
+settings.audio.mute = $appState.media.mute;
         settings.video.fitToWindow = $appState.media.fitToWindow
         settings.audio.volume = $appState.media.videoVolume;
         settings.audio.ampLevel = $appState.media.ampLevel;
@@ -548,6 +547,7 @@
         settings.video.seekSpeed = $appState.media.seekSpeed
 
         await ipc.invoke("save", settings)
+*/
         WebviewWindow.getCurrent().close()
     }
 
@@ -578,7 +578,7 @@
         ipc.receive("sync-settings", syncSettings);
         ipc.receive("load-file", load)
         ipc.receive("contextmenu-event", handleContextMenu)
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drop", onFileDrop)
+        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drag-drop", onFileDrop)
         ipc.receive("toggle-play", togglePlay)
         ipc.receive("restart", initPlayer)
         ipc.receive("release-file", releaseFile)

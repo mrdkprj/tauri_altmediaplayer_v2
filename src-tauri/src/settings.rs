@@ -158,7 +158,7 @@ pub fn save_settings(app_dir: PathBuf, settings: &mut Settings, player: &tauri::
     settings.playlistBounds.y = list.outer_position()?.y;
 
     let file = Path::new(&app_dir).join("temp").join(SETTING_FILE_NAME);
-    let data = serde_json::to_string::<Settings>(&settings).unwrap();
+    let data = serde_json::to_string::<Settings>(settings).unwrap();
     match fs::write(file, data) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
