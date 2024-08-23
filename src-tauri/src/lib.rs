@@ -14,7 +14,7 @@ pub mod util;
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
-static THEME_DARK: &str = "dark";
+static THEME_DARK: &str = "Dark";
 //static CELL:OnceLock<Vec<String>> = OnceLock::new();
 
 #[derive(Clone, Serialize)]
@@ -54,10 +54,11 @@ fn save(app: tauri::AppHandle, mut payload: settings::Settings) -> tauri::Result
 #[tauri::command]
 fn change_theme(window: tauri::WebviewWindow, payload: &str) {
     let theme = if payload == THEME_DARK {
-        settings::Theme::dark
+        settings::Theme::Dark
     } else {
-        settings::Theme::light
+        settings::Theme::Light
     };
+    println!("{:?}", payload);
     util::change_theme(&window, theme);
 }
 
@@ -88,6 +89,7 @@ fn get_media_metadata(payload: MetadataRequest) -> tauri::Result<HashMap<String,
 #[tauri::command]
 fn retrieve_settings(window: tauri::WebviewWindow) {
     if let Some(state) = window.app_handle().try_state::<settings::Settings>() {
+        println!("{:?}", window.label());
         window
             .emit_to(
                 tauri::EventTarget::webview_window(window.label()),

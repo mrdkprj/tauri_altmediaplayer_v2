@@ -490,6 +490,7 @@ console.log("drop");
     }
 
     const changeTheme = async (theme:Mp.Theme) => {
+        console.log(theme)
         settings.theme = theme;
         await ipc.invoke("change_theme", theme)
         await ipc.send("sync-settings", settings);
@@ -506,12 +507,13 @@ console.log("drop");
     }
 
     const handleContextMenu = (e:Mp.ContextMenuEvent) => {
-        switch(e.id){
+        const id = e.name ? e.name : e.id;
+        switch(id){
             case "PlaybackSpeed":
-                changePlaybackSpeed(Number(e.value));
+                changePlaybackSpeed(Number(e.id));
                 break;
             case "SeekSpeed":
-                changeSeekSpeed(Number(e.value));
+                changeSeekSpeed(Number(e.id));
                 break;
             case "TogglePlaylistWindow":
                 togglePlaylistWindow();
@@ -526,7 +528,7 @@ console.log("drop");
                 toggleFullscreen()
                 break;
             case "Theme":
-                changeTheme(e.value as Mp.Theme);
+                changeTheme(e.id as Mp.Theme);
                 break;
             case "Capture":
                 captureMedia();
@@ -552,7 +554,7 @@ settings.audio.mute = $appState.media.mute;
     }
 
     const prepare = async (e:Mp.ReadyEvent) => {
-
+console.log(e)
         settings = e.settings;
 
         $lang = settings.locale.lang;

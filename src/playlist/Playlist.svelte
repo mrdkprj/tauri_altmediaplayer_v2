@@ -686,8 +686,8 @@
     }
 
     const handleContextMenu = (e:Mp.ContextMenuEvent) => {
-
-        switch(e.id){
+        const id = e.name ? e.name : e.id;
+        switch(id){
             case "Remove":
                 removeFromPlaylist();
                 break;
@@ -713,7 +713,7 @@
                 openConvert("user");
                 break;
             case "Sort":
-                changeSortOrder(e.value as Mp.SortOrder);
+                changeSortOrder(e.id as Mp.SortOrder);
                 break;
             case "Rename":
                 startEditFileName()

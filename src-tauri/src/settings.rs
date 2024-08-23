@@ -64,10 +64,9 @@ pub struct Locale {
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Display, EnumIter)]
-#[allow(non_camel_case_types)]
 pub enum Theme {
-    dark = 1,
-    light = 2,
+    Dark = 1,
+    Light = 2,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -103,7 +102,7 @@ impl Default for Settings {
             },
             isMaximized: false,
             playlistVisible: true,
-            theme: Theme::dark,
+            theme: Theme::Dark,
             sort: Sort {
                 order: SortOrder::NameAsc,
                 groupBy: false,

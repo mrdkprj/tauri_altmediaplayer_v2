@@ -15,10 +15,10 @@ use windows::{
 pub fn init_webview(window: &tauri::WebviewWindow, theme: Theme) {
     for webview_window in window.webview_windows().values() {
         webview_window
-            .with_webview(|_webview| {
-                let mut _token = windows::Win32::System::WinRT::EventRegistrationToken::default();
-                let _handler = AcceleratorKeyPressedEventHandler::create(Box::new(on_accelerator_keypressed));
-                // unsafe { webview.controller().add_AcceleratorKeyPressed(&handler, &mut token).unwrap() };
+            .with_webview(|webview| {
+                let mut token = windows::Win32::System::WinRT::EventRegistrationToken::default();
+                let handler = AcceleratorKeyPressedEventHandler::create(Box::new(on_accelerator_keypressed));
+                unsafe { webview.controller().add_AcceleratorKeyPressed(&handler, &mut token).unwrap() };
             })
             .unwrap();
     }
@@ -42,8 +42,8 @@ pub fn change_theme(window: &tauri::WebviewWindow, theme: Theme) {
 
 fn change_webview_theme(window: &tauri::WebviewWindow, theme: Theme) {
     let webview_theme = match theme {
-        Theme::dark => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK,
-        Theme::light => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT,
+        Theme::Dark => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK,
+        Theme::Light => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT,
     };
 
     let windows = window.app_handle().webview_windows();

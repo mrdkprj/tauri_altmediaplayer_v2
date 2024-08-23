@@ -2357,7 +2357,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-single-instance",
  "wcpopup",
- "webview2-com 0.32.0",
+ "webview2-com",
  "win32props",
  "windows 0.58.0",
 ]
@@ -4032,7 +4032,7 @@ dependencies = [
  "url",
  "urlpattern",
  "webkit2gtk",
- "webview2-com 0.33.0",
+ "webview2-com",
  "window-vibrancy",
  "windows 0.58.0",
 ]
@@ -4244,7 +4244,7 @@ dependencies = [
  "tauri-utils",
  "url",
  "webkit2gtk",
- "webview2-com 0.33.0",
+ "webview2-com",
  "windows 0.58.0",
  "wry",
 ]
@@ -4972,26 +4972,12 @@ dependencies = [
 
 [[package]]
 name = "webview2-com"
-version = "0.32.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22ffc1a5fed11a6b567fc85aa586c55db32ebb87a2b0c1bf36bd2c9c1f9369a2"
-dependencies = [
- "webview2-com-macros",
- "webview2-com-sys 0.32.0",
- "windows 0.58.0",
- "windows-core 0.58.0",
- "windows-implement 0.58.0",
- "windows-interface 0.58.0",
-]
-
-[[package]]
-name = "webview2-com"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f61ff3d9d0ee4efcb461b14eb3acfda2702d10dc329f339303fc3e57215ae2c"
 dependencies = [
  "webview2-com-macros",
- "webview2-com-sys 0.33.0",
+ "webview2-com-sys",
  "windows 0.58.0",
  "windows-core 0.58.0",
  "windows-implement 0.58.0",
@@ -5007,17 +4993,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.70",
-]
-
-[[package]]
-name = "webview2-com-sys"
-version = "0.32.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ad4391f2da6281794b3de7dc8ffd411db2af46ad4a05d88d683526298d067b"
-dependencies = [
- "thiserror",
- "windows 0.58.0",
- "windows-core 0.58.0",
 ]
 
 [[package]]
@@ -5499,7 +5474,7 @@ dependencies = [
  "thiserror",
  "webkit2gtk",
  "webkit2gtk-sys",
- "webview2-com 0.33.0",
+ "webview2-com",
  "windows 0.58.0",
  "windows-core 0.58.0",
  "windows-version",

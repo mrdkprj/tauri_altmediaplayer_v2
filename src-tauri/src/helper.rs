@@ -59,33 +59,13 @@ pub enum SortMenu {
     DateDesc,
 }
 
-pub async fn popup_menu(window: &tauri::WebviewWindow, _menu_name: &str, position: Position) {
-    //let name = menu_name.clone().to_owned();
-    // let window = _window.clone();
-    let menu_name = _menu_name.to_owned();
-
-    // async_std::task::spawn(async move {
-    //     let map = MENU_MAP.lock().await;
-    //     let menu = map.get(&menu_name).unwrap();
-    //     let result = menu.popup_at_async(position.x, position.y).await;
-
-    //     if let Some(item) = result {
-    //         window
-    //             .emit_to(
-    //                 tauri::EventTarget::WebviewWindow {
-    //                     label: window.label().to_string(),
-    //                 },
-    //                 TAURI_EVENT_NAME,
-    //                 item,
-    //             )
-    //             .unwrap();
-    //     };
-    // });
+pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position: Position) {
     let map = MENU_MAP.lock().await;
-    let menu = map.get(&menu_name).unwrap();
+    let menu = map.get(menu_name).unwrap();
     let result = menu.popup_at_async(position.x, position.y).await;
 
     if let Some(item) = result {
+        println!("{:?}", item);
         window
             .emit_to(
                 tauri::EventTarget::WebviewWindow {
@@ -101,7 +81,7 @@ pub async fn popup_menu(window: &tauri::WebviewWindow, _menu_name: &str, positio
 pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
 
-    let theme = if settings.theme == Theme::dark {
+    let theme = if settings.theme == Theme::Dark {
         MenuTheme::Dark
     } else {
         MenuTheme::Light
@@ -136,11 +116,11 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
 fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::PlaybackSpeed.to_string();
-    let mut parent = builder.submenu("Playback Speed", "b", None);
+    let mut parent = builder.submenu(&id, "Playback Speed", None);
 
     for speed in PLAYBACK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, &id, speed == settings.video.playbackSpeed, None);
+        parent.radio(speed_str, speed_str, &id, speed == settings.video.playbackSpeed, None);
     }
 
     parent.build().unwrap();
@@ -148,11 +128,11 @@ fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings)
 
 fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::SeekSpeed.to_string();
-    let mut parent = builder.submenu("Seek Speed", "", None);
+    let mut parent = builder.submenu(&id, "Seek Speed", None);
 
     for speed in SEEK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(&id, speed_str, &id, speed == settings.video.seekSpeed, None);
+        parent.radio(speed_str, speed_str, &id, speed == settings.video.seekSpeed, None);
     }
 
     parent.build().unwrap();
@@ -160,15 +140,15 @@ fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 
 fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::Theme.to_string();
-    let mut parent = builder.submenu("Theme", "", None);
+    let mut parent = builder.submenu(&id, "Theme", None);
 
     for theme in Theme::iter() {
-        let theme_str = if theme.to_string() == "dark" {
+        let theme_str = if theme == Theme::Dark {
             "Dark"
         } else {
             "Light"
         };
-        parent.radio(&id, theme_str, &id, theme == settings.theme, None);
+        parent.radio(theme_str, theme_str, &id, theme == settings.theme, None);
     }
 
     parent.build().unwrap();
@@ -177,7 +157,7 @@ fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
 
-    let theme = if settings.theme == Theme::dark {
+    let theme = if settings.theme == Theme::Dark {
         MenuTheme::Dark
     } else {
         MenuTheme::Light
@@ -220,7 +200,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 
 pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
-    let theme = if settings.theme == Theme::dark {
+    let theme = if settings.theme == Theme::Dark {
         MenuTheme::Dark
     } else {
         MenuTheme::Light

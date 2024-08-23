@@ -1,22 +1,21 @@
 declare global {
-
     interface Window {
         api: Api;
     }
 
     type RendererName = "Player" | "Playlist" | "Convert" | "Tag";
-    type Renderer = {[key in RendererName] : Electron.BrowserWindow | null}
+    type Renderer = { [key in RendererName]: Electron.BrowserWindow | null };
 
     type MainChannelEventMap = {
-        "minimize": Mp.Event;
-        "sync-settings":Mp.Settings;
+        minimize: Mp.Event;
+        "sync-settings": Mp.Settings;
         "toggle-maximize": Mp.Event;
-        "close": Mp.Event;
-        "shortcut": Mp.ShortcutEvent;
-        "progress": Mp.ProgressEvent;
+        close: Mp.Event;
+        shortcut: Mp.ShortcutEvent;
+        progress: Mp.ProgressEvent;
         "open-player-context": Mp.Event;
         "play-status-change": Mp.ChangePlayStatusRequest;
-        "reload": Mp.Event;
+        reload: Mp.Event;
         "save-capture": Mp.CaptureEvent;
         "close-playlist": Mp.Event;
         "trash-ready": Mp.TrashRequest;
@@ -32,29 +31,29 @@ declare global {
         "rename-file": Mp.RenameRequest;
         "playlist-item-selection-change": Mp.PlaylistItemSelectionChange;
         "open-sort-context": Mp.Position;
-        "media-state-change":Mp.MediaState;
+        "media-state-change": Mp.MediaState;
         "close-tag": Mp.Event;
         "save-tags": Mp.SaveTagsEvent;
-        "error": Mp.ErrorEvent;
-    }
+        error: Mp.ErrorEvent;
+    };
 
     type RendererChannelEventMap = {
-        "ready": Mp.ReadyEvent;
-        "sync-settings":Mp.Settings;
+        ready: Mp.ReadyEvent;
+        "sync-settings": Mp.Settings;
         "contextmenu-event": Mp.ContextMenuEvent;
-        "open-context-menu":Mp.PopupContextMenuRequest;
+        "open-context-menu": Mp.PopupContextMenuRequest;
         "load-playlist": Mp.LoadPlaylistEvent;
         "load-file": Mp.FileLoadEvent;
         "change-playlist": Mp.ChangePlaylistRequest;
-        "drop": Mp.DropRequest;
+        drop: Mp.DropRequest;
         "toggle-play": Mp.Event;
         "toggle-fullscreen": Mp.Event;
         "change-display-mode": Mp.SettingsChangeEvent;
         "capture-media": Mp.Event;
-        "restart": Mp.Event;
+        restart: Mp.Event;
         "release-file": Mp.ReleaseFileRequest;
-        "file-released":Mp.ReleaseFileResult;
-        "log": Mp.Logging;
+        "file-released": Mp.ReleaseFileResult;
+        log: Mp.Logging;
         "after-toggle-maximize": Mp.ResizeEvent;
         "toggle-convert": Mp.Event;
         "change-playback-speed": Mp.ChangePlaybackSpeedRequest;
@@ -62,198 +61,197 @@ declare global {
         "after-remove-playlist": Mp.RemovePlaylistItemResult;
         "clear-playlist": Mp.Event;
         "sort-type-change": Mp.SortType;
-        "start-rename":Mp.Event;
+        "start-rename": Mp.Event;
         "after-rename": Mp.RenameResult;
         "after-sourcefile-select": Mp.FileSelectResult;
         "open-convert": Mp.OpenConvertDialogEvent;
         "after-convert": Mp.Event;
-        "picture-in-picture":Mp.Event;
-        "open-tag-editor":Mp.OpenTagEditorEvent;
-    }
+        "picture-in-picture": Mp.Event;
+        "open-tag-editor": Mp.OpenTagEditorEvent;
+    };
 
     interface Api {
-        send: <K extends keyof MainChannelEventMap>(channel: K, data:MainChannelEventMap[K]) => void;
-        receive: <K extends keyof RendererChannelEventMap>(channel:K, listener: (data: RendererChannelEventMap[K]) => void) => void;
-        removeAllListeners: <K extends keyof RendererChannelEventMap>(channel:K) => void;
+        send: <K extends keyof MainChannelEventMap>(channel: K, data: MainChannelEventMap[K]) => void;
+        receive: <K extends keyof RendererChannelEventMap>(channel: K, listener: (data: RendererChannelEventMap[K]) => void) => void;
+        removeAllListeners: <K extends keyof RendererChannelEventMap>(channel: K) => void;
     }
 
     namespace Mp {
-
         type Lang = "en" | "ja";
         type Theme = "dark" | "light";
-        type ConvertFormat = "MP4" | "MP3"
-        type ThumbButtonType = "Play" | "Pause" | "Previous" | "Next"
+        type ConvertFormat = "MP4" | "MP3";
+        type ThumbButtonType = "Play" | "Pause" | "Previous" | "Next";
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
         type SeekSpeed = 0.03 | 0.05 | 0.1 | 0.5 | 1 | 3 | 5 | 10 | 20;
-        type SortOrder = "NameAsc" | "NameDesc" | "DateAsc" | "DateDesc"
+        type SortOrder = "NameAsc" | "NameDesc" | "DateAsc" | "DateDesc";
 
         type PlayerContextMenuSubTypeMap = {
-            "PlaybackSpeed": Mp.PlaybackSpeed;
-            "SeekSpeed": Mp.SeekSpeed;
-            "TogglePlaylistWindow": null;
-            "FitToWindow": null;
-            "ToggleFullscreen": null;
-            "Theme": Mp.Theme;
-            "Capture": null;
-            "PictureInPicture": null;
-            "ViewSettingsJson":null;
-        }
+            PlaybackSpeed: Mp.PlaybackSpeed;
+            SeekSpeed: Mp.SeekSpeed;
+            TogglePlaylistWindow: null;
+            FitToWindow: null;
+            ToggleFullscreen: null;
+            Theme: Mp.Theme;
+            Capture: null;
+            PictureInPicture: null;
+            ViewSettingsJson: null;
+        };
 
         type PlaylistContextMenuSubTypeMap = {
-            "Remove": null;
-            "RemoveAll": null;
-            "Trash": null;
-            "CopyFileName": null;
-            "CopyFullpath": null;
-            "Reveal": null;
-            "Metadata": null;
-            "Convert": null;
-            "Tag": string;
-            "ManageTags":null;
-            "Sort": Mp.SortOrder;
-            "Rename": null;
-            "Move": null;
-            "GroupBy": null;
+            Remove: null;
+            RemoveAll: null;
+            Trash: null;
+            CopyFileName: null;
+            CopyFullpath: null;
+            Reveal: null;
+            Metadata: null;
+            Convert: null;
+            Tag: string;
+            ManageTags: null;
+            Sort: Mp.SortOrder;
+            Rename: null;
+            Move: null;
+            GroupBy: null;
         };
 
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";
-        type VideoRotation = "RotationNone" | "90Clockwise" | "90CounterClockwise"
-        type AudioBitrate = "BitrateNone" | "128" | "160" | "192" | "320"
+        type VideoRotation = "RotationNone" | "90Clockwise" | "90CounterClockwise";
+        type AudioBitrate = "BitrateNone" | "128" | "160" | "192" | "320";
 
-        type PlayStatus = "playing" | "paused" | "stopped"
+        type PlayStatus = "playing" | "paused" | "stopped";
 
-        type DialogOpener = "system"|"user"
+        type DialogOpener = "system" | "user";
 
         type SecondInstanceState = {
-            timeout:NodeJS.Timeout | null;
-            requireInitPlaylist:boolean;
-        }
+            timeout: NodeJS.Timeout | null;
+            requireInitPlaylist: boolean;
+        };
 
         type ShortcutEvent = {
-            renderer:RendererName;
-            menu: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap
-        }
+            renderer: RendererName;
+            menu: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
+        };
 
         type ContextMenuEvent = {
-            id:keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
-            value:string;
-        }
+            id: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
+            name: string;
+        };
 
         type PopupContextMenuRequest = {
-            type:Mp.ContextMenuType;
-            position:Mp.Position;
-        }
+            type: Mp.ContextMenuType;
+            position: Mp.Position;
+        };
 
         type ContextMenuType = "Player" | "Playlist" | "Sort";
 
-        type MenuKind = "text" | "submenu" | "radio" | "checkbox" | "separator"
+        type MenuKind = "text" | "submenu" | "radio" | "checkbox" | "separator";
 
         type ContextMenuItem = {
-            name:keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap | "separator";
-            label?:string;
-            value?:string;
-            kind:Mp.MenuKind;
-            checked?:boolean;
-            accelerator?:string;
-            submenu?:Mp.ContextMenuItem[];
-        }
+            name: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap | "separator";
+            label?: string;
+            value?: string;
+            kind: Mp.MenuKind;
+            checked?: boolean;
+            accelerator?: string;
+            submenu?: Mp.ContextMenuItem[];
+        };
 
         type Bounds = {
-            width:number;
-            height:number;
-            x:number;
-            y:number;
-        }
+            width: number;
+            height: number;
+            x: number;
+            y: number;
+        };
 
         type Position = {
-            x:number;
-            y:number;
-        }
+            x: number;
+            y: number;
+        };
 
         type Size = {
-            width:number;
-            height:number;
-        }
+            width: number;
+            height: number;
+        };
 
         type SortType = {
-            order:SortOrder;
-            groupBy:boolean;
-        }
+            order: SortOrder;
+            groupBy: boolean;
+        };
 
         type Settings = {
             bounds: Bounds;
-            playlistBounds:Bounds;
+            playlistBounds: Bounds;
             theme: Mp.Theme;
-            isMaximized:boolean;
-            playlistVisible:boolean;
-            sort:Mp.SortType;
-            video:{
-                fitToWindow:boolean;
-                playbackSpeed:number;
-                seekSpeed:number;
+            isMaximized: boolean;
+            playlistVisible: boolean;
+            sort: Mp.SortType;
+            video: {
+                fitToWindow: boolean;
+                playbackSpeed: number;
+                seekSpeed: number;
             };
-            audio:{
-                volume:number;
-                ampLevel:number;
-                mute:boolean;
+            audio: {
+                volume: number;
+                ampLevel: number;
+                mute: boolean;
             };
-            defaultPath:string;
-            locale:{
-                mode:"system" | Mp.Lang;
-                lang:Mp.Lang;
-            }
-            tags:string[];
-        }
+            defaultPath: string;
+            locale: {
+                mode: "system" | Mp.Lang;
+                lang: Mp.Lang;
+            };
+            tags: string[];
+        };
 
         type MediaFile = {
-            id:string;
-            fullPath:string;
-            dir:string;
-            src:string;
-            name:string;
-            date:number;
-            extension:string;
-        }
+            id: string;
+            fullPath: string;
+            dir: string;
+            src: string;
+            name: string;
+            date: number;
+            extension: string;
+        };
 
         type MediaState = {
             mute: boolean;
             fitToWindow: boolean;
-            currentTime:number;
+            currentTime: number;
             videoDuration: number;
             videoVolume: number;
             ampLevel: number;
             gainNode: GainNode | null;
-            playbackSpeed:number;
-            seekSpeed:number;
-        }
+            playbackSpeed: number;
+            seekSpeed: number;
+        };
 
         type MediaVolume = {
-            n_samples:string;
-            mean_volume:string;
-            max_volume:string;
-        }
+            n_samples: string;
+            mean_volume: string;
+            max_volume: string;
+        };
 
         type PlaylistItemSelection = {
-            selectedId:string;
-            selectedIds:string[];
-        }
+            selectedId: string;
+            selectedIds: string[];
+        };
 
         type PlaylistDragState = {
             dragging: boolean;
-            startElement:HTMLElement | null;
-            targetElement:HTMLElement | null;
+            startElement: HTMLElement | null;
+            targetElement: HTMLElement | null;
             startIndex: number;
-        }
+        };
 
         type RenameData = {
-            id:string;
-            name:string;
-        }
+            id: string;
+            name: string;
+        };
 
         type MetadataRequest = {
-            fullPath:string;
-            format:boolean;
-        }
+            fullPath: string;
+            format: boolean;
+        };
 
         type Property = {
             AppUserModelID?: string;
@@ -317,7 +315,7 @@ declare global {
             ParsingName?: string;
             ParsingPath?: string;
             PerceivedType?: string;
-            Rating?:string;
+            Rating?: string;
             SFGAOFlags?: string;
             SecurityAllowedEnterpriseDataProtectionIdentities?: string;
             SecurityEncryptionOwners?: string;
@@ -346,197 +344,195 @@ declare global {
             VideoVerticalAspectRatio?: string;
             VolumeId?: string;
             ZoneIdentifier?: string;
-        }
+        };
 
         type Metadata = Property & {
-            Volume:MediaVolume;
-        }
+            Volume: MediaVolume;
+        };
 
         type ConvertOptions = {
-            frameSize:VideoFrameSize;
-            audioBitrate:AudioBitrate;
-            rotation:VideoRotation;
-            audioVolume:string;
-            maxAudioVolume:boolean;
-        }
+            frameSize: VideoFrameSize;
+            audioBitrate: AudioBitrate;
+            rotation: VideoRotation;
+            audioVolume: string;
+            maxAudioVolume: boolean;
+        };
 
         type ReadyEvent = {
-            settings:Mp.Settings;
-        }
+            settings: Mp.Settings;
+        };
 
         type LoadPlaylistEvent = {
-            files:string[];
-        }
+            files: string[];
+        };
 
         type FileDropEvent = {
             paths: string[];
             position: Position;
-        }
+        };
 
         type ResizeEvent = {
-            isMaximized:boolean;
-        }
+            isMaximized: boolean;
+        };
 
         type FullscreenChange = {
-            fullscreen:boolean;
-        }
+            fullscreen: boolean;
+        };
 
         type DropRequest = {
-            files:string[];
-        }
+            files: string[];
+        };
 
         type ChangePlaylistOrderRequet = {
-            start:number;
-            end:number;
-            currentIndex:number;
-        }
+            start: number;
+            end: number;
+            currentIndex: number;
+        };
 
         type ProgressEvent = {
-            progress:number;
-        }
+            progress: number;
+        };
 
         type ChangePlaylistRequest = {
-            index:number;
-        }
+            index: number;
+        };
 
         type ChangePlayStatusRequest = {
-            status:PlayStatus;
-        }
+            status: PlayStatus;
+        };
 
         type FileLoadEvent = {
-            currentFile:MediaFile;
-            type:"Load"|"Play";
-            startFrom?:number;
-        }
+            currentFile: MediaFile;
+            type: "Load" | "Play";
+            startFrom?: number;
+        };
 
         type ReplaceFileRequest = {
-            file:MediaFile;
-        }
+            file: MediaFile;
+        };
 
         type CaptureEvent = {
-            data:string;
-            timestamp:number;
-        }
+            data: string;
+            timestamp: number;
+        };
 
         type CloseRequest = {
-            mediaState:MediaState
-        }
+            mediaState: MediaState;
+        };
 
         type ReleaseFileRequest = {
-            fileIds:string[];
-        }
+            fileIds: string[];
+        };
 
         type ReleaseFileResult = {
-            currentTime:number;
-        }
+            currentTime: number;
+        };
 
         type OpenTagEditorEvent = {
-            tags:string[];
-        }
+            tags: string[];
+        };
 
         type SaveTagsEvent = {
-            tags:string[];
-        }
+            tags: string[];
+        };
 
         type OpenConvertDialogEvent = {
-            file:MediaFile;
-            opener:DialogOpener;
-        }
+            file: MediaFile;
+            opener: DialogOpener;
+        };
 
         type ConvertRequest = {
-            sourcePath:string;
-            convertFormat:ConvertFormat;
-            options:ConvertOptions;
-        }
+            sourcePath: string;
+            convertFormat: ConvertFormat;
+            options: ConvertOptions;
+        };
 
         type FileSelectResult = {
-            file:MediaFile;
-        }
+            file: MediaFile;
+        };
 
         type OpenFileDialogRequest = {
-            fullPath:string;
-        }
+            fullPath: string;
+        };
 
         type ErrorEvent = {
-            message:string;
-        }
+            message: string;
+        };
 
         type Event = {
-            args?:any;
-        }
+            args?: any;
+        };
 
         type Logging = {
-            log:any;
-        }
+            log: any;
+        };
 
         type RadioGroupChangeEvent<T> = {
-            value:T;
-        }
+            value: T;
+        };
 
         type MessageLabel = {
-            selectConvertInputFile:string;
-            selectPlaylistFile:string;
-            unsupportedMedia:string;
-        }
+            selectConvertInputFile: string;
+            selectPlaylistFile: string;
+            unsupportedMedia: string;
+        };
 
         type Label = {
-            restart:string;
-            shuffle:string;
-            sort:string;
-            playbackSpeed:string;
-            seekSpeed:string;
-            fitToWindow:string;
-            playlist:string;
-            fullscreen:string;
-            pip:string;
-            capture:string;
-            theme:string;
-            light:string;
-            dark:string;
-            lang:string;
-            default:string;
-            second:string;
-            remove:string;
-            trash:string;
-            copyName:string;
-            copyFullpath:string;
-            reveal:string;
-            rename:string;
-            metadata:string;
-            convert:string;
-            loadList:string;
-            saveList:string;
-            clearList:string;
-            groupBy:string;
-            nameAsc:string;
-            nameDesc:string;
-            dateAsc:string;
-            dateDesc:string;
-            play:string;
-            pause:string;
-            previous:string;
-            next:string;
-            inputFile:string;
-            convertFormat:string;
-            frameSize:string;
-            videoRotation:string;
-            audioBitrate:string;
-            volume:string;
-            maximizeVolue:string;
-            start:string;
-            cancel:string;
-            close:string;
-            mute:string;
-            tags:string;
-            manageTag:string;
-            mediaFile:string;
-            playlistFile:string;
-        }
+            restart: string;
+            shuffle: string;
+            sort: string;
+            playbackSpeed: string;
+            seekSpeed: string;
+            fitToWindow: string;
+            playlist: string;
+            fullscreen: string;
+            pip: string;
+            capture: string;
+            theme: string;
+            light: string;
+            dark: string;
+            lang: string;
+            default: string;
+            second: string;
+            remove: string;
+            trash: string;
+            copyName: string;
+            copyFullpath: string;
+            reveal: string;
+            rename: string;
+            metadata: string;
+            convert: string;
+            loadList: string;
+            saveList: string;
+            clearList: string;
+            groupBy: string;
+            nameAsc: string;
+            nameDesc: string;
+            dateAsc: string;
+            dateDesc: string;
+            play: string;
+            pause: string;
+            previous: string;
+            next: string;
+            inputFile: string;
+            convertFormat: string;
+            frameSize: string;
+            videoRotation: string;
+            audioBitrate: string;
+            volume: string;
+            maximizeVolue: string;
+            start: string;
+            cancel: string;
+            close: string;
+            mute: string;
+            tags: string;
+            manageTag: string;
+            mediaFile: string;
+            playlistFile: string;
+        };
 
-        type Labels = Label & MessageLabel
-
+        type Labels = Label & MessageLabel;
     }
-
 }
 
-export {}
+export {};
