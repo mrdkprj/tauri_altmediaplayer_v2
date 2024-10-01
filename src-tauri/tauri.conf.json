@@ -22,12 +22,13 @@
         "minimizable":true,
         "closable":true,
         "focus":true,
-        "visible":true,
+        "visible":false,
         "decorations":false,
         "skipTaskbar":false,
-        "transparent":true,
+        "transparent":false,
         "theme": "Dark",
         "dragDropEnabled":true,
+        "shadow":true,
         "url":"src/player/index.html",
         "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       },
@@ -40,13 +41,14 @@
         "minimizable":false,
         "closable":true,
         "focus":false,
-        "visible":true,
+        "visible":false,
         "decorations":false,
         "skipTaskbar":true,
         "parent":"Player",
-        "transparent":true,
+        "transparent":false,
         "dragDropEnabled":true,
         "theme": "Dark",
+        "shadow":false,
         "url":"src/playlist/index.html",
         "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       },
@@ -65,6 +67,7 @@
         "parent":"Player",
         "transparent":true,
         "theme": "Dark",
+        "shadow":false,
         "url":"src/convert/index.html",
         "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       }
@@ -98,7 +101,7 @@
       "binaries/ffmpeg"
     ]
   },
-  "identifier": "com.mediaplayer.dev",
-  "productName": "mediaplayer",
-  "version": "0.0.0"
+  "identifier": "com.altmediaplayer.dev",
+  "productName": "altmediaplayer",
+  "version": "0.0.1"
 }

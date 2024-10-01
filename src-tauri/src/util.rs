@@ -6,10 +6,7 @@ use webview2_com::{
 };
 use windows::{
     core::{Error, Interface},
-    Win32::{
-        Foundation::{BOOL, LPARAM, WPARAM},
-        UI::WindowsAndMessaging::{PostMessageW, WM_THEMECHANGED},
-    },
+    Win32::Foundation::BOOL,
 };
 
 pub fn init_webview(window: &tauri::WebviewWindow, theme: Theme) {
@@ -23,7 +20,7 @@ pub fn init_webview(window: &tauri::WebviewWindow, theme: Theme) {
             .unwrap();
     }
 
-    change_webview_theme(window, theme);
+    change_theme(window, theme);
 }
 
 fn on_accelerator_keypressed(_: Option<ICoreWebView2Controller>, args: Option<ICoreWebView2AcceleratorKeyPressedEventArgs>) -> Result<(), Error> {
@@ -35,12 +32,6 @@ fn on_accelerator_keypressed(_: Option<ICoreWebView2Controller>, args: Option<IC
 }
 
 pub fn change_theme(window: &tauri::WebviewWindow, theme: Theme) {
-    change_webview_theme(window, theme);
-
-    unsafe { PostMessageW(window.hwnd().unwrap(), WM_THEMECHANGED, WPARAM(0), LPARAM(0)).unwrap() };
-}
-
-fn change_webview_theme(window: &tauri::WebviewWindow, theme: Theme) {
     let webview_theme = match theme {
         Theme::Dark => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK,
         Theme::Light => COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT,

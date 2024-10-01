@@ -6,7 +6,10 @@ use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tauri::Emitter;
-use wcpopup::{Config, Menu, MenuBuilder, Theme as MenuTheme};
+use wcpopup::{
+    config::{Config, Theme as MenuTheme},
+    Menu, MenuBuilder,
+};
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -65,7 +68,6 @@ pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position
     let result = menu.popup_at_async(position.x, position.y).await;
 
     if let Some(item) = result {
-        println!("{:?}", item);
         window
             .emit_to(
                 tauri::EventTarget::WebviewWindow {
@@ -78,21 +80,28 @@ pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position
     };
 }
 
-pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
-    let hwnd = window.hwnd().unwrap();
+pub fn change_theme(theme: Theme) {
+    let map = MENU_MAP.try_lock().unwrap();
+    map.values().for_each(|menu| menu.set_theme(to_menu_theme(theme)));
+}
 
-    let theme = if settings.theme == Theme::Dark {
+fn to_menu_theme(theme: Theme) -> MenuTheme {
+    if theme == Theme::Dark {
         MenuTheme::Dark
     } else {
         MenuTheme::Light
-    };
+    }
+}
 
-    let c = Config {
-        theme,
+pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
+    let hwnd = window.hwnd().unwrap();
+
+    let config = Config {
+        theme: to_menu_theme(settings.theme),
         ..Default::default()
     };
 
-    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, c);
+    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
 
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
@@ -157,12 +166,7 @@ fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
 
-    let theme = if settings.theme == Theme::Dark {
-        MenuTheme::Dark
-    } else {
-        MenuTheme::Light
-    };
-    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, theme);
+    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, to_menu_theme(settings.theme));
 
     builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
     builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", None, "Shift+Delete");
@@ -200,12 +204,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 
 pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
-    let theme = if settings.theme == Theme::Dark {
-        MenuTheme::Dark
-    } else {
-        MenuTheme::Light
-    };
-    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, theme);
+    let mut builder = MenuBuilder::new_for_hwnd_with_theme(hwnd, to_menu_theme(settings.theme));
     let id = &PlaylistMenu::Sort.to_string();
 
     builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", settings.sort.groupBy, None);

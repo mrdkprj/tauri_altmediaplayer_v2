@@ -576,7 +576,7 @@ console.log(e)
 
     onMount(() => {
 
-        ipc.receiveOnce("ready", prepare)
+        ipc.receiveAny("ready", prepare)
         ipc.receive("sync-settings", syncSettings);
         ipc.receive("load-file", load)
         ipc.receive("contextmenu-event", handleContextMenu)
@@ -589,7 +589,7 @@ console.log(e)
         ipc.receive("toggle-fullscreen", toggleFullscreen)
         ipc.receive("log", data => console.log(data.log))
 
-        ipc.invoke("retrieve_settings", undefined);
+        // ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release();

@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 use serde::Serialize;
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+use std::{collections::HashMap, env};
 use tauri::Emitter;
-use win32props::read_all;
-//use std::{env, sync::OnceLock};
-
 use tauri::Manager;
+use win32props::read_all;
+
 pub mod helper;
 pub mod settings;
 pub mod util;
@@ -15,7 +13,6 @@ pub mod util;
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
 static THEME_DARK: &str = "Dark";
-//static CELL:OnceLock<Vec<String>> = OnceLock::new();
 
 #[derive(Clone, Serialize)]
 struct ReadyEvent {
@@ -26,6 +23,9 @@ struct ReadyEvent {
 struct LoadFileEvent {
     files: Vec<String>,
 }
+
+#[derive(serde::Serialize)]
+struct OpenedUrls(Vec<String>);
 
 #[derive(Clone, Serialize)]
 #[allow(non_snake_case)]
@@ -38,6 +38,15 @@ struct ResizeEvent {
 struct MetadataRequest {
     fullPath: String,
     format: bool,
+}
+
+#[tauri::command]
+fn get_init_args(app_handle: tauri::AppHandle) -> Vec<String> {
+    if let Some(urls) = app_handle.try_state::<OpenedUrls>() {
+        return urls.inner().0.clone();
+    }
+
+    Vec::new()
 }
 
 #[tauri::command]
@@ -58,8 +67,8 @@ fn change_theme(window: tauri::WebviewWindow, payload: &str) {
     } else {
         settings::Theme::Light
     };
-    println!("{:?}", payload);
     util::change_theme(&window, theme);
+    helper::change_theme(theme);
 }
 
 #[tauri::command]
@@ -89,7 +98,6 @@ fn get_media_metadata(payload: MetadataRequest) -> tauri::Result<HashMap<String,
 #[tauri::command]
 fn retrieve_settings(window: tauri::WebviewWindow) {
     if let Some(state) = window.app_handle().try_state::<settings::Settings>() {
-        println!("{:?}", window.label());
         window
             .emit_to(
                 tauri::EventTarget::webview_window(window.label()),
@@ -114,10 +122,14 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
         x: settings.bounds.x,
         y: settings.bounds.y,
     })?;
+
     player.set_size(tauri::PhysicalSize {
         width: settings.bounds.width,
         height: settings.bounds.height,
     })?;
+
+    player.show()?;
+
     if settings.isMaximized {
         player.maximize()?;
     }
@@ -128,17 +140,39 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
         x: settings.playlistBounds.x,
         y: settings.playlistBounds.y,
     })?;
+
     playlist.set_size(tauri::PhysicalSize {
         width: settings.playlistBounds.width,
         height: settings.playlistBounds.height,
     })?;
-    if !settings.playlistVisible {
-        playlist.hide()?;
+
+    if settings.playlistVisible {
+        let hwnd = playlist.hwnd().unwrap();
+        playlist
+            .with_webview(|v| {
+                let mut hwnd = windows::Win32::Foundation::HWND::default();
+                unsafe { v.controller().ParentWindow(&mut hwnd).unwrap() };
+                let ex_style = unsafe { windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE) };
+                unsafe { windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE, ex_style | windows::Win32::UI::WindowsAndMessaging::WS_EX_NOACTIVATE.0 as isize | windows::Win32::UI::WindowsAndMessaging::WS_EX_TOOLWINDOW.0 as isize) };
+            })
+            .unwrap();
+        let ex_style = unsafe { windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE) };
+        unsafe { windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE, ex_style | windows::Win32::UI::WindowsAndMessaging::WS_EX_NOACTIVATE.0 as isize | windows::Win32::UI::WindowsAndMessaging::WS_EX_TOOLWINDOW.0 as isize) };
+
+        // playlist.show()?;
+        let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::ShowWindow(hwnd, windows::Win32::UI::WindowsAndMessaging::SW_SHOWNOACTIVATE) };
     }
 
     helper::create_playlist_menu(&playlist, settings)?;
 
     helper::create_sort_menu(&playlist, settings)?;
+
+    app.emit(
+        "ready",
+        ReadyEvent {
+            settings: settings.clone(),
+        },
+    )?;
 
     Ok(())
 }
@@ -163,6 +197,14 @@ pub fn run() {
             let settings = settings::get_settings(dir)?;
             app.manage(settings);
             prepare_windows(app)?;
+
+            let mut urls = Vec::new();
+            for arg in env::args().skip(1) {
+                urls.push(arg);
+            }
+
+            app.manage(OpenedUrls(urls));
+
             Ok(())
         })
         .on_window_event(|win, ev| {
@@ -179,7 +221,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
+        .invoke_handler(tauri::generate_handler![get_init_args, retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }

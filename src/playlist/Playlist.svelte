@@ -748,7 +748,7 @@
 
     onMount(() => {
 
-        ipc.receive("ready", prepare);
+        ipc.receiveAny("ready", prepare);
         ipc.receive("sync-settings", syncSettings);
         ipc.receive("contextmenu-event", handleContextMenu)
         ipc.receive("load-playlist", initPlaylist)
@@ -757,7 +757,7 @@
         ipc.receive("restart", clearPlaylist)
         ipc.receive("file-released", onReleaseFile)
 
-        ipc.invoke("retrieve_settings", undefined);
+        // ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release()

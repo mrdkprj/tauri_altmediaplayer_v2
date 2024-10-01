@@ -49,6 +49,11 @@ export class IPC extends IPCBase {
         this.funcs.push(fn);
     };
 
+    receiveAny = async <K extends keyof RendererChannelEventMap>(channel: K, handler: (e: RendererChannelEventMap[K]) => void) => {
+        const fn = await once<RendererChannelEventMap[K]>(channel, (e) => handler(e.payload), { target: { kind: "Any" } });
+        this.funcs.push(fn);
+    };
+
     receiveTauri = async <T>(event: EventName, handler: (e: T) => void) => {
         const fn = await listen<T>(event, (e) => handler(e.payload), {
             target: { kind: "WebviewWindow", label: this.label },
