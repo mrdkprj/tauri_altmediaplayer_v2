@@ -1,58 +1,46 @@
 export const APP_NAME = "AltMediaPlayer";
-export const handleKeyEvent = () => { /**/ }
+export const handleKeyEvent = () => {
+    /**/
+};
 
-export const EmptyFile:Mp.MediaFile = {
-    id:"",
-    fullPath:"",
-    src:"",
-    name:"",
+export const EmptyFile: Mp.MediaFile = {
+    id: "",
+    fullPath: "",
+    src: "",
+    name: "",
     date: 0,
-    extension:"",
-    dir:"",
-}
+    extension: "",
+    dir: "",
+};
 
-export const PlayableVideoFormats = [
-    "mp4",
-    "mov",
-    "webm"
-]
+export const PlayableVideoFormats = ["mp4", "mov", "webm"];
 
-export const PlayableVideoExtentions = [
-    ".mp4",
-    ".mov",
-    ".webm",
-]
+export const PlayableVideoExtentions = [".mp4", ".mov", ".webm"];
 
-export const PlayableAudioFormats = [
-    "mp3",
-    "webm",
-]
+export const PlayableAudioFormats = ["mp3", "webm"];
 
-export const PlayableAudioExtentions = [
-    ".mp3",
-    ".webm",
-]
+export const PlayableAudioExtentions = [".mp3", ".webm"];
 
 export const Resolutions = {
-    "SizeNone": "",
-    "360p":"480x360",
-    "480p":"640x480",
-    "720p":"1280x720",
-    "1080p":"1920x1080",
-}
+    SizeNone: "",
+    "360p": "480x360",
+    "480p": "640x480",
+    "720p": "1280x720",
+    "1080p": "1920x1080",
+};
 
 export const Rotations = {
-    "RotationNone": 0,
+    RotationNone: 0,
     "90Clockwise": 1,
-    "90CounterClockwise":2
-}
+    "90CounterClockwise": 2,
+};
 
 export const FORWARD = 1;
-export const BACKWARD = -1
+export const BACKWARD = -1;
 export const Buttons = {
-    left:0,
-    right:2,
-}
+    left: 0,
+    right: 2,
+};
 
 export const AudioExtensions = [
     ".302",
@@ -118,8 +106,8 @@ export const AudioExtensions = [
     ".voc",
     ".w64",
     ".wav",
-    ".wv"
-]
+    ".wv",
+];
 
 export const VideoExtensions = [
     ".264",
@@ -238,5 +226,5 @@ export const VideoExtensions = [
     ".xwd",
     ".y",
     ".y4m",
-    ".yuv"
-]
+    ".yuv",
+];

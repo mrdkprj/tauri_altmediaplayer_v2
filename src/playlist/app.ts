@@ -1,9 +1,9 @@
-import "./playlist.css"
+import "./playlist.css";
 import "../common.css";
-import Playlist from "./Playlist.svelte"
+import Playlist from "./Playlist.svelte";
 
 const app = new Playlist({
-  target: document.body,
-})
+    target: document.body,
+});
 
-export default app
+export default app;

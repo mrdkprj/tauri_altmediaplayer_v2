@@ -16,8 +16,7 @@
     position: relative;
 }
 
-.rename{
-    position: fixed;
+.input{
     background-color: var(--input-bgcolor);
     outline: 1px solid var(--input-focus-outline);
     border: 0;
@@ -28,7 +27,43 @@
     z-index: 900;
 }
 
-.rename:focus{
+.input.rename{
+    position: fixed;
+}
+
+.input.search{
+    width: 100%;
+}
+
+.searchArea{
+    display: flex;
+    flex-direction: row;
+    padding: 5px;
+    justify-content: flex-start;
+    position: fixed;
+    width: 80%;
+    top:35px;
+    right: 0px;
+    border-radius: 2px;
+    margin-right: 20px;
+    outline: 1px solid var(--menu-border-color);
+    z-index: 900;
+    background-color: var(--menu-bgcolor);
+
+}
+
+.searchResult{
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    color: var(--playlist-item-color);
+    min-width: 60px;
+}
+
+.rename:focus
+.search:focus{
     outline: 1px solid var(--input-focus-outline);
 }
 
@@ -95,7 +130,7 @@
 }
 
 .file-list .current{
-    color: var(--primary-highlight-color)
+    color: var(--primary-highlight-color);
 }
 
 .file-list .selected:not(.current){
@@ -105,6 +140,14 @@
 .file-list .selected{
     outline: 1px dotted var(--playlist-item-border-color);
     outline-offset: -1px;
+}
+
+.file-list .highlight{
+    background-color: rgba(234,92,0,0.15);
+}
+
+.file-list .highlight-current {
+    background-color: rgba(234,92,0,0.33);
 }
 
 .playlist-footer{

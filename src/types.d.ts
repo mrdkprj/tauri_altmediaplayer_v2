@@ -112,6 +112,7 @@ declare global {
             Rename: null;
             Move: null;
             GroupBy: null;
+            PasteFilePath: null;
         };
 
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";

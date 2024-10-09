@@ -85,9 +85,6 @@
   ],
   "platforms": [
     "linux",
-    "macOS",
-    "windows",
-    "android",
-    "iOS"
+    "windows"
   ]
 }

@@ -1,11 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-use std::{collections::HashMap, env};
+use std::env;
 use tauri::Emitter;
 use tauri::Manager;
-use win32props::read_all;
-
 pub mod helper;
 pub mod settings;
 pub mod util;
@@ -82,17 +80,17 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
 }
 
 #[tauri::command]
-fn get_media_metadata(payload: MetadataRequest) -> tauri::Result<HashMap<String, String>> {
-    match read_all(payload.fullPath, payload.format) {
-        Ok(meta) => {
-            println!("{:?}", meta.len());
-            Ok(meta)
-        }
-        Err(e) => {
-            println!("Metadata failed: {:?}", e);
-            Ok(HashMap::new())
-        }
-    }
+fn get_media_metadata(_payload: MetadataRequest) {
+    // match read_all(payload.fullPath, payload.format) {
+    //     Ok(meta) => {
+    //         println!("{:?}", meta.len());
+    //         Ok(meta)
+    //     }
+    //     Err(e) => {
+    //         println!("Metadata failed: {:?}", e);
+    //         Ok(HashMap::new())
+    //     }
+    // }
 }
 
 #[tauri::command]
@@ -116,7 +114,7 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
 
-    util::init_webview(&player, settings.theme);
+    util::change_theme(&player, settings.theme);
 
     player.set_position(tauri::PhysicalPosition {
         x: settings.bounds.x,
@@ -146,21 +144,10 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
         height: settings.playlistBounds.height,
     })?;
 
-    if settings.playlistVisible {
-        let hwnd = playlist.hwnd().unwrap();
-        playlist
-            .with_webview(|v| {
-                let mut hwnd = windows::Win32::Foundation::HWND::default();
-                unsafe { v.controller().ParentWindow(&mut hwnd).unwrap() };
-                let ex_style = unsafe { windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE) };
-                unsafe { windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE, ex_style | windows::Win32::UI::WindowsAndMessaging::WS_EX_NOACTIVATE.0 as isize | windows::Win32::UI::WindowsAndMessaging::WS_EX_TOOLWINDOW.0 as isize) };
-            })
-            .unwrap();
-        let ex_style = unsafe { windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE) };
-        unsafe { windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(hwnd, windows::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE, ex_style | windows::Win32::UI::WindowsAndMessaging::WS_EX_NOACTIVATE.0 as isize | windows::Win32::UI::WindowsAndMessaging::WS_EX_TOOLWINDOW.0 as isize) };
+    util::change_theme(&playlist, settings.theme);
 
-        // playlist.show()?;
-        let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::ShowWindow(hwnd, windows::Win32::UI::WindowsAndMessaging::SW_SHOWNOACTIVATE) };
+    if settings.playlistVisible {
+        playlist.show()?;
     }
 
     helper::create_playlist_menu(&playlist, settings)?;

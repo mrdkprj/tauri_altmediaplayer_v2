@@ -1,67 +1,62 @@
 import { dirname, basename } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { stat } from "@tauri-apps/plugin-fs"
+import { stat } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
 import { Child, Command } from "@tauri-apps/plugin-shell";
 import { remove, exists } from "@tauri-apps/plugin-fs";
 import { Rotations, Resolutions } from "./constants";
 import { IPCBase } from "./ipc";
 
-class Util{
-
-    convertDestFile:string | null;
-    child:Child | null;
+class Util {
+    convertDestFile: string | null;
+    child: Child | null;
     ipc = new IPCBase();
 
-    constructor(){
+    constructor() {
         this.convertDestFile = null;
         this.child = null;
     }
 
-    extname = (name:string | undefined) => {
+    extname = (name: string | undefined) => {
+        if (!name) return "";
 
-        if(!name) return "";
+        if (name.lastIndexOf(".") < 0) return "";
 
-        if(name.lastIndexOf(".") < 0) return "";
+        return name.substring(name.lastIndexOf(".")).toLowerCase();
+    };
 
-        return name.substring(name.lastIndexOf(".")).toLowerCase()
-    }
-
-    async toFile(fullPath:string):Promise<Mp.MediaFile>{
-
+    async toFile(fullPath: string): Promise<Mp.MediaFile> {
         const statInfo = await stat(fullPath);
-        const dir = await dirname(fullPath)
-        const name = await basename(fullPath)
+        const dir = await dirname(fullPath);
+        const name = await basename(fullPath);
 
         return {
             id: crypto.randomUUID(),
             fullPath,
             dir,
             src: convertFileSrc(fullPath),
-            name:decodeURIComponent(encodeURIComponent(name)),
-            date:statInfo.mtime ? statInfo.mtime.getTime() : new Date().getTime(),
-            extension:this.extname(fullPath),
-        }
+            name: decodeURIComponent(encodeURIComponent(name)),
+            date: statInfo.mtime ? statInfo.mtime.getTime() : new Date().getTime(),
+            extension: this.extname(fullPath),
+        };
     }
 
-    async updateFile(fullPath:string, currentFile:Mp.MediaFile):Promise<Mp.MediaFile>{
-
-        const dir = await dirname(fullPath)
-        const name = await basename(fullPath)
+    async updateFile(fullPath: string, currentFile: Mp.MediaFile): Promise<Mp.MediaFile> {
+        const dir = await dirname(fullPath);
+        const name = await basename(fullPath);
 
         return {
             id: currentFile.id,
             fullPath,
             dir,
             src: convertFileSrc(fullPath),
-            name:decodeURIComponent(encodeURIComponent(name)),
-            date:currentFile.date,
-            extension:currentFile.extension,
-        }
+            name: decodeURIComponent(encodeURIComponent(name)),
+            date: currentFile.date,
+            extension: currentFile.extension,
+        };
     }
 
-    shuffle(targets:any[]){
-
+    shuffle(targets: any[]) {
         const result = [];
         let size = 0;
         let randomIndex = 0;
@@ -77,282 +72,241 @@ class Util{
         return result;
     }
 
-    private localCompareName(a:Mp.MediaFile, b:Mp.MediaFile){
-        return a.name.replace(this.extname(a.name),"").localeCompare(b.name.replace(this.extname(a.name),""))
+    private localCompareName(a: Mp.MediaFile, b: Mp.MediaFile) {
+        return a.name.replace(this.extname(a.name), "").localeCompare(b.name.replace(this.extname(a.name), ""));
     }
 
-    sort(files:Mp.MediaFile[], sortOrder:Mp.SortOrder){
+    sort(files: Mp.MediaFile[], sortOrder: Mp.SortOrder) {
+        if (!files.length) return;
 
-        if(!files.length) return;
-
-        switch(sortOrder){
+        switch (sortOrder) {
             case "NameAsc":
-                return files.sort((a,b) => this.localCompareName(a,b))
+                return files.sort((a, b) => this.localCompareName(a, b));
             case "NameDesc":
-                return files.sort((a,b) => this.localCompareName(b,a))
+                return files.sort((a, b) => this.localCompareName(b, a));
             case "DateAsc":
-                return files.sort((a,b) => a.date - b.date || this.localCompareName(a,b))
+                return files.sort((a, b) => a.date - b.date || this.localCompareName(a, b));
             case "DateDesc":
-                return files.sort((a,b) => b.date - a.date || this.localCompareName(a,b))
+                return files.sort((a, b) => b.date - a.date || this.localCompareName(a, b));
         }
-
     }
 
-    groupBy<T>(items:T[], key:keyof T){
-
-        return items.reduce<{ [groupKey:string] : T[]}>((acc, current) => {
-              (acc[current[key] as unknown as string] = acc[current[key] as unknown as string] || []).push(current);
-              return acc;
+    groupBy<T>(items: T[], key: keyof T) {
+        return items.reduce<{ [groupKey: string]: T[] }>((acc, current) => {
+            (acc[current[key] as unknown as string] = acc[current[key] as unknown as string] || []).push(current);
+            return acc;
         }, {});
-
     }
 
-    sortByGroup(files:Mp.MediaFile[], sortOrder:Mp.SortOrder){
+    sortByGroup(files: Mp.MediaFile[], sortOrder: Mp.SortOrder) {
+        if (!files.length) return;
 
-        if(!files.length) return;
+        const groups = this.groupBy(files, "dir");
 
-        const groups = this.groupBy(files, "dir")
-
-        const result = Object.values(groups).map(group => this.sort(group, sortOrder)).flat() as Mp.MediaFile[];
+        const result = Object.values(groups)
+            .map((group) => this.sort(group, sortOrder))
+            .flat() as Mp.MediaFile[];
         files.length = 0;
-        files.push(...result)
-
+        files.push(...result);
     }
 
-    async showErrorMessage(ex:any){
+    async showErrorMessage(ex: any) {
         const mgs = ex.message ? ex.message : ex;
-        await message(mgs, {kind:"error"})
+        await message(mgs, { kind: "error" });
     }
 
-
-    async getMediaMetadata(fullPath:string, format = false):Promise<Mp.Metadata>{
-        const metadata = await this.ipc.invoke("get_media_metadata", {fullPath, format}) as Mp.Metadata
-        metadata.Volume = await this.getVolume(fullPath)
-        return metadata
+    async getMediaMetadata(fullPath: string, format = false): Promise<Mp.Metadata> {
+        const metadata = (await this.ipc.invoke("get_media_metadata", { fullPath, format })) as Mp.Metadata;
+        metadata.Volume = await this.getVolume(fullPath);
+        return metadata;
     }
 
-    async getVolume(sourcePath:string):Promise<Mp.MediaVolume>{
-        const args = [
-            "-i",
-            sourcePath,
-            "-vn",
-            "-af",
-            "volumedetect",
-            "-f",
-            "null",
-            "-"
-        ]
+    async getVolume(sourcePath: string): Promise<Mp.MediaVolume> {
+        const args = ["-i", sourcePath, "-vn", "-af", "volumedetect", "-f", "null", "-"];
 
-        return new Promise(async (resolve,reject) => {
-
+        return new Promise(async (resolve, reject) => {
             const command = Command.sidecar("binaries/ffmpeg", args);
 
-            const result:string[] = []
+            const result: string[] = [];
 
-            command.on("error", async (stderr:any) => {
-                console.log(stderr)
-                await this.cleanUp()
-                reject({n_samples:"N/A", max_volume:"N/A", mean_volume:"N/A"})
-            })
+            command.on("error", async (stderr: any) => {
+                console.log(stderr);
+                await this.cleanUp();
+                reject({ n_samples: "N/A", max_volume: "N/A", mean_volume: "N/A" });
+            });
 
             command.on("close", () => {
                 this.finishConvert();
-                resolve(this.extractVolumeInfo(result.join("\n")))
-            })
+                resolve(this.extractVolumeInfo(result.join("\n")));
+            });
 
-            command.stderr.on("data", line => result.push(line));
+            command.stderr.on("data", (line) => result.push(line));
 
             this.child = await command.spawn();
-
-        })
-
+        });
     }
 
-    private extractVolumeInfo(std:string):Mp.MediaVolume{
-        const n_samples = std.match(/n_samples:\s?([0-9]*)\s?/)?.at(1) ?? ""
-        const mean_volume = std.match(/mean_volume:\s?([^ ]*)\s?dB/)?.at(1) ?? ""
-        const max_volume = std.match(/max_volume:\s?([^ ]*)\s?dB/)?.at(1) ?? ""
+    private extractVolumeInfo(std: string): Mp.MediaVolume {
+        const n_samples = std.match(/n_samples:\s?([0-9]*)\s?/)?.at(1) ?? "";
+        const mean_volume = std.match(/mean_volume:\s?([^ ]*)\s?dB/)?.at(1) ?? "";
+        const max_volume = std.match(/max_volume:\s?([^ ]*)\s?dB/)?.at(1) ?? "";
         return {
             n_samples,
             mean_volume,
-            max_volume
-        }
+            max_volume,
+        };
     }
 
-    async cancelConvert(){
-        if(this.child){
+    async cancelConvert() {
+        if (this.child) {
             await this.child.kill();
         }
     }
 
-    async convertAudio(sourcePath:string, destPath:string, options:Mp.ConvertOptions){
-
-        if(this.child) throw new Error("Process busy")
+    async convertAudio(sourcePath: string, destPath: string, options: Mp.ConvertOptions) {
+        if (this.child) throw new Error("Process busy");
 
         this.convertDestFile = destPath;
 
         const metadata = await this.getMediaMetadata(sourcePath);
 
-        if(!metadata.AudioEncodingBitrate){
-            metadata.AudioEncodingBitrate = "0"
+        if (!metadata.AudioEncodingBitrate) {
+            metadata.AudioEncodingBitrate = "0";
         }
 
-        const audioBitrate = options.audioBitrate !== "BitrateNone" ? parseInt(options.audioBitrate) : Math.ceil(parseInt(metadata.AudioEncodingBitrate)/1000)
-        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}` : ""
+        const audioBitrate = options.audioBitrate !== "BitrateNone" ? parseInt(options.audioBitrate) : Math.ceil(parseInt(metadata.AudioEncodingBitrate) / 1000);
+        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}` : "";
 
-        if(options.maxAudioVolume){
+        if (options.maxAudioVolume) {
             const maxVolumeText = metadata.Volume.max_volume;
             const maxVolume = parseFloat(maxVolumeText);
-            if(maxVolume >= 0){
-                throw new Error("No max_volume")
+            if (maxVolume >= 0) {
+                throw new Error("No max_volume");
             }
-            audioVolume = `volume=${maxVolume * -1}dB`
+            audioVolume = `volume=${maxVolume * -1}dB`;
         }
 
-        const args = [
-            "-i",
-            sourcePath,
-            "-y",
-            "-acodec",
-            "libmp3lame",
-            "-b:a",
-            String(audioBitrate),
-        ]
+        const args = ["-i", sourcePath, "-y", "-acodec", "libmp3lame", "-b:a", String(audioBitrate)];
 
-        if(audioVolume){
-            args.push("-filter:a")
-            args.push(`volume=${audioVolume}dB`)
+        if (audioVolume) {
+            args.push("-filter:a");
+            args.push(`volume=${audioVolume}dB`);
         }
 
         args.push("-f");
         args.push("mp3");
-        args.push(destPath)
+        args.push(destPath);
 
         const command = Command.sidecar("binaries/ffmpeg", args);
 
         this.child = await command.spawn();
 
-        return new Promise((resolve,reject)=>{
-
-            command.on("error", async (err:any) => {
+        return new Promise((resolve, reject) => {
+            command.on("error", async (err: any) => {
                 await this.cleanUp();
-                reject(new Error(err.message))
-            })
+                reject(new Error(err.message));
+            });
 
             command.on("close", () => {
                 this.finishConvert();
-                resolve(undefined)
-            })
-        })
-
+                resolve(undefined);
+            });
+        });
     }
 
-    async convertVideo(sourcePath:string, destPath:string, options:Mp.ConvertOptions){
-
-        if(this.child) throw new Error("Process busy")
+    async convertVideo(sourcePath: string, destPath: string, options: Mp.ConvertOptions) {
+        if (this.child) throw new Error("Process busy");
 
         this.convertDestFile = destPath;
 
         const metadata = await this.getMediaMetadata(sourcePath);
 
-        const size = Resolutions[options.frameSize] ? Resolutions[options.frameSize] : await this.getSize(metadata)
+        const size = Resolutions[options.frameSize] ? Resolutions[options.frameSize] : await this.getSize(metadata);
         const rotation = Rotations[options.rotation] ? `transpose=${Rotations[options.rotation]}` : "";
 
-        if(!metadata.AudioEncodingBitrate){
-            metadata.AudioEncodingBitrate = "0"
+        if (!metadata.AudioEncodingBitrate) {
+            metadata.AudioEncodingBitrate = "0";
         }
 
-        const audioBitrate = options.audioBitrate !== "BitrateNone" ? parseInt(options.audioBitrate) : Math.ceil(parseInt(metadata.AudioEncodingBitrate)/1000)
-        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}` : ""
+        const audioBitrate = options.audioBitrate !== "BitrateNone" ? parseInt(options.audioBitrate) : Math.ceil(parseInt(metadata.AudioEncodingBitrate) / 1000);
+        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}` : "";
 
-        if(options.maxAudioVolume){
+        if (options.maxAudioVolume) {
             const maxVolumeText = metadata.Volume.max_volume;
             const maxVolume = parseFloat(maxVolumeText);
-            if(maxVolume >= 0){
-                throw new Error("No max_volume")
+            if (maxVolume >= 0) {
+                throw new Error("No max_volume");
             }
-            audioVolume = `volume=${maxVolume * -1}dB`
+            audioVolume = `volume=${maxVolume * -1}dB`;
         }
 
-        const args = [
-            "-i",
-            sourcePath,
-            "-y",
-            "-acodec",
-            "libmp3lame",
+        const args = ["-i", sourcePath, "-y", "-acodec", "libmp3lame"];
 
-        ]
-
-        if(audioBitrate > 0){
-            args.push("-b:a"),
-            args.push(String(audioBitrate))
+        if (audioBitrate > 0) {
+            args.push("-b:a"), args.push(String(audioBitrate));
         }
 
-        if(audioVolume){
-            args.push("-filter:a")
-            args.push(`volume=${audioVolume}dB`)
+        if (audioVolume) {
+            args.push("-filter:a");
+            args.push(`volume=${audioVolume}dB`);
         }
 
         args.push("-vcodec");
         args.push("libx264");
 
         args.push("-filter:v");
-        if(rotation){
-            args.push(`scale=${size}`)
-        }else{
-            args.push(`scale=${size},transpose=${rotation}`)
+        if (rotation) {
+            args.push(`scale=${size}`);
+        } else {
+            args.push(`scale=${size},transpose=${rotation}`);
         }
 
         args.push("-f");
         args.push("mp4");
-        args.push(destPath)
+        args.push(destPath);
 
         const command = Command.sidecar("binaries/ffmpeg", args);
 
         this.child = await command.spawn();
 
-        return new Promise((resolve,reject)=>{
-
-            command.on("error", async (err:any) => {
+        return new Promise((resolve, reject) => {
+            command.on("error", async (err: any) => {
                 await this.cleanUp();
-                reject(new Error(err.message))
-            })
+                reject(new Error(err.message));
+            });
 
             command.on("close", () => {
                 this.finishConvert();
-                resolve(undefined)
-            })
-        })
+                resolve(undefined);
+            });
+        });
     }
 
-    private async getSize(metadata:Mp.Property){
+    private async getSize(metadata: Mp.Property) {
+        const rotation = metadata.VideoOrientation;
 
-        const rotation = metadata.VideoOrientation
-
-        if(rotation === "-90" || rotation === "90"){
-            return `${metadata.VideoFrameHeight}x${metadata.VideoFrameWidth}`
+        if (rotation === "-90" || rotation === "90") {
+            return `${metadata.VideoFrameHeight}x${metadata.VideoFrameWidth}`;
         }
 
-        return `${metadata.VideoFrameWidth}x${metadata.VideoFrameHeight}`
+        return `${metadata.VideoFrameWidth}x${metadata.VideoFrameHeight}`;
     }
 
-    private finishConvert(){
+    private finishConvert() {
         this.cancelConvert();
         this.child = null;
         this.convertDestFile = null;
     }
 
-    private async cleanUp(){
-
-        if(this.convertDestFile && (await exists(this.convertDestFile)) ){
+    private async cleanUp() {
+        if (this.convertDestFile && (await exists(this.convertDestFile))) {
             await remove(this.convertDestFile);
         }
 
         this.finishConvert();
-
     }
 }
 
 const util = new Util();
 
-export default util
+export default util;
