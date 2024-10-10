@@ -625,7 +625,7 @@
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId);
         if (!file) return;
 
-        const metadata = await util.getMediaMetadata(file.fullPath, true);
+        const metadata = await util.getMediaMetadata(file.fullPath);
         console.log(metadata);
         const metadataString = JSON.stringify(metadata, undefined, 2).replaceAll('"', "");
         const result = await ask(metadataString, { kind: "info", okLabel: "OK", cancelLabel: "Copy" });
@@ -647,7 +647,11 @@
 
     const openConvert = async (opener: Mp.DialogOpener) => {
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId) ?? EmptyFile;
-        ipc.sendTo("Convert", "open-convert", { file, opener });
+        await ipc.sendTo("Convert", "open-convert", { file, opener, settings });
+    };
+
+    const openTagEditor = async () => {
+        await ipc.sendTo("Tag", "open-tag-editor", { settings });
     };
 
     const syncSettings = (newSettings: Mp.Settings) => {
@@ -764,7 +768,7 @@
                 //addTagToFile(args ?? "");
                 break;
             case "ManageTags":
-                //openTagEditor();
+                openTagEditor();
                 break;
         }
     };
@@ -776,6 +780,7 @@
     };
 
     const prepare = (e: Mp.ReadyEvent) => {
+        console.log("playlistready");
         settings = e.settings;
         $lang = settings.locale.lang;
         dispatch;
@@ -791,8 +796,6 @@
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
-
-        // ipc.invoke("retrieve_settings", undefined);
 
         return () => {
             ipc.release();

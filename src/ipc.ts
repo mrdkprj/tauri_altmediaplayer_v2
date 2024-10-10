@@ -17,6 +17,7 @@ type TauriCommandMap = {
     // "clickthru":TauriCommand<Mp.TauriClickthruPayload, undefined>;
     // "stat": TauriCommand<Mp.TauriStatPayload, Mp.TauriStatResponse>;
     get_media_metadata: TauriCommand<Mp.MetadataRequest, any>;
+    refresh_tag_contextmenu: TauriCommand<string[], any>;
     // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
     // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
     // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;

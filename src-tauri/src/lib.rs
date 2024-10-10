@@ -6,7 +6,6 @@ use tauri::Emitter;
 use tauri::Manager;
 pub mod helper;
 pub mod settings;
-pub mod util;
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
@@ -61,11 +60,11 @@ fn save(app: tauri::AppHandle, mut payload: settings::Settings) -> tauri::Result
 #[tauri::command]
 fn change_theme(window: tauri::WebviewWindow, payload: &str) {
     let theme = if payload == THEME_DARK {
-        settings::Theme::Dark
+        tauri::Theme::Dark
     } else {
-        settings::Theme::Light
+        tauri::Theme::Light
     };
-    util::change_theme(&window, theme);
+    window.set_theme(Some(theme)).unwrap();
     helper::change_theme(theme);
 }
 
@@ -80,32 +79,22 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
 }
 
 #[tauri::command]
-fn get_media_metadata(_payload: MetadataRequest) {
-    // match read_all(payload.fullPath, payload.format) {
-    //     Ok(meta) => {
-    //         println!("{:?}", meta.len());
-    //         Ok(meta)
-    //     }
-    //     Err(e) => {
-    //         println!("Metadata failed: {:?}", e);
-    //         Ok(HashMap::new())
-    //     }
-    // }
+fn retrieve_settings(window: tauri::WebviewWindow) {
+    let app = window.app_handle();
+    if let Some(settings) = app.try_state::<settings::Settings>() {
+        app.emit(
+            "ready",
+            ReadyEvent {
+                settings: settings.inner().clone(),
+            },
+        )
+        .unwrap();
+    }
 }
 
 #[tauri::command]
-fn retrieve_settings(window: tauri::WebviewWindow) {
-    if let Some(state) = window.app_handle().try_state::<settings::Settings>() {
-        window
-            .emit_to(
-                tauri::EventTarget::webview_window(window.label()),
-                "ready",
-                ReadyEvent {
-                    settings: state.inner().clone(),
-                },
-            )
-            .unwrap();
-    }
+async fn refresh_tag_contextmenu(payload: Vec<String>) {
+    helper::refresh_tag_contextmenu(PLAY_LIST, payload).await;
 }
 
 fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
@@ -114,7 +103,12 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
 
-    util::change_theme(&player, settings.theme);
+    let theme = match settings.theme {
+        settings::Theme::Dark => tauri::Theme::Dark,
+        settings::Theme::Light => tauri::Theme::Light,
+    };
+
+    player.set_theme(Some(theme))?;
 
     player.set_position(tauri::PhysicalPosition {
         x: settings.bounds.x,
@@ -143,8 +137,6 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
         width: settings.playlistBounds.width,
         height: settings.playlistBounds.height,
     })?;
-
-    util::change_theme(&playlist, settings.theme);
 
     if settings.playlistVisible {
         playlist.show()?;
@@ -208,7 +200,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_init_args, retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, get_media_metadata])
+        .invoke_handler(tauri::generate_handler![get_init_args, retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }

@@ -583,8 +583,6 @@ settings.audio.mute = $appState.media.mute;
         ipc.receive("toggle-fullscreen", toggleFullscreen);
         ipc.receive("log", (data) => console.log(data.log));
 
-        // ipc.invoke("retrieve_settings", undefined);
-
         return () => {
             ipc.release();
         };

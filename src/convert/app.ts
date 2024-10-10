@@ -1,9 +1,9 @@
-import "./convert.css"
+import "./convert.css";
 import "../common.css";
-import Convert from "./Convert.svelte"
+import Convert from "./Convert.svelte";
 
 const app = new Convert({
-  target: document.body,
-})
+    target: document.body,
+});
 
-export default app
+export default app;

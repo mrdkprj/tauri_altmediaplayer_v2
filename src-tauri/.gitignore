@@ -3,3 +3,6 @@
 /target/
 /wcpopup/
 /tao-0.29.0/
+binaries
+!binaries/.keep
+!binaries/*.txt

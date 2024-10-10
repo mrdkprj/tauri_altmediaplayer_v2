@@ -23,6 +23,8 @@
     "@tauri-apps/plugin-dialog": "2.0.0-rc.1",
     "@tauri-apps/plugin-shell": "2.0.0-rc.1",
     "@tsconfig/svelte": "^5.0.2",
+    "@types/fluent-ffmpeg": "^2.1.26",
+    "@types/node": "^22.7.5",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^9.12.0",

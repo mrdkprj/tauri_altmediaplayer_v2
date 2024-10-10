@@ -1,0 +1,73 @@
+.manager{
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tags{
+    flex: 1 1 auto;
+    margin: 10px;
+    overflow-y: scroll;
+}
+
+.tag{
+    display: flex;
+    padding: 5px 10px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.tag-text{
+    font-size: 14px;
+    line-height: 20px;
+    width: calc(100% - 20px);
+    border-bottom: 1px solid transparent;
+    cursor: auto;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.tag-text:focus{
+    border-bottom: 1px solid;
+}
+
+.delete{
+    width:15px;
+    height: 15px;
+    margin-left: 5px;
+}
+
+.buttons{
+    display: flex;
+    justify-content: space-around;
+}
+
+.btn{
+    line-height: 2.5rem;
+    border: 1px solid var(--button-border-color);
+    border-radius: 5px;
+    background-color: var(--button-bgcolor);
+    color: var(--button-color);
+    cursor: pointer;
+    padding: 0px 20px;
+}
+
+.btn:not([disabled]):hover{
+    background-color: var(--secondary-highlight-color);
+    color: var(--secondary-forecolor);
+}
+
+.btn:disabled{
+    background-color: var(--button-disabled);
+    opacity: 0.5;
+    cursor: auto;
+}
+
+.btn-sm{
+    border: none;
+    color:#fff;
+    background-color: #5f5b5b;
+    border-radius: 4px;
+    margin: 10px 0;
+    padding: 3px 10px;
+}

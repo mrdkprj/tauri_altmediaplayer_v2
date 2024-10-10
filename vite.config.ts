@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
-import { resolve } from "path"
-import { svelte } from "@sveltejs/vite-plugin-svelte"
+import { resolve } from "path";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
@@ -13,20 +13,20 @@ export default defineConfig(async () => ({
         port: 1420,
         strictPort: true,
         watch: {
-          // 3. tell vite to ignore watching `src-tauri`
-          ignored: ["**/src-tauri/**"],
+            // 3. tell vite to ignore watching `src-tauri`
+            ignored: ["**/src-tauri/**"],
         },
     },
 
-    build:{
+    build: {
         rollupOptions: {
             input: {
                 player: resolve(__dirname, "src/player/index.html"),
                 playlist: resolve(__dirname, "src/playlist/index.html"),
                 convert: resolve(__dirname, "src/convert/index.html"),
+                tag: resolve(__dirname, "src/tag/index.html"),
             },
-        }
+        },
     },
     plugins: [svelte()],
-
 }));

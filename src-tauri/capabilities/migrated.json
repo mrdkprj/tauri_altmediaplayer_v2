@@ -5,7 +5,8 @@
   "windows": [
     "Player",
     "Playlist",
-    "Convert"
+    "Convert",
+    "Tag"
   ],
   "permissions": [
     "core:app:default",
@@ -52,7 +53,7 @@
       "allow": [{"path":"**"}]
     },
     {
-      "identifier": "shell:allow-execute",
+      "identifier": "shell:allow-spawn",
       "allow": [
         {
           "args": [
@@ -64,20 +65,22 @@
           "cmd": "explorer",
           "name": "run-explorer",
           "sidecar": false
-        }
-      ]
-    },
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
+        },
         {
           "args": [
+            "/e,/select,",
             {
               "validator": "\\S+"
             }
           ],
           "cmd": "",
-          "name": "binaries/ffmpeg",
+          "name": "binaries/ffmpeg2",
+          "sidecar": true
+        },
+        {
+          "args":true,
+          "cmd": "",
+          "name": "binaries/ffprobe",
           "sidecar": true
         }
       ]

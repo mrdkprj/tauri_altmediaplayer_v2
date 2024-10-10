@@ -55,6 +55,8 @@
       {
         "title":"",
         "label":"Convert",
+        "width": 640,
+        "height": 700,
         "fullscreen": false,
         "resizable": true,
         "maximizable":false,
@@ -65,10 +67,32 @@
         "decorations":false,
         "skipTaskbar":true,
         "parent":"Player",
-        "transparent":true,
+        "transparent":false,
         "theme": "Dark",
         "shadow":false,
         "url":"src/convert/index.html",
+        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
+      },
+      {
+        "title":"",
+        "label":"Tag",
+        "width": 400,
+        "height": 600,
+        "minHeight": 250,
+        "fullscreen": false,
+        "resizable": true,
+        "maximizable":false,
+        "minimizable":false,
+        "closable":true,
+        "focus":false,
+        "visible":false,
+        "decorations":false,
+        "skipTaskbar":true,
+        "parent":"Player",
+        "transparent":false,
+        "theme": "Dark",
+        "shadow":false,
+        "url":"src/tag/index.html",
         "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
       }
   ],
@@ -98,7 +122,8 @@
       }
     },
     "externalBin": [
-      "binaries/ffmpeg"
+      "binaries/ffmpeg",
+      "binaries/ffprobe"
     ]
   },
   "identifier": "com.altmediaplayer.dev",
