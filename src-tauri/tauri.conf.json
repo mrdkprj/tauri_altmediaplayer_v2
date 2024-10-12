@@ -88,7 +88,7 @@
         "visible":false,
         "decorations":false,
         "skipTaskbar":true,
-        "parent":"Player",
+        "parent":"Playlist",
         "transparent":false,
         "theme": "Dark",
         "shadow":false,

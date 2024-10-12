@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
 use strum_macros::{Display, EnumIter};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -124,42 +122,5 @@ impl Default for Settings {
             },
             tags: Vec::new(),
         }
-    }
-}
-
-const SETTING_FILE_NAME: &str = "altmediaplayer.settings.json";
-
-pub fn get_settings(app_dir: PathBuf) -> std::io::Result<Settings> {
-    let temp_path = Path::new(&app_dir).join("temp");
-    if !temp_path.exists() {
-        fs::create_dir_all(&temp_path)?;
-    }
-
-    let file = temp_path.join(SETTING_FILE_NAME);
-
-    if file.exists() {
-        let raw_data = fs::read_to_string(file)?;
-        let settings = serde_json::from_str(&raw_data)?;
-        Ok(settings)
-    } else {
-        Ok(Settings::default())
-    }
-}
-
-pub fn save_settings(app_dir: PathBuf, settings: &mut Settings, player: &tauri::WebviewWindow, list: &tauri::WebviewWindow) -> tauri::Result<bool> {
-    settings.bounds.height = player.outer_size()?.height;
-    settings.bounds.width = player.outer_size()?.width;
-    settings.bounds.x = player.outer_position()?.x;
-    settings.bounds.y = player.outer_position()?.y;
-    settings.playlistBounds.height = list.outer_size()?.height;
-    settings.playlistBounds.width = list.outer_size()?.width;
-    settings.playlistBounds.x = list.outer_position()?.x;
-    settings.playlistBounds.y = list.outer_position()?.y;
-
-    let file = Path::new(&app_dir).join("temp").join(SETTING_FILE_NAME);
-    let data = serde_json::to_string::<Settings>(settings).unwrap();
-    match fs::write(file, data) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
     }
 }

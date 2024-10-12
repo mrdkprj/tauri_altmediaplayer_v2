@@ -17,10 +17,12 @@
     import { dirname, join } from "@tauri-apps/api/path";
     import { writeFile } from "@tauri-apps/plugin-fs";
     import { open } from "@tauri-apps/plugin-shell";
+    import { Settings, toBounds, toPhysicalPosition, toPhysicalSize } from "../settings";
+    import { Window } from "@tauri-apps/api/window";
 
     const ipc = new IPC("Player");
     let openContextMenu = false;
-    let settings: Mp.Settings;
+    const settings = new Settings();
     let video: HTMLVideoElement;
     let container: HTMLDivElement;
     let hideControlTimeout: number | null;
@@ -273,20 +275,20 @@
         const data = canvas.toDataURL("image/jpeg").replace(/^data:image\/jpeg;base64,/, "");
 
         const savePath = await save({
-            defaultPath: await join(settings.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
+            defaultPath: await join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
             filters: [{ name: "Image", extensions: ["jpeg", "jpg"] }],
         });
 
         if (!savePath) return;
 
-        settings.defaultPath = await dirname(savePath);
+        settings.data.defaultPath = await dirname(savePath);
 
         writeFile(
             savePath,
             Uint8Array.from(atob(data), (c) => c.charCodeAt(0)),
         );
 
-        await ipc.send("sync-settings", settings);
+        await ipc.invoke("set_settings", settings.data);
     };
 
     const minimize = async () => {
@@ -294,8 +296,19 @@
     };
 
     const toggleMaximize = async () => {
+        const player = Window.getCurrent();
+
+        if ($appState.isMaximized) {
+            await player.unmaximize();
+            player.setPosition(toPhysicalPosition(settings.data.bounds));
+        } else {
+            const position = await player.innerPosition();
+            const size = await player.innerSize();
+            settings.data.bounds = toBounds(position, size);
+            await player.maximize();
+        }
         dispatch({ type: "isMaximized", value: !$appState.isMaximized });
-        await WebviewWindow.getCurrent().toggleMaximize();
+        settings.data.isMaximized = $appState.isMaximized;
     };
 
     const onWindowSizeChanged = (e: Mp.ResizeEvent) => {
@@ -317,7 +330,7 @@
         dispatch({ type: "autohide", value: false });
 
         await WebviewWindow.getCurrent().setFullscreen(false);
-        if (settings.playlistVisible) {
+        if (settings.data.playlistVisible) {
             (await WebviewWindow.getByLabel("Playlist"))?.show();
         }
     };
@@ -379,7 +392,7 @@
     };
 
     const onKeydown = (e: KeyboardEvent) => {
-        if (e.ctrlKey && e.key === "r") e.preventDefault();
+        e.preventDefault();
 
         if (e.key === "F5") return ipc.invoke("restart", undefined);
 
@@ -476,31 +489,27 @@
     const togglePlaylistWindow = async () => {
         const playlist = WebviewWindow.getByLabel("Playlist");
 
-        settings.playlistVisible = !settings.playlistVisible;
+        settings.data.playlistVisible = !settings.data.playlistVisible;
 
-        if (settings.playlistVisible) {
+        if (settings.data.playlistVisible) {
             (await playlist)?.show();
         } else {
             (await playlist)?.hide();
         }
 
-        await ipc.send("sync-settings", settings);
+        await ipc.invoke("set_settings", settings.data);
     };
 
     const changeTheme = async (theme: Mp.Theme) => {
-        settings.theme = theme;
+        settings.data.theme = theme;
         await ipc.invoke("change_theme", theme);
-        await ipc.send("sync-settings", settings);
+        await ipc.invoke("set_settings", settings.data);
     };
 
     const showSettingsJson = async () => {
         const dataDir = await appDataDir();
         const fullpath = await join(dataDir, "temp", "altmediaplayer.settings.json");
         await open(fullpath);
-    };
-
-    const syncSettings = (newSettings: Mp.Settings) => {
-        settings = newSettings;
     };
 
     const handleContextMenu = (e: Mp.ContextMenuEvent) => {
@@ -536,51 +545,100 @@
         }
     };
 
-    const close = async () => {
-        /*
-settings.audio.mute = $appState.media.mute;
-        settings.video.fitToWindow = $appState.media.fitToWindow
-        settings.audio.volume = $appState.media.videoVolume;
-        settings.audio.ampLevel = $appState.media.ampLevel;
-        settings.video.playbackSpeed = $appState.media.playbackSpeed;
-        settings.video.seekSpeed = $appState.media.seekSpeed
+    const beforeClose = async () => {
+        const player = Window.getCurrent();
+        if (!$appState.isMaximized) {
+            const position = await player.innerPosition();
+            const size = await player.innerSize();
+            settings.data.bounds = toBounds(position, size);
+        }
 
-        await ipc.invoke("save", settings)
-*/
-        WebviewWindow.getCurrent().close();
+        const playlist = await Window.getByLabel("Playlist");
+        if (playlist) {
+            const position = await playlist.innerPosition();
+            const size = await playlist.innerSize();
+            settings.data.playlistBounds = toBounds(position, size);
+        }
+        const dataDir = await appDataDir();
+        await settings.save(dataDir);
+
+        await WebviewWindow.getCurrent().destroy();
     };
 
-    const prepare = async (e: Mp.ReadyEvent) => {
-        settings = e.settings;
+    const close = async () => {
+        await WebviewWindow.getCurrent().close();
+    };
 
-        $lang = settings.locale.lang;
+    const prepare = async () => {
+        const dataDir = await appDataDir();
+        await settings.init(dataDir);
 
-        dispatch({ type: "isMaximized", value: settings.isMaximized });
+        await ipc.invoke("prepare_windows", settings.data);
 
-        updateVolume(settings.audio.volume);
-        updateAmpLevel(settings.audio.ampLevel);
+        $lang = settings.data.locale.lang;
 
-        dispatch({ type: "mute", value: settings.audio.mute });
+        dispatch({ type: "isMaximized", value: settings.data.isMaximized });
 
-        dispatch({ type: "fitToWindow", value: settings.video.fitToWindow });
-        dispatch({ type: "playbackSpeed", value: settings.video.playbackSpeed });
-        dispatch({ type: "seekSpeed", value: settings.video.seekSpeed });
+        updateVolume(settings.data.audio.volume);
+        updateAmpLevel(settings.data.audio.ampLevel);
+
+        dispatch({ type: "mute", value: settings.data.audio.mute });
+
+        dispatch({ type: "fitToWindow", value: settings.data.video.fitToWindow });
+        dispatch({ type: "playbackSpeed", value: settings.data.video.playbackSpeed });
+        dispatch({ type: "seekSpeed", value: settings.data.video.seekSpeed });
 
         initPlayer();
+
+        const player = WebviewWindow.getCurrent();
+
+        await player.setPosition(toPhysicalPosition(settings.data.bounds));
+
+        await player.setSize(toPhysicalSize(settings.data.bounds));
+
+        if (await player.isMaximized()) {
+            await player.maximize();
+        }
+        await player.show();
+    };
+
+    const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
+        settings.data.sort.order = sortOrder;
+        await ipc.invoke("set_settings", settings.data);
+    };
+
+    const toggleGroupBy = async () => {
+        settings.data.sort.groupBy = !settings.data.sort.groupBy;
+        await ipc.invoke("set_settings", settings.data);
+    };
+
+    const changeDefaultPath = async (defaultPath: string) => {
+        settings.data.defaultPath = defaultPath;
+        await ipc.invoke("set_settings", settings.data);
+    };
+
+    const changeTags = async (tags: string[]) => {
+        settings.data.tags = tags;
+        await ipc.invoke("set_settings", settings.data);
     };
 
     onMount(() => {
-        ipc.receiveAny("ready", prepare);
-        ipc.receive("sync-settings", syncSettings);
+        prepare();
+        ipc.receiveTauri("tauri://close-requested", beforeClose);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri<Mp.FileDropEvent>("tauri://drag-drop", onFileDrop);
         ipc.receive("toggle-play", togglePlay);
+        ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
         ipc.receive("release-file", releaseFile);
         ipc.receive("after-toggle-maximize", onWindowSizeChanged);
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
+        ipc.receive("change-sort-order", changeSortOrder);
+        ipc.receive("toggle-group-by", toggleGroupBy);
+        ipc.receive("change-default-path", changeDefaultPath);
+        ipc.receive("change-tags", changeTags);
         ipc.receive("log", (data) => console.log(data.log));
 
         return () => {

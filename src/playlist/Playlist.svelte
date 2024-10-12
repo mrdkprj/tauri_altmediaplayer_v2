@@ -11,6 +11,7 @@
     import { IPC } from "../ipc";
     import util from "../util";
     import Deferred from "../deferred";
+    import { toPhysicalPosition, toPhysicalSize } from "../settings";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { dirname, join } from "@tauri-apps/api/path";
@@ -23,7 +24,6 @@
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
     let fileReleasePromise: Deferred<number>;
-    let settings: Mp.Settings;
 
     const ipc = new IPC("Playlist");
     const List_Item_Padding = 10;
@@ -596,17 +596,14 @@
     };
 
     const changeSortOrder = (sortOrder: Mp.SortOrder) => {
-        settings.sort.order = sortOrder;
-        ipc.send("sync-settings", settings);
         dispatch({ type: "sortType", value: { order: sortOrder, groupBy: $appState.sortType.groupBy } });
         sortPlayList();
+        ipc.sendTo("Player", "change-sort-order", sortOrder);
     };
 
     const toggleGroupBy = () => {
-        const groupBy = !$appState.sortType.groupBy;
-        settings.sort.groupBy = groupBy;
-        ipc.send("sync-settings", settings);
-        dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy } });
+        dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy } });
+        ipc.sendTo("Player", "toggle-group-by", {});
     };
 
     const copyFileNameToClipboard = async (fullPath: boolean) => {
@@ -626,7 +623,6 @@
         if (!file) return;
 
         const metadata = await util.getMediaMetadata(file.fullPath);
-        console.log(metadata);
         const metadataString = JSON.stringify(metadata, undefined, 2).replaceAll('"', "");
         const result = await ask(metadataString, { kind: "info", okLabel: "OK", cancelLabel: "Copy" });
         if (!result) {
@@ -647,15 +643,11 @@
 
     const openConvert = async (opener: Mp.DialogOpener) => {
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId) ?? EmptyFile;
-        await ipc.sendTo("Convert", "open-convert", { file, opener, settings });
+        await ipc.sendTo("Convert", "open-convert", { file, opener });
     };
 
     const openTagEditor = async () => {
-        await ipc.sendTo("Tag", "open-tag-editor", { settings });
-    };
-
-    const syncSettings = (newSettings: Mp.Settings) => {
-        settings = newSettings;
+        await ipc.sendTo("Tag", "open-tag-editor", {});
     };
 
     const onKeydown = (e: KeyboardEvent) => {
@@ -774,28 +766,36 @@
     };
 
     const close = async () => {
-        settings.playlistVisible = false;
-        await ipc.send("sync-settings", settings);
+        await ipc.sendTo("Player", "toggle-playlist-visible", {});
         await WebviewWindow.getCurrent().hide();
     };
 
-    const prepare = (e: Mp.ReadyEvent) => {
-        console.log("playlistready");
-        settings = e.settings;
+    const prepare = async () => {
+        const settings = await ipc.invoke("get_settings", undefined);
         $lang = settings.locale.lang;
-        dispatch;
-        dispatch({ type: "sortType", value: e.settings.sort });
+
+        dispatch({ type: "sortType", value: { order: settings.sort.order, groupBy: settings.sort.groupBy } });
+
+        const playlist = WebviewWindow.getCurrent();
+
+        await playlist.setPosition(toPhysicalPosition(settings.playlistBounds));
+
+        await playlist.setSize(toPhysicalSize(settings.playlistBounds));
+
+        if (settings.playlistVisible) {
+            await playlist.show();
+        }
     };
 
     onMount(() => {
-        ipc.receiveAny("ready", prepare);
-        ipc.receive("sync-settings", syncSettings);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receive("load-playlist", initPlaylist);
         ipc.receiveTauri<Mp.FileDropEvent>("tauri://drag-drop", onFileDrop);
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
+
+        prepare();
 
         return () => {
             ipc.release();

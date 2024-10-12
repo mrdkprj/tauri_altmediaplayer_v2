@@ -118,7 +118,7 @@ class Util {
     async getMediaMetadata(fullPath: string): Promise<Mp.Metadata> {
         const args = ["-hide_banner", "-v", "error", "-print_format", "json", "-show_streams", "-show_format", "-i", fullPath];
         const command = Command.sidecar("binaries/ffprobe", args);
-        console.log(command);
+
         return new Promise(async (resolve, reject) => {
             const result: string[] = [];
 
@@ -131,22 +131,23 @@ class Util {
             command.on("close", async () => {
                 console.log(result);
                 const metadata = JSON.parse(result.join("\n")) as Mp.Metadata;
-                // metadata.Volume = await this.getVolume(fullPath);
+                metadata.Volume = await this.getVolume(fullPath);
                 resolve(metadata);
             });
             command.stdout.on("data", (line) => {
                 console.log(line);
                 result.push(line);
             });
+
+            this.child = await command.spawn();
         });
     }
 
     async getVolume(sourcePath: string): Promise<Mp.MediaVolume> {
         const args = ["-i", sourcePath, "-vn", "-af", "volumedetect", "-f", "null", "-"];
+        const command = Command.sidecar("binaries/ffmpeg", args);
 
         return new Promise(async (resolve, reject) => {
-            const command = Command.sidecar("binaries/ffmpeg", args);
-
             const result: string[] = [];
 
             command.on("error", async (stderr: any) => {

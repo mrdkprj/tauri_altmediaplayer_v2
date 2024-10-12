@@ -5,9 +5,10 @@ declare global {
     type Renderer = { [key in RendererName]: Electron.BrowserWindow | null };
 
     type MainChannelEventMap = {
+        ready: Mp.ReadyEvent;
         minimize: Mp.Event;
-        "sync-settings": Mp.Settings;
         "toggle-maximize": Mp.Event;
+        "toggle-playlist-visible": Mp.Event;
         close: Mp.Event;
         shortcut: Mp.ShortcutEvent;
         progress: Mp.ProgressEvent;
@@ -20,7 +21,6 @@ declare global {
         "open-playlist-context": Mp.Event;
         "change-playlist-order": Mp.ChangePlaylistOrderRequet;
         "toggle-play": Mp.Event;
-        "toggle-shuffle": Mp.Event;
         "toggle-fullscreen": Mp.FullscreenChange;
         "close-convert": Mp.Event;
         "request-convert": Mp.ConvertRequest;
@@ -37,7 +37,8 @@ declare global {
 
     type RendererChannelEventMap = {
         ready: Mp.ReadyEvent;
-        "sync-settings": Mp.Settings;
+        "request-settings": Mp.Event;
+        "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "open-context-menu": Mp.PopupContextMenuRequest;
         "load-playlist": Mp.LoadPlaylistEvent;
@@ -57,15 +58,19 @@ declare global {
         "change-playback-speed": Mp.ChangePlaybackSpeedRequest;
         "change-seek-speed": Mp.ChangeSeekSpeedRequest;
         "after-remove-playlist": Mp.RemovePlaylistItemResult;
+        "change-sort-order": Mp.SortOrder;
+        "toggle-group-by": Mp.Event;
         "clear-playlist": Mp.Event;
         "sort-type-change": Mp.SortType;
         "start-rename": Mp.Event;
         "after-rename": Mp.RenameResult;
         "after-sourcefile-select": Mp.FileSelectResult;
         "open-convert": Mp.OpenConvertDialogEvent;
+        "change-default-path": string;
         "after-convert": Mp.Event;
         "picture-in-picture": Mp.Event;
-        "open-tag-editor": Mp.OpenTagEditorEvent;
+        "open-tag-editor": Mp.Event;
+        "change-tags": string[];
     };
 
     interface Api {
@@ -341,7 +346,6 @@ declare global {
         type OpenConvertDialogEvent = {
             file: MediaFile;
             opener: DialogOpener;
-            settings: Mp.Settings;
         };
 
         type ConvertRequest = {
@@ -372,10 +376,6 @@ declare global {
 
         type RadioGroupChangeEvent<T> = {
             value: T;
-        };
-
-        type OpenTagEditorEvent = {
-            settings: Mp.Settings;
         };
 
         type MessageLabel = {

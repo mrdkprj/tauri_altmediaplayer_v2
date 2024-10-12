@@ -12,15 +12,7 @@
     import { basename, dirname, join } from "@tauri-apps/api/path";
 
     const ipc = new IPC("Convert");
-    let settings: Mp.Settings;
-
-    const show = async (e: Mp.OpenConvertDialogEvent) => {
-        if (!$appState.converting && e.opener == "user") {
-            changeSourceFile(e.file);
-        }
-        settings = e.settings;
-        await WebviewWindow.getCurrent().show();
-    };
+    let defaultPath = "";
 
     const changeSourceFile = (file: Mp.MediaFile) => {
         dispatch({ type: "sourceFile", value: file.fullPath });
@@ -72,7 +64,7 @@
         const fileName = file.name.replace(util.extname(file.name), "");
 
         const selectedPath = await save({
-            defaultPath: await join(settings.defaultPath, `${fileName}.${extension}`),
+            defaultPath: await join(defaultPath, `${fileName}.${extension}`),
             filters: [
                 {
                     name: data.convertFormat === "MP4" ? "Video" : "Audio",
@@ -83,7 +75,9 @@
 
         if (!selectedPath) return endConvert();
 
-        settings.defaultPath = await dirname(selectedPath);
+        defaultPath = await dirname(selectedPath);
+
+        ipc.sendTo("Player", "change-default-path", defaultPath);
 
         const shouldReplace = file.fullPath === selectedPath;
 
@@ -172,6 +166,15 @@
         if (e.key === "Escape") {
             await closeDialog();
         }
+    };
+
+    const show = async (e: Mp.OpenConvertDialogEvent) => {
+        const settings = await ipc.invoke("get_settings", undefined);
+        if (!$appState.converting && e.opener == "user") {
+            changeSourceFile(e.file);
+        }
+        defaultPath = settings.defaultPath;
+        await WebviewWindow.getCurrent().show();
     };
 
     onMount(() => {

@@ -1,7 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
+use settings::Settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::env;
+use std::sync::Mutex;
 use tauri::Emitter;
 use tauri::Manager;
 pub mod helper;
@@ -11,10 +13,10 @@ static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
 static THEME_DARK: &str = "Dark";
 
-#[derive(Clone, Serialize)]
-struct ReadyEvent {
-    settings: settings::Settings,
-}
+// #[derive(Clone, Serialize)]
+// struct ReadyEvent {
+//     settings: settings::Settings,
+// }
 
 #[derive(Clone, Serialize)]
 struct LoadFileEvent {
@@ -47,13 +49,17 @@ fn get_init_args(app_handle: tauri::AppHandle) -> Vec<String> {
 }
 
 #[tauri::command]
-fn save(app: tauri::AppHandle, mut payload: settings::Settings) -> tauri::Result<bool> {
-    let dir = app.path().app_data_dir().unwrap();
-    let player = app.get_webview_window(PLAYER).unwrap();
-    let list = app.get_webview_window(PLAY_LIST).unwrap();
-    match settings::save_settings(dir, &mut payload, &player, &list) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+fn set_settings(app: tauri::AppHandle, payload: Settings) {
+    app.manage(Mutex::new(payload));
+}
+
+#[tauri::command]
+fn get_settings(window: tauri::WebviewWindow) -> Settings {
+    let app = window.app_handle();
+    if let Some(settings) = app.try_state::<Mutex<Settings>>() {
+        settings.lock().unwrap().clone()
+    } else {
+        Settings::default()
     }
 }
 
@@ -79,26 +85,17 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
 }
 
 #[tauri::command]
-fn retrieve_settings(window: tauri::WebviewWindow) {
-    let app = window.app_handle();
-    if let Some(settings) = app.try_state::<settings::Settings>() {
-        app.emit(
-            "ready",
-            ReadyEvent {
-                settings: settings.inner().clone(),
-            },
-        )
-        .unwrap();
-    }
-}
-
-#[tauri::command]
 async fn refresh_tag_contextmenu(payload: Vec<String>) {
     helper::refresh_tag_contextmenu(PLAY_LIST, payload).await;
 }
 
-fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
-    let settings = app.state::<settings::Settings>().inner();
+#[tauri::command]
+fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
+    app.manage(Mutex::new(payload));
+
+    let state = app.state::<Mutex<Settings>>();
+
+    let settings = state.lock().unwrap();
 
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
@@ -110,50 +107,13 @@ fn prepare_windows(app: &tauri::App) -> tauri::Result<()> {
 
     player.set_theme(Some(theme))?;
 
-    player.set_position(tauri::PhysicalPosition {
-        x: settings.bounds.x,
-        y: settings.bounds.y,
-    })?;
+    helper::create_player_menu(&player, &settings)?;
 
-    player.set_size(tauri::PhysicalSize {
-        width: settings.bounds.width,
-        height: settings.bounds.height,
-    })?;
+    helper::create_playlist_menu(&playlist, &settings)?;
 
-    player.show()?;
+    helper::create_sort_menu(&playlist, &settings)?;
 
-    if settings.isMaximized {
-        player.maximize()?;
-    }
-
-    helper::create_player_menu(&player, settings)?;
-
-    playlist.set_position(tauri::PhysicalPosition {
-        x: settings.playlistBounds.x,
-        y: settings.playlistBounds.y,
-    })?;
-
-    playlist.set_size(tauri::PhysicalSize {
-        width: settings.playlistBounds.width,
-        height: settings.playlistBounds.height,
-    })?;
-
-    if settings.playlistVisible {
-        playlist.show()?;
-    }
-
-    helper::create_playlist_menu(&playlist, settings)?;
-
-    helper::create_sort_menu(&playlist, settings)?;
-
-    app.emit(
-        "ready",
-        ReadyEvent {
-            settings: settings.clone(),
-        },
-    )?;
-
-    Ok(())
+    Ok(true)
 }
 
 pub fn run() {
@@ -172,11 +132,6 @@ pub fn run() {
             .unwrap();
         }))
         .setup(|app| {
-            let dir = app.path().app_data_dir()?;
-            let settings = settings::get_settings(dir)?;
-            app.manage(settings);
-            prepare_windows(app)?;
-
             let mut urls = Vec::new();
             for arg in env::args().skip(1) {
                 urls.push(arg);
@@ -200,7 +155,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_init_args, retrieve_settings, save, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu])
+        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }

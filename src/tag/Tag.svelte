@@ -3,8 +3,7 @@
     import { IPC } from "../ipc";
     import { onMount } from "svelte";
 
-    const ipc = new IPC("Convert");
-    let settings: Mp.Settings;
+    const ipc = new IPC("Tag");
     let tags: string[] = [];
 
     const deleteTag = (index: number) => {
@@ -19,9 +18,7 @@
     const save = async () => {
         const sortedTags = tags.sort().filter(Boolean);
         tags = [...new Set(sortedTags)];
-        settings.tags = tags;
-        await ipc.send("sync-settings", settings);
-        await ipc.invoke("refresh_tag_contextmenu", settings.tags);
+        await ipc.sendTo("Player", "change-tags", tags);
         close();
     };
 
@@ -29,8 +26,8 @@
         await WebviewWindow.getCurrent().hide();
     };
 
-    const show = async (e: Mp.OpenTagEditorEvent) => {
-        settings = e.settings;
+    const show = async () => {
+        const settings = await ipc.invoke("get_settings", undefined);
         tags = settings.tags;
         await WebviewWindow.getCurrent().show();
     };

@@ -7,7 +7,8 @@ type TauriCommand<Req, Res> = {
 };
 
 type TauriCommandMap = {
-    retrieve_settings: TauriCommand<undefined, undefined>;
+    prepare_windows: TauriCommand<Mp.Settings, boolean>;
+    get_settings: TauriCommand<undefined, Mp.Settings>;
     restart: TauriCommand<undefined, undefined>;
     save: TauriCommand<Mp.Settings, boolean>;
     open_context_menu: TauriCommand<Mp.Position, undefined>;
@@ -18,6 +19,7 @@ type TauriCommandMap = {
     // "stat": TauriCommand<Mp.TauriStatPayload, Mp.TauriStatResponse>;
     get_media_metadata: TauriCommand<Mp.MetadataRequest, any>;
     refresh_tag_contextmenu: TauriCommand<string[], any>;
+    set_settings: TauriCommand<Mp.Settings, undefined>;
     // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
     // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
     // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;

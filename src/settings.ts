@@ -1,3 +1,7 @@
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
+import { join } from "@tauri-apps/api/path";
+import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+
 const defaultSettings: Mp.Settings = {
     bounds: { width: 1200, height: 800, x: 0, y: 0 },
     playlistBounds: { width: 400, height: 700, x: 0, y: 0 },
@@ -26,16 +30,48 @@ const defaultSettings: Mp.Settings = {
     tags: [],
 };
 
-class Settings {
-    data = defaultSettings;
-    private ready = false;
+export const toPhysicalPosition = (bounds: Mp.Bounds) => {
+    return new PhysicalPosition(bounds.x, bounds.y);
+};
 
-    init(settings: Mp.Settings) {
-        if (this.ready) return this.data;
+export const toPhysicalSize = (bounds: Mp.Bounds) => {
+    return new PhysicalSize(bounds.width, bounds.height);
+};
 
-        this.ready = true;
+export const toBounds = (position: PhysicalPosition, size: PhysicalSize): Mp.Bounds => {
+    return {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+    };
+};
 
-        return this.createSettings(settings);
+export class Settings {
+    data: Mp.Settings;
+
+    constructor() {
+        this.data = defaultSettings;
+    }
+
+    async init(dataDir: string): Promise<Mp.Settings> {
+        const settingPath = await join(dataDir, "temp", "altmediaplayer.settings.json");
+        const fileExists = await exists(settingPath);
+
+        if (fileExists) {
+            const rawData = await readTextFile(settingPath);
+            this.data = this.createSettings(JSON.parse(rawData));
+        } else {
+            await writeTextFile(settingPath, JSON.stringify(this.data));
+        }
+
+        return this.data;
+    }
+
+    async save(dataDir: string) {
+        const settingPath = await join(dataDir, "temp", "altmediaplayer.settings.json");
+        console.log(this.data);
+        await writeTextFile(settingPath, JSON.stringify(this.data));
     }
 
     // private setLanguage(langs:string[]){
@@ -77,6 +113,3 @@ class Settings {
         return config;
     }
 }
-
-const settings = new Settings();
-export default settings;
