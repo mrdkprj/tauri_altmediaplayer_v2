@@ -2390,26 +2390,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mediaplayer"
-version = "0.0.0"
-dependencies = [
- "async-std",
- "once_cell",
- "serde",
- "serde_json",
- "strum",
- "strum_macros",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "wcpopup",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4047,6 +4027,26 @@ dependencies = [
  "pkg-config",
  "toml 0.8.2",
  "version-compare",
+]
+
+[[package]]
+name = "taltmediaplayer"
+version = "0.0.0"
+dependencies = [
+ "async-std",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "wcpopup",
 ]
 
 [[package]]

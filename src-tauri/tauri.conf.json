@@ -16,6 +16,8 @@
       {
         "title":"",
         "label":"Player",
+        "minHeight":400,
+        "minWidth":400,
         "fullscreen": false,
         "resizable": true,
         "maximizable":true,
@@ -46,7 +48,7 @@
         "skipTaskbar":true,
         "parent":"Player",
         "transparent":false,
-        "dragDropEnabled":true,
+        "dragDropEnabled":false,
         "theme": "Dark",
         "shadow":false,
         "url":"src/playlist/index.html",
@@ -126,7 +128,7 @@
       "binaries/ffprobe"
     ]
   },
-  "identifier": "com.altmediaplayer.dev",
-  "productName": "altmediaplayer",
+  "identifier": "com.taltmediaplayer.dev",
+  "productName": "taltmediaplayer",
   "version": "0.0.1"
 }

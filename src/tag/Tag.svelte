@@ -28,6 +28,7 @@
 
     const show = async () => {
         const settings = await ipc.invoke("get_settings", undefined);
+        console.log(settings);
         tags = settings.tags;
         await WebviewWindow.getCurrent().show();
     };

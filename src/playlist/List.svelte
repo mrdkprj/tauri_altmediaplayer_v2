@@ -3,6 +3,7 @@
     import { appState, dispatch } from "./appStateReducer";
 
     export let onPlaylistItemClicked: (id: string) => void;
+    export let onEndDrag: (data: Mp.ChangePlaylistOrderRequet) => void;
     export let onMouseDown: (e: MouseEvent) => void;
     export let scrollToElement: (id: string) => void;
     export let getChildIndex: (id: string | null | undefined) => number;
@@ -44,7 +45,7 @@
         if (!$appState.dragState.dragging) return;
 
         if ($appState.dragState.targetId) {
-            window.api.send("change-playlist-order", {
+            onEndDrag({
                 start: getChildIndex($appState.dragState.startId),
                 end: getChildIndex($appState.dragState.targetId),
                 currentIndex: $appState.currentIndex,

@@ -81,7 +81,7 @@ declare global {
 
     namespace Mp {
         type Lang = "en" | "ja";
-        type Theme = "dark" | "light";
+        type Theme = "Dark" | "Light";
         type ConvertFormat = "MP4" | "MP3";
         type ThumbButtonType = "Play" | "Pause" | "Previous" | "Next";
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;

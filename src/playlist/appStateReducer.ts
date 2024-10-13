@@ -1,4 +1,3 @@
-import util from "../util";
 import { writable } from "svelte/store";
 
 type RenamePartialRect = {
@@ -97,16 +96,6 @@ type AppAction =
     | { type: "highlightItems"; value: string[] }
     | { type: "changeHighlight"; value: number };
 
-const sortFiles = (state: AppState, files: Mp.MediaFile[]) => {
-    if (!files.length) return;
-
-    if (state.sortType.groupBy) {
-        util.sortByGroup(files, state.sortType.order);
-    } else {
-        util.sort(files, state.sortType.order);
-    }
-};
-
 const updater = (state: AppState, action: AppAction) => {
     switch (action.type) {
         case "currentIndex":
@@ -140,13 +129,11 @@ const updater = (state: AppState, action: AppAction) => {
             return { ...state, sortType: action.value };
 
         case "files":
-            sortFiles(state, action.value);
             return { ...state, files: action.value };
 
         case "appendFiles": {
             const files = [...state.files];
             files.push(...action.value);
-            sortFiles(state, files);
             return { ...state, files };
         }
 

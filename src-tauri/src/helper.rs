@@ -1,9 +1,8 @@
-use crate::settings::{Settings, SortOrder, Theme};
+use crate::settings::{Settings, SortOrder};
 use async_std::sync::Mutex;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tauri::Emitter;
 use wcpopup::{
@@ -93,14 +92,6 @@ fn from_tauri_theme(theme: tauri::Theme) -> MenuTheme {
     }
 }
 
-fn from_settings_theme(theme: Theme) -> MenuTheme {
-    if theme == Theme::Dark {
-        MenuTheme::Dark
-    } else {
-        MenuTheme::Light
-    }
-}
-
 pub async fn refresh_tag_contextmenu(menu_name: &str, tags: Vec<String>) {
     let map = MENU_MAP.lock().await;
     let menu = map.get(menu_name).unwrap();
@@ -145,7 +136,7 @@ fn get_menu_config(theme: MenuTheme) -> Config {
 pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
 
-    let config = get_menu_config(from_settings_theme(settings.theme));
+    let config = get_menu_config(settings.theme);
 
     let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
 
@@ -197,14 +188,8 @@ fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::Theme.to_string();
     let mut parent = builder.submenu(&id, "Theme", None);
 
-    for theme in Theme::iter() {
-        let theme_str = if theme == Theme::Dark {
-            "Dark"
-        } else {
-            "Light"
-        };
-        parent.radio(theme_str, theme_str, &id, theme == settings.theme, None);
-    }
+    parent.radio("Dark", "Dark", &id, settings.theme == wcpopup::config::Theme::Dark, None);
+    parent.radio("Light", "Light", &id, settings.theme == wcpopup::config::Theme::Light, None);
 
     parent.build().unwrap();
 }
@@ -212,7 +197,7 @@ fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
 
-    let config = get_menu_config(from_settings_theme(settings.theme));
+    let config = get_menu_config(settings.theme);
     let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
 
     builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
@@ -251,17 +236,17 @@ fn create_tag_context_menu(builder: &mut MenuBuilder, settings: &Settings) {
 
 pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
-    let config = get_menu_config(from_settings_theme(settings.theme));
+    let config = get_menu_config(settings.theme);
     let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
 
     let id = &PlaylistMenu::Sort.to_string();
 
     builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", settings.sort.groupBy, None);
     builder.separator();
-    builder.radio(&SortMenu::NameDesc.to_string(), "Name(Asc)", id, settings.sort.order == SortOrder::NameAsc, None);
+    builder.radio(&SortMenu::NameAsc.to_string(), "Name(Asc)", id, settings.sort.order == SortOrder::NameAsc, None);
     builder.radio(&SortMenu::NameDesc.to_string(), "Name(Desc)", id, settings.sort.order == SortOrder::NameDesc, None);
-    builder.radio(&SortMenu::NameDesc.to_string(), "Date(Asc)", id, settings.sort.order == SortOrder::DateAsc, None);
-    builder.radio(&SortMenu::NameDesc.to_string(), "Date(Desc", id, settings.sort.order == SortOrder::DateDesc, None);
+    builder.radio(&SortMenu::DateAsc.to_string(), "Date(Asc)", id, settings.sort.order == SortOrder::DateAsc, None);
+    builder.radio(&SortMenu::DateDesc.to_string(), "Date(Desc", id, settings.sort.order == SortOrder::DateDesc, None);
 
     let menu = builder.build().unwrap();
 

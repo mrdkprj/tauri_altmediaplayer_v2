@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter};
+use wcpopup::config::Theme;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Bounds {
@@ -59,12 +60,6 @@ pub enum Lang {
 pub struct Locale {
     pub mode: Mode,
     pub lang: Lang,
-}
-
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Display, EnumIter)]
-pub enum Theme {
-    Dark = 1,
-    Light = 2,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

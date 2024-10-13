@@ -11,7 +11,6 @@
     import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
-    import { appDataDir } from "@tauri-apps/api/path";
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { save } from "@tauri-apps/plugin-dialog";
     import { dirname, join } from "@tauri-apps/api/path";
@@ -49,6 +48,7 @@
 
         video.volume = volume;
         dispatch({ type: "videoVolume", value: volume });
+        settings.data.audio.volume = $appState.media.videoVolume;
     };
 
     const getGainNode = () => {
@@ -74,12 +74,14 @@
         const gainNode = getGainNode();
 
         dispatch({ type: "ampLevel", value: ampLevel });
+        settings.data.audio.ampLevel = $appState.media.ampLevel;
 
         gainNode.gain.value = ampLevel * 10;
     };
 
     const toggleMute = () => {
         dispatch({ type: "mute", value: !$appState.media.mute });
+        settings.data.audio.mute = $appState.media.mute;
     };
 
     const onFileDrop = (e: Mp.FileDropEvent) => {
@@ -372,6 +374,7 @@
     const onChangeDisplayMode = () => {
         const mode = !$appState.media.fitToWindow;
         dispatch({ type: "fitToWindow", value: mode });
+        settings.data.video.fitToWindow = $appState.media.fitToWindow;
         changeVideoSize();
     };
 
@@ -496,19 +499,15 @@
         } else {
             (await playlist)?.hide();
         }
-
-        await ipc.invoke("set_settings", settings.data);
     };
 
     const changeTheme = async (theme: Mp.Theme) => {
         settings.data.theme = theme;
         await ipc.invoke("change_theme", theme);
-        await ipc.invoke("set_settings", settings.data);
     };
 
     const showSettingsJson = async () => {
-        const dataDir = await appDataDir();
-        const fullpath = await join(dataDir, "temp", "altmediaplayer.settings.json");
+        const fullpath = settings.getSettingsFilePath();
         await open(fullpath);
     };
 
@@ -559,8 +558,8 @@
             const size = await playlist.innerSize();
             settings.data.playlistBounds = toBounds(position, size);
         }
-        const dataDir = await appDataDir();
-        await settings.save(dataDir);
+
+        await settings.save();
 
         await WebviewWindow.getCurrent().destroy();
     };
@@ -570,8 +569,7 @@
     };
 
     const prepare = async () => {
-        const dataDir = await appDataDir();
-        await settings.init(dataDir);
+        await settings.init();
 
         await ipc.invoke("prepare_windows", settings.data);
 
@@ -599,6 +597,7 @@
         if (await player.isMaximized()) {
             await player.maximize();
         }
+
         await player.show();
     };
 
@@ -620,6 +619,7 @@
     const changeTags = async (tags: string[]) => {
         settings.data.tags = tags;
         await ipc.invoke("set_settings", settings.data);
+        await ipc.invoke("refresh_tag_contextmenu", tags);
     };
 
     onMount(() => {

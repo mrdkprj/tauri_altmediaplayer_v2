@@ -14,6 +14,7 @@
     import { toPhysicalPosition, toPhysicalSize } from "../settings";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { Webview } from "@tauri-apps/api/webview";
     import { dirname, join } from "@tauri-apps/api/path";
     import { exists, rename, remove } from "@tauri-apps/plugin-fs";
     import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -63,6 +64,7 @@
     };
 
     const onFileDrop = async (e: Mp.FileDropEvent) => {
+        console.log("filedrop");
         if ($appState.dragState.dragging) return;
 
         const files = getDropFiles(e);
@@ -189,6 +191,19 @@
             .map((_v, i) => i)
             .filter((i) => i !== $appState.currentIndex);
         randomIndices = util.shuffle(target);
+    };
+
+    const changePlaylistItemOrder = (data: Mp.ChangePlaylistOrderRequet) => {
+        if (data.start === data.end) return;
+
+        const currentId = getCurrentFile().id;
+
+        const replacing = $appState.files.splice(data.start, 1)[0];
+        const files = $appState.files.splice(data.end, 0, replacing);
+
+        const currentIndex = $appState.files.findIndex((file) => file.id == currentId);
+        dispatch({ type: "currentIndex", value: currentIndex });
+        dispatch({ type: "files", value: files });
     };
 
     const clearPlaylist = () => {
@@ -785,6 +800,7 @@
         if (settings.playlistVisible) {
             await playlist.show();
         }
+        Webview.getCurrent().onDragDropEvent((e) => console.log(e));
     };
 
     onMount(() => {
@@ -806,10 +822,23 @@
 <svelte:window on:contextmenu={onContextMenu} on:keydown={onKeydown} on:mouseup={onMouseUp} />
 
 <div class="viewport">
-    <div data-tauri-drag-region class="title-bar">
+    <div class="title-bar">
         <div class="close-btn" on:click={close} on:keydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
     </div>
-    <div class="playlist-viewport" class:group-by={$appState.sortType.groupBy} bind:this={fileListContainer} role="button" tabindex="-1" on:dragover={(e) => e.preventDefault()}>
+
+    <div
+        class="playlist-viewport"
+        class:group-by={$appState.sortType.groupBy}
+        bind:this={fileListContainer}
+        role="button"
+        tabindex="-1"
+        on:scroll={endEditFileName}
+        on:dragover={(e) => e.preventDefault()}
+        on:drop={(e) => {
+            e.preventDefault();
+            console.log(e.dataTransfer?.files[0]);
+        }}
+    >
         {#if $appState.rename.renaming}
             <input
                 type="text"
@@ -828,7 +857,7 @@
                 <span class="searchResult">{$appState.searchState.itemIds.length ? $appState.searchState.highlighIndex + 1 : 0}/{$appState.searchState.itemIds.length}</span>
             </div>
         {/if}
-        <List {onPlaylistItemClicked} onMouseDown={onPlaylistItemMousedown} {scrollToElement} {getChildIndex} />
+        <List {onPlaylistItemClicked} onEndDrag={changePlaylistItemOrder} onMouseDown={onPlaylistItemMousedown} {scrollToElement} {getChildIndex} />
     </div>
     <div class="playlist-footer" class:shuffle={$appState.shuffle}>
         <div class="btn shuffle-btn" title={$t("shuffle")} on:click={toggleShuffle} on:keydown={handleKeyEvent} role="button" tabindex="-1">

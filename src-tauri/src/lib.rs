@@ -3,7 +3,6 @@ use serde::Serialize;
 use settings::Settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::env;
-use std::sync::Mutex;
 use tauri::Emitter;
 use tauri::Manager;
 pub mod helper;
@@ -50,14 +49,14 @@ fn get_init_args(app_handle: tauri::AppHandle) -> Vec<String> {
 
 #[tauri::command]
 fn set_settings(app: tauri::AppHandle, payload: Settings) {
-    app.manage(Mutex::new(payload));
+    app.manage(payload);
 }
 
 #[tauri::command]
 fn get_settings(window: tauri::WebviewWindow) -> Settings {
     let app = window.app_handle();
-    if let Some(settings) = app.try_state::<Mutex<Settings>>() {
-        settings.lock().unwrap().clone()
+    if let Some(settings) = app.try_state::<Settings>() {
+        settings.inner().clone()
     } else {
         Settings::default()
     }
@@ -91,18 +90,17 @@ async fn refresh_tag_contextmenu(payload: Vec<String>) {
 
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
-    app.manage(Mutex::new(payload));
+    app.manage(payload);
 
-    let state = app.state::<Mutex<Settings>>();
-
-    let settings = state.lock().unwrap();
+    let settings = app.state::<Settings>();
 
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
 
     let theme = match settings.theme {
-        settings::Theme::Dark => tauri::Theme::Dark,
-        settings::Theme::Light => tauri::Theme::Light,
+        wcpopup::config::Theme::Dark => tauri::Theme::Dark,
+        wcpopup::config::Theme::Light => tauri::Theme::Light,
+        _ => tauri::Theme::Dark,
     };
 
     player.set_theme(Some(theme))?;
