@@ -1,13 +1,24 @@
 use crate::settings::{Settings, SortOrder};
 use async_std::sync::Mutex;
 use once_cell::sync::Lazy;
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::{HashMap, HashSet},
+    os::windows::ffi::OsStrExt,
+};
 use strum_macros::Display;
 use tauri::Emitter;
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
     Menu, MenuBuilder, MenuItem,
+};
+use webview2_com::{
+    Microsoft::Web::WebView2::Win32::{ICoreWebView2, ICoreWebView2File, ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventArgs2},
+    WebMessageReceivedEventHandler,
+};
+use windows::{
+    core::{Interface, PCWSTR, PWSTR},
+    Win32::System::WinRT::EventRegistrationToken,
 };
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
@@ -254,4 +265,66 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     (*map).insert(SORT_MENU_NAME.to_string(), menu);
 
     Ok(())
+}
+
+pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    window.with_webview(|webview| {
+        let mut token = EventRegistrationToken::default();
+        let event_handler = WebMessageReceivedEventHandler::create(Box::new(drop_handler));
+        unsafe { webview.controller().CoreWebView2().unwrap().add_WebMessageReceived(&event_handler, &mut token).unwrap() };
+    })
+}
+
+#[derive(Serialize)]
+struct File {
+    path: String,
+    kind: String,
+}
+
+fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMessageReceivedEventArgs>) -> windows::core::Result<()> {
+    unsafe {
+        if let Some(args) = args {
+            let mut webmessageasstring = PWSTR::null();
+            args.TryGetWebMessageAsString(&mut webmessageasstring).unwrap();
+            if webmessageasstring.to_string().unwrap() == "OnFileDrop" {
+                let args2: ICoreWebView2WebMessageReceivedEventArgs2 = args.cast().unwrap();
+                if let Ok(obj) = args2.AdditionalObjects() {
+                    let mut count = 0;
+                    let mut files = Vec::new();
+                    obj.Count(&mut count).unwrap();
+                    for i in 0..count {
+                        let value = obj.GetValueAtIndex(i).unwrap();
+                        if let Ok(file) = value.cast::<ICoreWebView2File>() {
+                            let mut path_ptr = PWSTR::null();
+                            file.Path(&mut path_ptr).unwrap();
+                            let path_str = path_ptr.to_string().unwrap();
+                            let full_path = std::path::Path::new(&path_str);
+                            files.push(File {
+                                kind: if full_path.is_file() {
+                                    "file".to_string()
+                                } else {
+                                    "dir".to_string()
+                                },
+                                path: full_path.to_string_lossy().to_string(),
+                            });
+                        }
+                    }
+
+                    if !files.is_empty() {
+                        if let Ok(str) = serde_json::to_string(&files) {
+                            let json = encode_wide(str);
+                            if let Some(webview) = webview {
+                                webview.PostWebMessageAsJson(PCWSTR::from_raw(json.as_ptr())).unwrap();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
+    string.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }

@@ -3,7 +3,7 @@
     import List from "./List.svelte";
 
     import editor from "./editor";
-    import { getDropFiles } from "../fileDropHandler";
+    import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
     import { handleKeyEvent, Buttons, EmptyFile } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
@@ -14,11 +14,9 @@
     import { toPhysicalPosition, toPhysicalSize } from "../settings";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { Webview } from "@tauri-apps/api/webview";
     import { dirname, join } from "@tauri-apps/api/path";
     import { exists, rename, remove } from "@tauri-apps/plugin-fs";
     import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-    import { Command } from "@tauri-apps/plugin-shell";
     import { ask, save } from "@tauri-apps/plugin-dialog";
 
     let openContextMenu = false;
@@ -63,11 +61,33 @@
         return toggleSelect(e);
     };
 
-    const onFileDrop = async (e: Mp.FileDropEvent) => {
-        console.log("filedrop");
+    const onDrop = (e: DragEvent) => {
+        if ($appState.dragState.dragging) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!navigator.userAgent.includes("Linux")) {
+            if (e.dataTransfer && e.dataTransfer.files) {
+                window.chrome.webview.postMessageWithAdditionalObjects("OnFileDrop", e.dataTransfer.files);
+            }
+        }
+    };
+
+    const onFileDrop = (e: Mp.FileDropEvent) => {
         if ($appState.dragState.dragging) return;
 
         const files = getDropFiles(e);
+
+        if (files.length) {
+            addToPlaylist(files);
+        }
+    };
+
+    const onTauriFileDrop = async (e: Mp.TauriFileDropEvent) => {
+        if ($appState.dragState.dragging) return;
+
+        const files = getTauriDropFiles(e);
 
         if (files.length) {
             addToPlaylist(files);
@@ -199,15 +219,16 @@
         const currentId = getCurrentFile().id;
 
         const replacing = $appState.files.splice(data.start, 1)[0];
-        const files = $appState.files.splice(data.end, 0, replacing);
+        $appState.files.splice(data.end, 0, replacing);
 
         const currentIndex = $appState.files.findIndex((file) => file.id == currentId);
         dispatch({ type: "currentIndex", value: currentIndex });
-        dispatch({ type: "files", value: files });
+        dispatch({ type: "files", value: $appState.files });
     };
 
     const clearPlaylist = () => {
         dispatch({ type: "clear" });
+        loadMediaFile(false);
     };
 
     const clearSelection = () => {
@@ -652,8 +673,7 @@
 
         if (!file) return;
 
-        const command = Command.create("run-explorer", ["/e,/select,", file.fullPath]);
-        await command.spawn();
+        ipc.invoke("reveal", file.fullPath);
     };
 
     const openConvert = async (opener: Mp.DialogOpener) => {
@@ -800,13 +820,16 @@
         if (settings.playlistVisible) {
             await playlist.show();
         }
-        Webview.getCurrent().onDragDropEvent((e) => console.log(e));
     };
 
     onMount(() => {
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receive("load-playlist", initPlaylist);
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drag-drop", onFileDrop);
+        if (navigator.userAgent.includes("Linux")) {
+            ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
+        } else {
+            window.chrome.webview.addEventListener("message", onFileDrop);
+        }
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
@@ -814,6 +837,9 @@
         prepare();
 
         return () => {
+            if (!navigator.userAgent.includes("Linux")) {
+                window.chrome.webview.removeEventListener("message", onFileDrop);
+            }
             ipc.release();
         };
     });
@@ -834,10 +860,7 @@
         tabindex="-1"
         on:scroll={endEditFileName}
         on:dragover={(e) => e.preventDefault()}
-        on:drop={(e) => {
-            e.preventDefault();
-            console.log(e.dataTransfer?.files[0]);
-        }}
+        on:drop={onDrop}
     >
         {#if $appState.rename.renaming}
             <input

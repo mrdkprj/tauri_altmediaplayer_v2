@@ -23,7 +23,6 @@
 
     const startDragPlaylistItem = (e: DragEvent) => {
         if (!e.target || !(e.target instanceof HTMLElement)) return;
-
         e.stopPropagation();
         dispatch({ type: "startDrag", value: { startId: e.target.id, dir: e.target.getAttribute("data-dir") ?? "" } });
     };

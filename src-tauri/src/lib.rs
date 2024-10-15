@@ -89,6 +89,11 @@ async fn refresh_tag_contextmenu(payload: Vec<String>) {
 }
 
 #[tauri::command]
+fn reveal(payload: String) {
+    showfile::show_path_in_file_manager(std::path::Path::new(&payload));
+}
+
+#[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
     app.manage(payload);
 
@@ -108,6 +113,7 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     helper::create_player_menu(&player, &settings)?;
 
     helper::create_playlist_menu(&playlist, &settings)?;
+    helper::register_file_drop(&playlist)?;
 
     helper::create_sort_menu(&playlist, &settings)?;
 
@@ -153,7 +159,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu])
+        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu, reveal])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }

@@ -61,17 +61,6 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
-          "args": [
-            "/e,/select,",
-            {
-              "validator": "\\S+"
-            }
-          ],
-          "cmd": "explorer",
-          "name": "run-explorer",
-          "sidecar": false
-        },
-        {
           "args": true,
           "cmd": "",
           "name": "binaries/ffmpeg",
