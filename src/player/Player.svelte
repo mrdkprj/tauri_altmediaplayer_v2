@@ -8,7 +8,7 @@
     import { IPC } from "../ipc";
     import util from "../util";
     import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions } from "../constants";
-    import { getDropFiles } from "../fileDropHandler";
+    import { getTauriDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -84,8 +84,8 @@
         settings.data.audio.mute = $appState.media.mute;
     };
 
-    const onFileDrop = (e: Mp.FileDropEvent) => {
-        const files = getDropFiles(e);
+    const onFileDrop = (e: Mp.TauriFileDropEvent) => {
+        const files = getTauriDropFiles(e);
 
         if (files.length) {
             ipc.sendTo("Playlist", "load-playlist", { files });
@@ -627,7 +627,7 @@
         ipc.receiveTauri("tauri://close-requested", beforeClose);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
-        ipc.receiveTauri<Mp.FileDropEvent>("tauri://drag-drop", onFileDrop);
+        ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onFileDrop);
         ipc.receive("toggle-play", togglePlay);
         ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
