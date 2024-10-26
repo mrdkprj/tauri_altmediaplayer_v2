@@ -224,7 +224,7 @@
                     <div class="option-area">
                         <RadioGroup
                             options={["SizeNone", "360p", "480p", "720p", "1080p"]}
-                            labels={["None", "360p", "480p", "480p", "720p", "1080p"]}
+                            labels={["None", "360p", "480p", "720p", "1080p"]}
                             name="framesize"
                             checkedOption={$appState.frameSize}
                             onChange={onFrameSizeChange}

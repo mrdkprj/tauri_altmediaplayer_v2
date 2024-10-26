@@ -309,12 +309,11 @@
             settings.data.bounds = toBounds(position, size);
             await player.maximize();
         }
-        dispatch({ type: "isMaximized", value: !$appState.isMaximized });
-        settings.data.isMaximized = $appState.isMaximized;
     };
 
     const onWindowSizeChanged = (e: Mp.ResizeEvent) => {
         dispatch({ type: "isMaximized", value: e.isMaximized });
+        settings.data.isMaximized = e.isMaximized;
     };
 
     const hideControl = () => {

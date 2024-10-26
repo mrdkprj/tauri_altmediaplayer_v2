@@ -129,13 +129,11 @@ class Util {
             });
 
             command.on("close", async () => {
-                console.log(result);
                 const metadata = JSON.parse(result.join("\n")) as Mp.Metadata;
                 metadata.Volume = await this.getVolume(fullPath);
                 resolve(metadata);
             });
             command.stdout.on("data", (line) => {
-                console.log(line);
                 result.push(line);
             });
 
@@ -236,6 +234,8 @@ class Util {
     }
 
     async convertVideo(sourcePath: string, destPath: string, options: Mp.ConvertOptions) {
+        console.log(options);
+
         if (this.child) throw new Error("Process busy");
 
         this.convertDestFile = destPath;
@@ -243,7 +243,7 @@ class Util {
         const metadata = await this.getMediaMetadata(sourcePath);
 
         const size = Resolutions[options.frameSize] ? Resolutions[options.frameSize] : await this.getSize(metadata);
-        const rotation = Rotations[options.rotation] ? `transpose=${Rotations[options.rotation]}` : "";
+        const rotate = options.rotation != "RotationNone";
 
         if (!metadata.streams[1].bit_rate) {
             metadata.streams[1].bit_rate = "0";
@@ -277,10 +277,10 @@ class Util {
         args.push("libx264");
 
         args.push("-filter:v");
-        if (rotation) {
-            args.push(`scale=${size}`);
+        if (rotate) {
+            args.push(`scale=${size},transpose=${Rotations[options.rotation]}`);
         } else {
-            args.push(`scale=${size},transpose=${rotation}`);
+            args.push(`scale=${size}`);
         }
 
         args.push("-f");
