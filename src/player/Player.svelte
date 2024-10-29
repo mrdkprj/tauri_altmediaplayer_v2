@@ -155,10 +155,11 @@
     const releaseFile = (data: Mp.ReleaseFileRequest) => {
         if (data.fileIds.includes($appState.currentFile.id)) {
             const currentTime = $appState.media.currentTime;
+            const playing = $appState.playing;
             initPlayer();
-            afterReleaseCallback = () => ipc.sendTo("Playlist", "file-released", { currentTime });
+            afterReleaseCallback = () => ipc.sendTo("Playlist", "file-released", { playing, currentTime });
         } else {
-            ipc.sendTo("Playlist", "file-released", { currentTime: 0 });
+            ipc.sendTo("Playlist", "file-released", { playing: $appState.playing, currentTime: 0 });
         }
     };
 

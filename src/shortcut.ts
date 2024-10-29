@@ -60,6 +60,10 @@ const handlePlaylistShortcut = (e: KeyboardEvent): Mp.ContextMenuEvent | null =>
         return { id: "CopyFileName", name: "" };
     }
 
+    if (e.ctrlKey && e.key === "v") {
+        return { id: "PasteFilePath", name: "" };
+    }
+
     if (e.ctrlKey && e.key === "r") {
         e.preventDefault();
         return { id: "Reveal", name: "" };

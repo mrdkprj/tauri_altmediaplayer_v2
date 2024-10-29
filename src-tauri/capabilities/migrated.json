@@ -39,6 +39,7 @@
     "shell:allow-spawn",
     "shell:allow-kill",
     "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",

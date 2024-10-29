@@ -131,11 +131,6 @@ declare global {
             requireInitPlaylist: boolean;
         };
 
-        type ShortcutEvent = {
-            renderer: RendererName;
-            menu: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
-        };
-
         type ContextMenuEvent = {
             id: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
             name: string;
@@ -346,6 +341,7 @@ declare global {
         };
 
         type ReleaseFileResult = {
+            playing: boolean;
             currentTime: number;
         };
 

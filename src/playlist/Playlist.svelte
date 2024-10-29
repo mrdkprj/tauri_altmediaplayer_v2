@@ -16,13 +16,13 @@
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { dirname, join } from "@tauri-apps/api/path";
     import { exists, rename, remove } from "@tauri-apps/plugin-fs";
-    import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+    import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
     import { ask, save } from "@tauri-apps/plugin-dialog";
 
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
-    let fileReleasePromise: Deferred<number>;
+    let fileReleasePromise: Deferred<Mp.ReleaseFileResult>;
 
     const ipc = new IPC("Playlist");
     const List_Item_Padding = 10;
@@ -334,9 +334,9 @@
 
             if (!destPath || file.fullPath == destPath) return;
 
-            removeFromPlaylist();
-
             await rename(file.fullPath, destPath, {});
+
+            removeFromPlaylist();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
         }
@@ -523,13 +523,13 @@
     };
 
     const onReleaseFile = (data: Mp.ReleaseFileResult) => {
-        fileReleasePromise.resolve(data.currentTime);
+        fileReleasePromise.resolve(data);
     };
 
     const requestRename = async () => {
         dispatch({ type: "preventBlur", value: true });
 
-        const currentTime = await releaseFile([editor.data.id]);
+        const releaseResult = await releaseFile([editor.data.id]);
 
         const fileIndex = $appState.files.findIndex((file) => file.id == editor.data.id);
         const file = $appState.files[fileIndex];
@@ -554,7 +554,7 @@
             select(editor.data.id);
         } finally {
             if (fileIndex == $appState.currentIndex) {
-                loadMediaFile(false, currentTime);
+                loadMediaFile(releaseResult.playing, releaseResult.currentTime);
             }
             endRename();
         }
@@ -654,6 +654,24 @@
         await writeText(names.join("\n"));
     };
 
+    const pasteFilePath = async () => {
+        const paths = await readText();
+        const lineBreak = paths.includes("\r") ? "\r\n" : "\n";
+
+        if (paths) {
+            const files = await Promise.all(
+                paths
+                    .split(lineBreak)
+                    .filter(Boolean)
+                    .filter(async (fullPath) => await exists(fullPath)),
+            );
+
+            if (files.length) {
+                addToPlaylist(files);
+            }
+        }
+    };
+
     const displayMetadata = async () => {
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId);
         if (!file) return;
@@ -748,13 +766,17 @@
 
         const shortcut = handleShortcut("Playlist", e);
         if (shortcut) {
-            return handleContextMenu(shortcut);
+            return onContextMenuSelect(shortcut);
         }
     };
 
-    const handleContextMenu = (e: Mp.ContextMenuEvent) => {
+    const onContextMenuSelect = (e: Mp.ContextMenuEvent) => {
         const id = e.name ? e.name : e.id;
-        switch (id) {
+        handleContextMenu(id as keyof Mp.PlaylistContextMenuSubTypeMap, e.id as keyof Mp.PlaylistContextMenuSubTypeMap);
+    };
+
+    const handleContextMenu = (menuId: keyof Mp.PlaylistContextMenuSubTypeMap, value: keyof Mp.PlaylistContextMenuSubTypeMap) => {
+        switch (menuId) {
             case "Remove":
                 removeFromPlaylist();
                 break;
@@ -780,7 +802,7 @@
                 openConvert("user");
                 break;
             case "Sort":
-                changeSortOrder(e.id as Mp.SortOrder);
+                changeSortOrder(value as Mp.SortOrder);
                 break;
             case "Rename":
                 startEditFileName();
@@ -796,6 +818,9 @@
                 break;
             case "ManageTags":
                 openTagEditor();
+                break;
+            case "PasteFilePath":
+                pasteFilePath();
                 break;
         }
     };
@@ -823,7 +848,7 @@
     };
 
     onMount(() => {
-        ipc.receive("contextmenu-event", handleContextMenu);
+        ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         if (navigator.userAgent.includes("Linux")) {
             ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
