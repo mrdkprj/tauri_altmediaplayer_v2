@@ -21,7 +21,6 @@ type TauriCommandMap = {
     refresh_tag_contextmenu: TauriCommand<string[], any>;
     set_settings: TauriCommand<Mp.Settings, undefined>;
     reveal: TauriCommand<string, undefined>;
-    stat: TauriCommand<string, any>;
     // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
     // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
     // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;
