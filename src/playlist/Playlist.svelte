@@ -15,7 +15,7 @@
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { dirname, join } from "@tauri-apps/api/path";
-    import { exists, rename, remove } from "@tauri-apps/plugin-fs";
+    import { exists, rename, remove, copyFile } from "@tauri-apps/plugin-fs";
     import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
     import { ask, save } from "@tauri-apps/plugin-dialog";
 
@@ -330,11 +330,19 @@
 
             const file = files[0];
 
-            const destPath = await save({ defaultPath: file.fullPath });
+            const destFullPath = await save({ defaultPath: file.fullPath });
 
-            if (!destPath || file.fullPath == destPath) return;
+            if (!destFullPath || file.fullPath == destFullPath) return;
 
-            await rename(file.fullPath, destPath, {});
+            const seperator = navigator.userAgent.includes("Linux") ? "/" : "\\";
+            const sourceDisk = (await dirname(file.fullPath)).split(seperator)[0];
+            const destDisk = (await dirname(destFullPath)).split(seperator)[0];
+            if (sourceDisk == destDisk) {
+                await rename(file.fullPath, destFullPath, {});
+            } else {
+                await copyFile(file.fullPath, destFullPath);
+                await remove(file.fullPath);
+            }
 
             removeFromPlaylist();
         } catch (ex: any) {

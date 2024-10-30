@@ -159,7 +159,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu, reveal])
+        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu, reveal,])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }
