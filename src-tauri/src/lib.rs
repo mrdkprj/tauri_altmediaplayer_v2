@@ -94,6 +94,11 @@ fn reveal(payload: String) {
 }
 
 #[tauri::command]
+fn trash(payload: String) -> Result<(), String> {
+    helper::trash(payload)
+}
+
+#[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
     app.manage(payload);
 
@@ -159,7 +164,18 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![get_init_args, prepare_windows, get_settings, set_settings, change_theme, open_context_menu, open_sort_context_menu, refresh_tag_contextmenu, reveal,])
+        .invoke_handler(tauri::generate_handler![
+            get_init_args,
+            prepare_windows,
+            get_settings,
+            set_settings,
+            change_theme,
+            open_context_menu,
+            open_sort_context_menu,
+            refresh_tag_contextmenu,
+            reveal,
+            trash
+        ])
         .run(tauri::generate_context!())
         .expect("error while running application");
 }

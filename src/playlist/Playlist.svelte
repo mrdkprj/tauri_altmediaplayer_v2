@@ -300,7 +300,7 @@
         return $appState.currentIndex;
     };
 
-    const deleteFile = async () => {
+    const trash = async () => {
         if (!$appState.selection.selectedIds.length) return;
 
         await releaseFile($appState.selection.selectedIds);
@@ -310,7 +310,7 @@
 
             if (!targetFilePaths.length) return;
 
-            await Promise.all(targetFilePaths.map(async (item) => await remove(item)));
+            await Promise.all(targetFilePaths.map(async (item) => await ipc.invoke("trash", item)));
 
             removeFromPlaylist();
         } catch (ex: any) {
@@ -792,7 +792,7 @@
                 clearPlaylist();
                 break;
             case "Trash":
-                deleteFile();
+                trash();
                 break;
             case "CopyFileName":
                 copyFileNameToClipboard(false);

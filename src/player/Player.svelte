@@ -314,6 +314,7 @@
 
     const onWindowSizeChanged = (e: Mp.ResizeEvent) => {
         dispatch({ type: "isMaximized", value: e.isMaximized });
+        console.log(e.isMaximized);
         settings.data.isMaximized = e.isMaximized;
     };
 
@@ -594,7 +595,7 @@
 
         await player.setSize(toPhysicalSize(settings.data.bounds));
 
-        if (await player.isMaximized()) {
+        if (settings.data.isMaximized) {
             await player.maximize();
         }
 
