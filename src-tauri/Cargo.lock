@@ -2447,6 +2447,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "movefile"
+version = "0.1.0"
+source = "git+https://github.com/mrdkprj/movefile.git#e99865efc1904120b6af0f1fe32f349ae5efa31d"
+dependencies = [
+ "gio",
+ "once_cell",
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "muda"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4090,7 +4100,7 @@ name = "taltmediaplayer"
 version = "0.0.0"
 dependencies = [
  "async-std",
- "gio",
+ "movefile",
  "once_cell",
  "serde",
  "serde_json",

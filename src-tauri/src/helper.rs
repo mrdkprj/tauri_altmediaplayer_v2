@@ -1,10 +1,5 @@
 use crate::settings::{Settings, SortOrder};
 use async_std::sync::Mutex;
-#[cfg(target_os = "linux")]
-use gio::{
-    prelude::{CancellableExt, FileExt},
-    Cancellable,
-};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -337,37 +332,5 @@ fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
 }
 
 pub fn trash(file: String) -> Result<(), String> {
-    trash_win(file)
-}
-
-#[cfg(target_os = "linux")]
-fn trash_gio(file: String) -> Result<(), String> {
-    let file = gio::File::for_parse_name(&file);
-    file.trash(Cancellable::NONE).map_err(|e| e.message().to_string())
-}
-
-#[cfg(target_os = "windows")]
-fn trash_win(file: String) -> Result<(), String> {
-    use windows::Win32::{
-        System::Com::{CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_APARTMENTTHREADED},
-        UI::Shell::{IFileOperation, IShellItem, SHCreateItemFromParsingName, FOF_ALLOWUNDO},
-    };
-
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-
-        let op: IFileOperation = CoCreateInstance(&windows::Win32::UI::Shell::FileOperation, None, CLSCTX_ALL).map_err(|e| e.message())?;
-        op.SetOperationFlags(FOF_ALLOWUNDO).map_err(|e| e.message())?;
-        let shell_item: IShellItem = SHCreateItemFromParsingName(to_file_path(file), None).map_err(|e| e.message())?;
-        op.DeleteItem(&shell_item, None).map_err(|e| e.message())?;
-        op.PerformOperations().map_err(|e| e.message())?;
-
-        CoUninitialize();
-    }
-
-    Ok(())
-}
-
-fn to_file_path(orig_file_path: String) -> PCWSTR {
-    PCWSTR::from_raw(encode_wide(orig_file_path).as_ptr())
+    movefile::trash(file)
 }
