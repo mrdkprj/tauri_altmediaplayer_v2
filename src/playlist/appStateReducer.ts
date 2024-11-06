@@ -27,6 +27,11 @@ type SearchState = {
     value: string;
 };
 
+type MoveState = {
+    started: boolean;
+    progress: number;
+};
+
 type AppState = {
     currentIndex: number;
     selection: Mp.PlaylistItemSelection;
@@ -37,6 +42,7 @@ type AppState = {
     rename: RenameState;
     dragState: DragState;
     searchState: SearchState;
+    moveState: MoveState;
 };
 
 export const initialAppState: AppState = {
@@ -68,6 +74,10 @@ export const initialAppState: AppState = {
         highlighIndex: 0,
         value: "",
     },
+    moveState: {
+        started: false,
+        progress: 0,
+    },
 };
 
 type AppAction =
@@ -94,7 +104,10 @@ type AppAction =
     | { type: "endDrag" }
     | { type: "toggleSearch"; value: boolean }
     | { type: "highlightItems"; value: string[] }
-    | { type: "changeHighlight"; value: number };
+    | { type: "changeHighlight"; value: number }
+    | { type: "startMove" }
+    | { type: "moveProgress"; value: number }
+    | { type: "endMove" };
 
 const updater = (state: AppState, action: AppAction) => {
     switch (action.type) {
@@ -184,6 +197,15 @@ const updater = (state: AppState, action: AppAction) => {
 
         case "changeHighlight":
             return { ...state, searchState: { ...state.searchState, highlighIndex: action.value } };
+
+        case "startMove":
+            return { ...state, moveState: { ...state.moveState, started: true, progress: 0 } };
+
+        case "endMove":
+            return { ...state, moveState: { ...state.moveState, started: false, progress: 0 } };
+
+        case "moveProgress":
+            return { ...state, moveState: { ...state.moveState, progress: action.value } };
 
         default:
             return state;

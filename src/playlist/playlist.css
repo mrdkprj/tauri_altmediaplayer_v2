@@ -184,5 +184,29 @@
     color: var(--primary-highlight-color);
 }
 
+.cancel {
+    cursor: pointer;
+}
 
+input[type="range"] {
+    overflow: hidden;
+    width: 100%;
+    height: 17px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--slider-bgcolor);
+}
 
+input[type="range"]::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    height: 100%;
+    color: var(--slider-bgcolor);
+    margin: 0;
+    padding: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+    width: var(--theme-color);
+    -webkit-appearance: none;
+    height: 100%;
+    background: var(--slider-track-bgcolor);
+}

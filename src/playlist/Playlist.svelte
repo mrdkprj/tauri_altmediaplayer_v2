@@ -15,9 +15,9 @@
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { dirname, join } from "@tauri-apps/api/path";
-    import { exists, rename, remove, copyFile } from "@tauri-apps/plugin-fs";
+    import { exists, rename } from "@tauri-apps/plugin-fs";
     import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
-    import { ask, save } from "@tauri-apps/plugin-dialog";
+    import { ask, open } from "@tauri-apps/plugin-dialog";
 
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
@@ -318,35 +318,68 @@
         }
     };
 
-    const moveFile = async () => {
-        if ($appState.selection.selectedIds.length != 1) return;
+    /* move */
+    let cancellationId = -1;
 
-        await releaseFile($appState.selection.selectedIds);
+    const moveFile = async () => {
+        if (cancellationId >= 0) throw new Error("Move is in progress");
+
+        const files = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id));
+
+        if (!files.length) return;
+
+        if (files.length > 1) {
+            const confimed = await ask("Move multiple files. Are you sure?", { title: "Move", kind: "warning" });
+            if (!confimed) return;
+        }
+
+        const sourceDirs = new Set(files.map((file) => file.dir));
+
+        if (sourceDirs.size > 1) return;
+
+        const settings = await ipc.invoke("get_settings", undefined);
+        const defaultPath = settings.defaultPath ? settings.defaultPath : files[0].dir;
+        const destPath = await open({ defaultPath: defaultPath, multiple: false, directory: true });
+
+        if (!destPath) return;
 
         try {
-            const files = $appState.files.filter((file) => file.id == $appState.selection.selectedIds[0]);
+            await releaseFile($appState.selection.selectedIds);
 
-            if (!files.length) return;
+            settings.defaultPath = destPath;
 
-            const file = files[0];
+            await ipc.sendTo("Player", "change-default-path", destPath);
 
-            const destFullPath = await save({ defaultPath: file.fullPath });
+            dispatch({ type: "startMove" });
 
-            if (!destFullPath || file.fullPath == destFullPath) return;
+            cancellationId = await ipc.invoke("reserve_cancellable", undefined);
 
-            const seperator = navigator.userAgent.includes("Linux") ? "/" : "\\";
-            const sourceDisk = (await dirname(file.fullPath)).split(seperator)[0];
-            const destDisk = (await dirname(destFullPath)).split(seperator)[0];
-            if (sourceDisk == destDisk) {
-                await rename(file.fullPath, destFullPath, {});
-            } else {
-                await copyFile(file.fullPath, destFullPath);
-                await remove(file.fullPath);
-            }
+            const sourcePaths = files.map((file) => file.fullPath);
+            await ipc.invoke("move_files", { sources: sourcePaths, dest: destPath, cancellationId });
+            cancellationId = -1;
+            dispatch({ type: "endMove" });
 
             removeFromPlaylist();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
+            dispatch({ type: "endMove" });
+            cancellationId = -1;
+        }
+    };
+
+    const onFileMoveProgress = (e: Mp.MoveProgressEvent) => {
+        console.log(e);
+        dispatch({ type: "moveProgress", value: e.transferred });
+    };
+
+    const cancelMove = async () => {
+        if (cancellationId >= 0) {
+            const result = await ipc.invoke("cancel_move", cancellationId);
+            if (result) {
+                dispatch({ type: "endMove" });
+            } else {
+                await util.showErrorMessage("Failed to cancel.");
+            }
         }
     };
 
@@ -866,6 +899,7 @@
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
+        ipc.receive("move-progress", onFileMoveProgress);
 
         prepare();
 
@@ -965,5 +999,15 @@
                 </svg>
             {/if}
         </div>
+        {#if $appState.moveState.started}
+            <div class="btn">
+                <input type="range" min="0" max="100" value="0" style="--theme-color: {$appState.moveState.progress}px" />
+                <div class="btn cancel" on:click={cancelMove} on:keydown={handleKeyEvent} role="button" tabindex="-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5m5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5" />
+                    </svg>
+                </div>
+            </div>
+        {/if}
     </div>
 </div>

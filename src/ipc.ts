@@ -22,6 +22,9 @@ type TauriCommandMap = {
     set_settings: TauriCommand<Mp.Settings, undefined>;
     reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
+    reserve_cancellable: TauriCommand<undefined, number>;
+    move_files: TauriCommand<Mp.MoveFileRequest, undefined>;
+    cancel_move: TauriCommand<number, boolean>;
     // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
     // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
     // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;

@@ -71,6 +71,7 @@ declare global {
         "picture-in-picture": Mp.Event;
         "open-tag-editor": Mp.Event;
         "change-tags": string[];
+        "move-progress": Mp.MoveProgressEvent;
     };
 
     interface Api {
@@ -343,6 +344,17 @@ declare global {
         type ReleaseFileResult = {
             playing: boolean;
             currentTime: number;
+        };
+
+        type MoveFileRequest = {
+            sources: string[];
+            dest: string;
+            cancellationId: number;
+        };
+
+        type MoveProgressEvent = {
+            totalFileSize: number;
+            transferred: number;
         };
 
         type SaveTagsEvent = {

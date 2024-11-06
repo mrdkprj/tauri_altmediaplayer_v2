@@ -25,7 +25,8 @@ use windows::{
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-const TAURI_EVENT_NAME: &str = "contextmenu-event";
+const MENU_EVENT_NAME: &str = "contextmenu-event";
+const MOVE_EVENT_NAME: &str = "move-progress";
 pub const SORT_MENU_NAME: &str = "Sort";
 const PLAYBACK_SPEEDS: [f64; 8] = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 const SEEK_SPEEDS: [f64; 9] = [0.03, 0.05, 0.1, 0.5, 1.0, 3.0, 5.0, 10.0, 20.0];
@@ -85,7 +86,7 @@ pub async fn popup_menu(window: &tauri::WebviewWindow, menu_name: &str, position
                 tauri::EventTarget::WebviewWindow {
                     label: window.label().to_string(),
                 },
-                TAURI_EVENT_NAME,
+                MENU_EVENT_NAME,
                 item,
             )
             .unwrap();
@@ -329,6 +330,46 @@ fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMes
 
 fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
     string.as_ref().encode_wide().chain(std::iter::once(0)).collect()
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct Progress {
+    total: i64,
+    transferred: i64,
+}
+
+pub async fn mv(window: &tauri::WebviewWindow, source_files: Vec<String>, dest_dir: String, cancel_id: u32) -> Result<(), String> {
+    let win = window.clone();
+    let result = async_std::task::spawn(async move {
+        movefile::mv_bulk(
+            source_files,
+            dest_dir,
+            Some(&mut |a, b| {
+                win.emit_to(
+                    tauri::EventTarget::WebviewWindow {
+                        label: win.label().to_string(),
+                    },
+                    MOVE_EVENT_NAME,
+                    Progress {
+                        total: a,
+                        transferred: b,
+                    },
+                )
+                .unwrap();
+            }),
+            Some(cancel_id),
+        )
+    });
+
+    result.await
+}
+
+pub fn reserve_cancellable() -> u32 {
+    movefile::reserve_cancellable()
+}
+
+pub fn cancel_move(cancel_id: u32) -> bool {
+    movefile::cancel(cancel_id)
 }
 
 pub fn trash(file: String) -> Result<(), String> {

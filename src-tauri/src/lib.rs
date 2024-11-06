@@ -38,6 +38,14 @@ struct MetadataRequest {
     format: bool,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+struct MoveFileRequest {
+    sources: Vec<String>,
+    dest: String,
+    cancellationId: u32,
+}
+
 #[tauri::command]
 fn get_init_args(app_handle: tauri::AppHandle) -> Vec<String> {
     if let Some(urls) = app_handle.try_state::<OpenedUrls>() {
@@ -91,6 +99,22 @@ async fn refresh_tag_contextmenu(payload: Vec<String>) {
 #[tauri::command]
 fn reveal(payload: String) {
     showfile::show_path_in_file_manager(std::path::Path::new(&payload));
+}
+
+#[tauri::command]
+fn reserve_cancellable() -> u32 {
+    helper::reserve_cancellable()
+}
+
+#[tauri::command]
+async fn move_files(window: tauri::WebviewWindow, payload: MoveFileRequest) -> Result<(), String> {
+    println!("{:?}", payload);
+    helper::mv(&window, payload.sources, payload.dest, payload.cancellationId).await
+}
+
+#[tauri::command]
+fn cancel_move(payload: u32) -> bool {
+    helper::cancel_move(payload)
 }
 
 #[tauri::command]
@@ -174,7 +198,10 @@ pub fn run() {
             open_sort_context_menu,
             refresh_tag_contextmenu,
             reveal,
-            trash
+            trash,
+            reserve_cancellable,
+            move_files,
+            cancel_move
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
