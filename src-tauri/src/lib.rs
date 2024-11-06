@@ -108,7 +108,6 @@ fn reserve_cancellable() -> u32 {
 
 #[tauri::command]
 async fn move_files(window: tauri::WebviewWindow, payload: MoveFileRequest) -> Result<(), String> {
-    println!("{:?}", payload);
     helper::mv(&window, payload.sources, payload.dest, payload.cancellationId).await
 }
 
@@ -176,7 +175,7 @@ pub fn run() {
         })
         .on_window_event(|win, ev| {
             if let tauri::WindowEvent::Resized(_) = ev {
-                if win.label() == PLAYER {
+                if win.label() == PLAYER && win.is_visible().unwrap() {
                     win.emit_to(
                         tauri::EventTarget::webview_window(win.label()),
                         "after-toggle-maximize",

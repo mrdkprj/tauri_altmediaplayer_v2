@@ -368,7 +368,6 @@
     };
 
     const onFileMoveProgress = (e: Mp.MoveProgressEvent) => {
-        console.log(e);
         dispatch({ type: "moveProgress", value: e.transferred });
     };
 
