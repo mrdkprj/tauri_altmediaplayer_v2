@@ -345,8 +345,6 @@ pub async fn mv(window: &tauri::WebviewWindow, source_files: Vec<String>, dest_d
             source_files,
             dest_dir,
             Some(&mut |a, b| {
-                println!("{:?}", a);
-                println!("{:?}", win.label().to_string());
                 win.emit_to(
                     tauri::EventTarget::WebviewWindow {
                         label: win.label().to_string(),
