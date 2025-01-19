@@ -6,28 +6,86 @@ type TauriCommand<Req, Res> = {
     Response: Res;
 };
 
+// type WriteFileInfo = {
+//     fullPath: string;
+//     data: string;
+// };
+
+type RenameInfo = {
+    new: string;
+    old: string;
+};
+
+type CopyInfo = {
+    from: string;
+    to: string;
+};
+
+type FileAttribute = {
+    is_device: boolean;
+    is_directory: boolean;
+    is_file: boolean;
+    is_hidden: boolean;
+    is_read_only: boolean;
+    is_symbolic_link: boolean;
+    is_system: boolean;
+    atime_ms: number;
+    ctime_ms: number;
+    mtime_ms: number;
+    birthtime_ms: number;
+    size: number;
+};
+
+type WriteFileInfo = {
+    fullPath: string;
+    data: string;
+};
+
+type ClipboardOperation = "Copy" | "Move" | "None";
+type ClipboardData = {
+    operation: ClipboardOperation;
+    urls: string[];
+};
+
+type WriteUriInfo = {
+    fullPaths: string[];
+    operation: ClipboardOperation;
+};
+
+type WriteAllFileInfo = {
+    fullPath: string;
+    data: Uint8Array;
+};
+
 type TauriCommandMap = {
     prepare_windows: TauriCommand<Mp.Settings, boolean>;
     get_settings: TauriCommand<undefined, Mp.Settings>;
     restart: TauriCommand<undefined, undefined>;
-    save: TauriCommand<Mp.Settings, boolean>;
     open_context_menu: TauriCommand<Mp.Position, undefined>;
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
-    // "rename":TauriCommand<Mp.TauriRenamePayload, undefined>;
-    // "clickthru":TauriCommand<Mp.TauriClickthruPayload, undefined>;
-    // "stat": TauriCommand<Mp.TauriStatPayload, Mp.TauriStatResponse>;
-    get_media_metadata: TauriCommand<Mp.MetadataRequest, any>;
     refresh_tag_contextmenu: TauriCommand<string[], any>;
     set_settings: TauriCommand<Mp.Settings, undefined>;
     reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
-    reserve_cancellable: TauriCommand<undefined, number>;
     move_files: TauriCommand<Mp.MoveFileRequest, undefined>;
-    cancel_move: TauriCommand<number, boolean>;
-    // "cancel_convert": TauriCommand<undefined, nuundefinedll>;
-    // "convert_audio": TauriCommand<Mp.TauriConvertAudioPayload, undefined>;
-    // "convert_video": TauriCommand<Mp.TauriConvertVideoPayload, undefined>;
+    remove: TauriCommand<string, undefined>;
+    exists: TauriCommand<string, boolean>;
+    rename: TauriCommand<RenameInfo, boolean>;
+    stat: TauriCommand<string, FileAttribute>;
+    copy_file: TauriCommand<CopyInfo, undefined>;
+    mv: TauriCommand<CopyInfo, undefined>;
+    is_uris_available: TauriCommand<undefined, boolean>;
+    read_uris: TauriCommand<undefined, ClipboardData>;
+    read_text: TauriCommand<undefined, string>;
+    write_uris: TauriCommand<WriteUriInfo, undefined>;
+    write_text: TauriCommand<string, undefined>;
+    mkdir: TauriCommand<string, undefined>;
+    mkdir_all: TauriCommand<string, undefined>;
+    create: TauriCommand<string, undefined>;
+    read_text_file: TauriCommand<string, string>;
+    write_text_file: TauriCommand<WriteFileInfo, undefined>;
+    write_all: TauriCommand<WriteAllFileInfo, undefined>;
 };
 
 export class IPCBase {

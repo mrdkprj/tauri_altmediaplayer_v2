@@ -1,10 +1,15 @@
+use nonstd::ClipboardData;
+use nonstd::FileAttribute;
+use nonstd::Operation;
 use serde::Deserialize;
 use serde::Serialize;
 use settings::Settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::env;
+use std::path::PathBuf;
 use tauri::Emitter;
 use tauri::Manager;
+use tauri::WebviewWindow;
 pub mod helper;
 pub mod settings;
 
@@ -12,10 +17,9 @@ static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
 static THEME_DARK: &str = "Dark";
 
-// #[derive(Clone, Serialize)]
-// struct ReadyEvent {
-//     settings: settings::Settings,
-// }
+fn get_window_handel(window: &WebviewWindow) -> isize {
+    window.hwnd().unwrap().0 as _
+}
 
 #[derive(Clone, Serialize)]
 struct LoadFileEvent {
@@ -24,19 +28,6 @@ struct LoadFileEvent {
 
 #[derive(serde::Serialize)]
 struct OpenedUrls(Vec<String>);
-
-#[derive(Clone, Serialize)]
-#[allow(non_snake_case)]
-struct ResizeEvent {
-    isMaximized: bool,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-struct MetadataRequest {
-    fullPath: String,
-    format: bool,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -97,28 +88,131 @@ async fn refresh_tag_contextmenu(payload: Vec<String>) {
 }
 
 #[tauri::command]
-fn reveal(payload: String) {
-    showfile::show_path_in_file_manager(std::path::Path::new(&payload));
-}
-
-#[tauri::command]
-fn reserve_cancellable() -> u32 {
-    helper::reserve_cancellable()
-}
-
-#[tauri::command]
-async fn move_files(window: tauri::WebviewWindow, payload: MoveFileRequest) -> Result<(), String> {
-    helper::mv(&window, payload.sources, payload.dest, payload.cancellationId).await
-}
-
-#[tauri::command]
-fn cancel_move(payload: u32) -> bool {
-    helper::cancel_move(payload)
+fn reveal(payload: String) -> Result<(), String> {
+    nonstd::shell::show_item_in_folder(payload)
 }
 
 #[tauri::command]
 fn trash(payload: String) -> Result<(), String> {
-    helper::trash(payload)
+    nonstd::shell::trash(payload)
+}
+
+#[tauri::command]
+fn exists(payload: String) -> bool {
+    PathBuf::from(payload).exists()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RenameInfo {
+    new: String,
+    old: String,
+}
+#[tauri::command]
+fn rename(payload: RenameInfo) -> Result<(), String> {
+    std::fs::rename(payload.old, payload.new).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn stat(payload: String) -> Result<FileAttribute, String> {
+    nonstd::fs::get_file_attribute(&payload)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CopyInfo {
+    from: String,
+    to: String,
+}
+#[tauri::command]
+fn copy_file(payload: CopyInfo) -> Result<u64, String> {
+    std::fs::copy(payload.from, payload.to).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn mv(payload: CopyInfo) -> Result<(), String> {
+    nonstd::fs::mv(payload.from, payload.to, None, None)
+}
+
+#[tauri::command]
+fn is_uris_available() -> bool {
+    nonstd::clipboard::is_uris_available()
+}
+
+#[tauri::command]
+fn read_uris(window: WebviewWindow) -> Result<ClipboardData, String> {
+    nonstd::clipboard::read_uris(get_window_handel(&window))
+}
+
+#[tauri::command]
+fn read_text(window: WebviewWindow) -> Result<String, String> {
+    nonstd::clipboard::read_text(get_window_handel(&window))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+struct WriteUriInfo {
+    fullPaths: Vec<String>,
+    operation: Operation,
+}
+
+#[tauri::command]
+fn write_uris(window: WebviewWindow, payload: WriteUriInfo) -> Result<(), String> {
+    nonstd::clipboard::write_uris(get_window_handel(&window), &payload.fullPaths, payload.operation)
+}
+
+#[tauri::command]
+fn write_text(window: WebviewWindow, payload: String) -> Result<(), String> {
+    nonstd::clipboard::write_text(get_window_handel(&window), payload)
+}
+
+#[tauri::command]
+fn mkdir(payload: String) -> Result<(), String> {
+    std::fs::create_dir(payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn mkdir_all(payload: String) -> Result<(), String> {
+    std::fs::create_dir_all(payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create(payload: String) -> Result<(), String> {
+    match std::fs::File::create(payload) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn read_text_file(payload: String) -> Result<String, String> {
+    std::fs::read_to_string(payload).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+struct WriteFileInfo {
+    fullPath: String,
+    data: String,
+}
+
+#[tauri::command]
+fn write_text_file(payload: WriteFileInfo) -> Result<(), String> {
+    std::fs::write(payload.fullPath, payload.data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn remove(payload: String) -> Result<(), String> {
+    std::fs::remove_file(payload).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+struct WriteAllFileInfo {
+    fullPath: String,
+    data: Vec<u8>,
+}
+#[tauri::command]
+fn write_all(payload: WriteAllFileInfo) -> Result<(), String> {
+    std::fs::write(payload.fullPath, payload.data).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -148,11 +242,10 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     Ok(true)
 }
 
+#[allow(deprecated)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             app.emit(
@@ -173,20 +266,6 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|win, ev| {
-            if let tauri::WindowEvent::Resized(_) = ev {
-                if win.label() == PLAYER && win.is_visible().unwrap() {
-                    win.emit_to(
-                        tauri::EventTarget::webview_window(win.label()),
-                        "after-toggle-maximize",
-                        ResizeEvent {
-                            isMaximized: win.is_maximized().unwrap(),
-                        },
-                    )
-                    .unwrap();
-                }
-            }
-        })
         .invoke_handler(tauri::generate_handler![
             get_init_args,
             prepare_windows,
@@ -198,9 +277,23 @@ pub fn run() {
             refresh_tag_contextmenu,
             reveal,
             trash,
-            reserve_cancellable,
-            move_files,
-            cancel_move
+            exists,
+            rename,
+            stat,
+            copy_file,
+            mv,
+            is_uris_available,
+            read_uris,
+            read_text,
+            write_uris,
+            write_text,
+            mkdir,
+            mkdir_all,
+            create,
+            read_text_file,
+            write_text_file,
+            remove,
+            write_all
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

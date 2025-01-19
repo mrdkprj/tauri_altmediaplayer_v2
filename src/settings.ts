@@ -1,7 +1,10 @@
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { exists, readTextFile, writeTextFile, create, mkdir } from "@tauri-apps/plugin-fs";
+import { appDataDir } from "@tauri-apps/api/path";
+import path from "./path";
+import util from "./util";
+import { IPCBase } from "./ipc";
 
+const ipc = new IPCBase();
 const JSON_NAME = "taltmediaplayer.settings.json";
 
 const defaultSettings: Mp.Settings = {
@@ -60,26 +63,26 @@ export class Settings {
 
     async init(): Promise<Mp.Settings> {
         this.dataDir = await appDataDir();
-        const settingPath = await join(this.dataDir, "temp");
-        this.file = await join(settingPath, JSON_NAME);
-        const fileExists = await exists(this.file);
+        const settingPath = path.join(this.dataDir, "temp");
+        this.file = path.join(settingPath, JSON_NAME);
+        const fileExists = await util.exists(this.file);
 
         if (fileExists) {
-            const rawData = await readTextFile(this.file);
+            const rawData = await ipc.invoke("read_text_file", this.file);
             if (rawData) {
                 this.data = this.createSettings(JSON.parse(rawData));
             }
         } else {
-            await mkdir(settingPath, { recursive: true });
-            await create(this.file);
-            await writeTextFile(settingPath, JSON.stringify(this.data));
+            await ipc.invoke("mkdir_all", settingPath);
+            await ipc.invoke("create", this.file);
+            await ipc.invoke("write_text_file", { fullPath: settingPath, data: JSON.stringify(this.data) });
         }
 
         return this.data;
     }
 
     async save() {
-        await writeTextFile(this.file, JSON.stringify(this.data));
+        await ipc.invoke("write_text_file", { fullPath: this.file, data: JSON.stringify(this.data) });
     }
 
     getSettingsFilePath() {

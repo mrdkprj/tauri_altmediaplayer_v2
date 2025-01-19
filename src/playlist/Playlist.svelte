@@ -14,10 +14,8 @@
     import { toPhysicalPosition, toPhysicalSize } from "../settings";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { dirname, join } from "@tauri-apps/api/path";
-    import { exists, rename } from "@tauri-apps/plugin-fs";
-    import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
     import { ask, open } from "@tauri-apps/plugin-dialog";
+    import path from "../path";
 
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
@@ -352,8 +350,6 @@
 
             dispatch({ type: "startMove" });
 
-            cancellationId = await ipc.invoke("reserve_cancellable", undefined);
-
             const sourcePaths = files.map((file) => file.fullPath);
             await ipc.invoke("move_files", { sources: sourcePaths, dest: destPath, cancellationId });
             cancellationId = -1;
@@ -369,17 +365,6 @@
 
     const onFileMoveProgress = (e: Mp.MoveProgressEvent) => {
         dispatch({ type: "moveProgress", value: e.transferred });
-    };
-
-    const cancelMove = async () => {
-        if (cancellationId >= 0) {
-            const result = await ipc.invoke("cancel_move", cancellationId);
-            if (result) {
-                dispatch({ type: "endMove" });
-            } else {
-                await util.showErrorMessage("Failed to cancel.");
-            }
-        }
     };
 
     const toggleSelect = (e: MouseEvent) => {
@@ -574,15 +559,15 @@
         const fileIndex = $appState.files.findIndex((file) => file.id == editor.data.id);
         const file = $appState.files[fileIndex];
         const oldPath = file.fullPath;
-        const newPath = await join(await dirname(oldPath), editor.data.name);
+        const newPath = path.join(path.dirname(oldPath), editor.data.name);
 
         try {
-            const fileExsists = await exists(newPath);
+            const fileExsists = await ipc.invoke("exists", newPath);
             if (fileExsists) {
                 throw new Error(`File name "${editor.data.name}" exists`);
             }
 
-            await rename(oldPath, newPath, {});
+            await ipc.invoke("rename", { old: oldPath, new: newPath });
 
             const newMediaFile = await util.updateFile(newPath, file);
             dispatch({ type: "rename", value: newMediaFile });
@@ -691,11 +676,11 @@
 
         const names = files.map((file) => (fullPath ? file.fullPath : file.name));
 
-        await writeText(names.join("\n"));
+        await ipc.invoke("write_text", names.join("\n"));
     };
 
     const pasteFilePath = async () => {
-        const paths = await readText();
+        const paths = await ipc.invoke("read_text", undefined);
         const lineBreak = paths.includes("\r") ? "\r\n" : "\n";
 
         if (paths) {
@@ -703,7 +688,7 @@
                 paths
                     .split(lineBreak)
                     .filter(Boolean)
-                    .filter(async (fullPath) => await exists(fullPath)),
+                    .filter(async (fullPath) => await ipc.invoke("exists", fullPath)),
             );
 
             if (files.length) {
@@ -720,7 +705,7 @@
         const metadataString = JSON.stringify(metadata, undefined, 2).replaceAll('"', "");
         const result = await ask(metadataString, { kind: "info", okLabel: "OK", cancelLabel: "Copy" });
         if (!result) {
-            await writeText(metadataString);
+            await ipc.invoke("write_text", metadataString);
         }
     };
 
@@ -1000,12 +985,7 @@
         </div>
         {#if $appState.moveState.started}
             <div class="btn">
-                <input type="range" min="0" max="100" value="0" style="--theme-color: {$appState.moveState.progress}px" />
-                <div class="btn cancel" on:click={cancelMove} on:keydown={handleKeyEvent} role="button" tabindex="-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5m5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5" />
-                    </svg>
-                </div>
+                <div class="loader8"></div>
             </div>
         {/if}
     </div>

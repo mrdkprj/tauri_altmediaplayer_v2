@@ -8,8 +8,7 @@
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { open, save } from "@tauri-apps/plugin-dialog";
     import util from "../util";
-    import { exists } from "@tauri-apps/plugin-fs";
-    import { basename, dirname, join } from "@tauri-apps/api/path";
+    import path from "../path";
 
     const ipc = new IPC("Convert");
     let defaultPath = "";
@@ -57,14 +56,14 @@
     const startConvert = async (data: Mp.ConvertRequest) => {
         const file = await util.toFile(data.sourcePath);
 
-        const fileExists = await exists(file.fullPath);
+        const fileExists = await util.exists(file.fullPath);
         if (!fileExists) return endConvert();
 
         const extension = data.convertFormat.toLocaleLowerCase();
-        const fileName = file.name.replace(util.extname(file.name), "");
+        const fileName = file.name.replace(path.extname(file.name), "");
 
         const selectedPath = await save({
-            defaultPath: await join(defaultPath, `${fileName}.${extension}`),
+            defaultPath: path.join(defaultPath, `${fileName}.${extension}`),
             filters: [
                 {
                     name: data.convertFormat === "MP4" ? "Video" : "Audio",
@@ -75,14 +74,14 @@
 
         if (!selectedPath) return endConvert();
 
-        defaultPath = await dirname(selectedPath);
+        defaultPath = path.dirname(selectedPath);
 
         ipc.sendTo("Player", "change-default-path", defaultPath);
 
         const shouldReplace = file.fullPath === selectedPath;
 
         const timestamp = String(new Date().getTime());
-        const savePath = shouldReplace ? await join(await dirname(selectedPath), (await basename(selectedPath)) + timestamp) : selectedPath;
+        const savePath = shouldReplace ? path.join(path.dirname(selectedPath), path.basename(selectedPath) + timestamp) : selectedPath;
 
         await WebviewWindow.getCurrent().hide();
 

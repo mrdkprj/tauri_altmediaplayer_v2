@@ -13,8 +13,7 @@
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { save } from "@tauri-apps/plugin-dialog";
-    import { dirname, join } from "@tauri-apps/api/path";
-    import { writeFile } from "@tauri-apps/plugin-fs";
+    import path from "../path";
     import { open } from "@tauri-apps/plugin-shell";
     import { Settings, toBounds, toPhysicalPosition, toPhysicalSize } from "../settings";
     import { Window } from "@tauri-apps/api/window";
@@ -278,18 +277,15 @@
         const data = canvas.toDataURL("image/jpeg").replace(/^data:image\/jpeg;base64,/, "");
 
         const savePath = await save({
-            defaultPath: await join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
+            defaultPath: path.join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
             filters: [{ name: "Image", extensions: ["jpeg", "jpg"] }],
         });
 
         if (!savePath) return;
 
-        settings.data.defaultPath = await dirname(savePath);
+        settings.data.defaultPath = path.dirname(savePath);
 
-        writeFile(
-            savePath,
-            Uint8Array.from(atob(data), (c) => c.charCodeAt(0)),
-        );
+        ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
 
         await ipc.invoke("set_settings", settings.data);
     };

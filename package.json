@@ -13,13 +13,11 @@
     "start2": "tauri dev"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-rc.5",
-    "@tauri-apps/plugin-fs": "2.0.0-rc.2"
+    "@tauri-apps/api": "2.0.0-rc.5"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.2",
     "@tauri-apps/cli": "^2.0.1",
-    "@tauri-apps/plugin-clipboard-manager": "2.0.0-rc.2",
     "@tauri-apps/plugin-dialog": "2.0.0-rc.1",
     "@tauri-apps/plugin-shell": "2.0.0-rc.1",
     "@tsconfig/svelte": "^5.0.2",

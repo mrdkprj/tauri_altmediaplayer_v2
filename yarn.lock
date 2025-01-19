@@ -440,24 +440,10 @@
     "@tauri-apps/cli-win32-ia32-msvc" "2.0.1"
     "@tauri-apps/cli-win32-x64-msvc" "2.0.1"
 
-"@tauri-apps/plugin-clipboard-manager@2.0.0-rc.2":
-  version "2.0.0-rc.2"
-  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.0.0-rc.2.tgz#a452f1ed122ed957c382e3e807a70d0b2738c810"
-  integrity sha512-WWHPgUAOXeh1/LRpv4+FeFyb2Dd+FwNH5gHEROcGJa5K4Gb+6J8VlZc/rglT5BOFoDI7dpvV1O/Z6MuKn3ydGw==
-  dependencies:
-    "@tauri-apps/api" "^2.0.0-rc.4"
-
 "@tauri-apps/plugin-dialog@2.0.0-rc.1":
   version "2.0.0-rc.1"
   resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-dialog/-/plugin-dialog-2.0.0-rc.1.tgz#a3b0fd51a547e796ff93c58172fad48ad61a9970"
   integrity sha512-H28gh6BfZtjflHQ+HrmWwunDriBI3AQLAKnMs50GA6zeNUULqbQr7VXbAAKeJL/0CmWcecID4PKXVoSlaWRhEg==
-  dependencies:
-    "@tauri-apps/api" "^2.0.0-rc.4"
-
-"@tauri-apps/plugin-fs@2.0.0-rc.2":
-  version "2.0.0-rc.2"
-  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-fs/-/plugin-fs-2.0.0-rc.2.tgz#85362170983b12ad6a4808e51daff5ba4a8916fa"
-  integrity sha512-TFjCfso3tN4b5s2EBjqP8N2gYrPh93Ds3VNKj8pCXv4wbvnItyfG0aHO0haUsedBOHQryDwv9vDAdPX6/T0a+g==
   dependencies:
     "@tauri-apps/api" "^2.0.0-rc.4"
 

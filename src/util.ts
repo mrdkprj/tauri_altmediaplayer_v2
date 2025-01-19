@@ -1,11 +1,10 @@
 import { dirname, basename } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { stat } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
 import { Child, Command } from "@tauri-apps/plugin-shell";
-import { remove, exists } from "@tauri-apps/plugin-fs";
 import { Rotations, Resolutions } from "./constants";
 import { IPCBase } from "./ipc";
+import path from "./path";
 
 class Util {
     convertDestFile: string | null;
@@ -17,16 +16,12 @@ class Util {
         this.child = null;
     }
 
-    extname = (name: string | undefined) => {
-        if (!name) return "";
-
-        if (name.lastIndexOf(".") < 0) return "";
-
-        return name.substring(name.lastIndexOf(".")).toLowerCase();
-    };
+    async exists(path: string) {
+        return await this.ipc.invoke("exists", path);
+    }
 
     async toFile(fullPath: string): Promise<Mp.MediaFile> {
-        const statInfo = await stat(fullPath);
+        const statInfo = await this.ipc.invoke("stat", fullPath);
         const dir = await dirname(fullPath);
         const name = await basename(fullPath);
 
@@ -36,8 +31,8 @@ class Util {
             dir,
             src: convertFileSrc(fullPath),
             name: decodeURIComponent(encodeURIComponent(name)),
-            date: statInfo.mtime ? statInfo.mtime.getTime() : new Date().getTime(),
-            extension: this.extname(fullPath),
+            date: statInfo.mtime_ms ? statInfo.mtime_ms : new Date().getTime(),
+            extension: path.extname(fullPath),
         };
     }
 
@@ -73,7 +68,7 @@ class Util {
     }
 
     private localCompareName(a: Mp.MediaFile, b: Mp.MediaFile) {
-        return a.name.replace(this.extname(a.name), "").localeCompare(b.name.replace(this.extname(a.name), ""));
+        return a.name.replace(path.extname(a.name), "").localeCompare(b.name.replace(path.extname(a.name), ""));
     }
 
     sort(files: Mp.MediaFile[], sortOrder: Mp.SortOrder) {
@@ -321,8 +316,8 @@ class Util {
     }
 
     private async cleanUp() {
-        if (this.convertDestFile && (await exists(this.convertDestFile))) {
-            await remove(this.convertDestFile);
+        if (this.convertDestFile && (await this.exists(this.convertDestFile))) {
+            await this.ipc.invoke("remove", this.convertDestFile);
         }
 
         this.finishConvert();
