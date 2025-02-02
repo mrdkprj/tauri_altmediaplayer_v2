@@ -131,7 +131,7 @@
         let loaded = $appState.loaded;
 
         dispatch({ type: "loaded", value: false });
-        dispatch({ type: "playStatus", value: "stopped" });
+        changePlayStatus("stopped");
 
         document.title = `${APP_NAME} - ${$appState.currentFile.name}`;
 
@@ -228,23 +228,24 @@
     };
 
     const onPlayed = () => {
-        ipc.send("play-status-change", { status: "playing" });
-        dispatch({ type: "playStatus", value: "playing" });
+        changePlayStatus("playing");
     };
 
     const onPaused = () => {
         if (video.currentTime == video.duration) return;
 
-        ipc.send("play-status-change", { status: "paused" });
-        dispatch({ type: "playStatus", value: "paused" });
+        changePlayStatus("paused");
     };
 
     const stop = () => {
         if (!$appState.loaded) return;
 
-        ipc.send("play-status-change", { status: "stopped" });
-        dispatch({ type: "playStatus", value: "stopped" });
+        changePlayStatus("stopped");
         video.load();
+    };
+
+    const changePlayStatus = (status: Mp.PlayStatus) => {
+        dispatch({ type: "playStatus", value: status });
     };
 
     const requestPIP = async () => {

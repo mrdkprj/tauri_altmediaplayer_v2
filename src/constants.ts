@@ -1,4 +1,5 @@
 export const APP_NAME = "AltMediaPlayer";
+export const SEPARATOR = navigator.userAgent.includes("Windows") ? "\\" : "/";
 export const handleKeyEvent = () => {
     /**/
 };

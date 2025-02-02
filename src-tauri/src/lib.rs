@@ -74,12 +74,40 @@ fn change_theme(window: tauri::WebviewWindow, payload: &str) {
 
 #[tauri::command]
 async fn open_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    helper::popup_menu(&window, window.label(), payload).await;
+    #[cfg(target_os = "windows")]
+    {
+        helper::popup_menu(&window, window.label(), payload).await;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let gtk_window = window.clone();
+        window
+            .run_on_main_thread(move || {
+                gtk::glib::spawn_future_local(async move {
+                    helper::popup_menu(&window, window.label(), payload).await;
+                });
+            })
+            .unwrap();
+    }
 }
 
 #[tauri::command]
 async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
+    #[cfg(target_os = "windows")]
+    {
+        helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let gtk_window = window.clone();
+        window
+            .run_on_main_thread(move || {
+                gtk::glib::spawn_future_local(async move {
+                    helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
+                });
+            })
+            .unwrap();
+    }
 }
 
 #[tauri::command]
@@ -115,6 +143,24 @@ fn rename(payload: RenameInfo) -> Result<(), String> {
 #[tauri::command]
 fn stat(payload: String) -> Result<FileAttribute, String> {
     nonstd::fs::get_file_attribute(&payload)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FileAttributeEx {
+    full_path: String,
+    attribute: FileAttribute,
+}
+#[tauri::command]
+fn stat_all(payload: Vec<String>) -> Result<Vec<FileAttributeEx>, String> {
+    let mut result = Vec::new();
+    for path in payload {
+        let attribute = nonstd::fs::get_file_attribute(&path)?;
+        result.push(FileAttributeEx {
+            full_path: path,
+            attribute,
+        });
+    }
+    Ok(result)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -235,6 +281,7 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     helper::create_player_menu(&player, &settings)?;
 
     helper::create_playlist_menu(&playlist, &settings)?;
+    #[cfg(target_os = "windows")]
     helper::register_file_drop(&playlist)?;
 
     helper::create_sort_menu(&playlist, &settings)?;
@@ -293,7 +340,8 @@ pub fn run() {
             read_text_file,
             write_text_file,
             remove,
-            write_all
+            write_all,
+            stat_all
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

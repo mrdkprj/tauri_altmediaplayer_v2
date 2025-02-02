@@ -13,7 +13,6 @@ declare global {
         shortcut: Mp.ShortcutEvent;
         progress: Mp.ProgressEvent;
         "open-player-context": Mp.Event;
-        "play-status-change": Mp.ChangePlayStatusRequest;
         reload: Mp.Event;
         "save-capture": Mp.CaptureEvent;
         "close-playlist": Mp.Event;

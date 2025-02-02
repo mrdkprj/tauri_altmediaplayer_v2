@@ -1,4 +1,3 @@
-import { dirname, basename } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import { Child, Command } from "@tauri-apps/plugin-shell";
@@ -20,10 +19,29 @@ class Util {
         return await this.ipc.invoke("exists", path);
     }
 
+    async toFiles(fullPaths: string[]): Promise<Mp.MediaFile[]> {
+        const stats = await this.ipc.invoke("stat_all", fullPaths);
+        return stats.map((stat) => {
+            const fullPath = stat.full_path;
+            const dir = path.dirname(fullPath);
+            const name = path.basename(fullPath);
+
+            return {
+                id: crypto.randomUUID(),
+                fullPath,
+                dir,
+                src: convertFileSrc(fullPath),
+                name: decodeURIComponent(encodeURIComponent(name)),
+                date: stat.attribute.mtime_ms ? stat.attribute.mtime_ms : new Date().getTime(),
+                extension: path.extname(fullPath),
+            };
+        });
+    }
+
     async toFile(fullPath: string): Promise<Mp.MediaFile> {
         const statInfo = await this.ipc.invoke("stat", fullPath);
-        const dir = await dirname(fullPath);
-        const name = await basename(fullPath);
+        const dir = path.dirname(fullPath);
+        const name = path.basename(fullPath);
 
         return {
             id: crypto.randomUUID(),
@@ -37,8 +55,8 @@ class Util {
     }
 
     async updateFile(fullPath: string, currentFile: Mp.MediaFile): Promise<Mp.MediaFile> {
-        const dir = await dirname(fullPath);
-        const name = await basename(fullPath);
+        const dir = path.dirname(fullPath);
+        const name = path.basename(fullPath);
 
         return {
             id: currentFile.id,

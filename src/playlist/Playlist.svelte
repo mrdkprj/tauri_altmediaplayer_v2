@@ -98,12 +98,12 @@
         loadMediaFile(true);
     };
 
-    const loadMediaFile = (autoPlay: boolean, startFrom?: number) => {
+    const loadMediaFile = async (autoPlay: boolean, startFrom?: number) => {
         const currentFile = getCurrentFile();
         if (currentFile.id) {
             select(currentFile.id);
         }
-        ipc.sendTo("Player", "load-file", { currentFile, type: autoPlay ? "Play" : "Load", startFrom });
+        await ipc.sendTo("Player", "load-file", { currentFile, type: autoPlay ? "Play" : "Load", startFrom });
     };
 
     const getCurrentFile = () => {
@@ -140,7 +140,8 @@
     };
 
     const addToPlaylist = async (fullPaths: string[]) => {
-        const newFiles = await Promise.all(fullPaths.filter((fullPath) => $appState.files.findIndex((file) => file.fullPath == fullPath) < 0).map(async (fullPath) => await util.toFile(fullPath)));
+        const paths = fullPaths.filter((fullPath) => $appState.files.findIndex((file) => file.fullPath == fullPath) < 0);
+        const newFiles = await util.toFiles(paths);
 
         dispatch({ type: "appendFiles", value: newFiles });
 
@@ -253,7 +254,7 @@
         }
     };
 
-    const removeFromPlaylist = () => {
+    const removeFromPlaylist = (autoPlay = false) => {
         if (!$appState.selection.selectedIds.length) return;
 
         const removeIndices = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id)).map((file) => $appState.files.indexOf(file));
@@ -274,7 +275,7 @@
         dispatch({ type: "currentIndex", value: getIndexAfterRemove(removeIndices) });
 
         if (isCurrentFileRemoved) {
-            loadMediaFile(false);
+            loadMediaFile(autoPlay);
         }
     };
 
@@ -301,7 +302,7 @@
     const trash = async () => {
         if (!$appState.selection.selectedIds.length) return;
 
-        await releaseFile($appState.selection.selectedIds);
+        const result = await releaseFile($appState.selection.selectedIds);
 
         try {
             const targetFilePaths = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id)).map((file) => file.fullPath);
@@ -310,7 +311,7 @@
 
             await Promise.all(targetFilePaths.map(async (item) => await ipc.invoke("trash", item)));
 
-            removeFromPlaylist();
+            removeFromPlaylist(result.playing);
         } catch (ex: any) {
             await util.showErrorMessage(ex);
         }
@@ -352,13 +353,14 @@
 
             const sourcePaths = files.map((file) => file.fullPath);
             await ipc.invoke("move_files", { sources: sourcePaths, dest: destPath, cancellationId });
-            cancellationId = -1;
+
             dispatch({ type: "endMove" });
 
             removeFromPlaylist();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
             dispatch({ type: "endMove" });
+        } finally {
             cancellationId = -1;
         }
     };

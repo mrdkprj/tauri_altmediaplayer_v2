@@ -36,6 +36,11 @@ type FileAttribute = {
     size: number;
 };
 
+export type FileAttributeExt = {
+    full_path: string;
+    attribute: FileAttribute;
+};
+
 type WriteFileInfo = {
     fullPath: string;
     data: string;
@@ -86,6 +91,7 @@ type TauriCommandMap = {
     read_text_file: TauriCommand<string, string>;
     write_text_file: TauriCommand<WriteFileInfo, undefined>;
     write_all: TauriCommand<WriteAllFileInfo, undefined>;
+    stat_all: TauriCommand<string[], FileAttributeExt[]>;
 };
 
 export class IPCBase {

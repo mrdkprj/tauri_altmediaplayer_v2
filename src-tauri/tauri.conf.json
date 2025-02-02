@@ -7,7 +7,13 @@
           "**"
         ]
       },
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost; connect-src ipc: http://ipc.localhost"
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "media-src":"'self' asset: http://asset.localhost",
+        "style-src": "'unsafe-inline' 'self'"
+      }
     },
     "trayIcon": {
       "iconPath": "icons/icon.ico"
@@ -126,6 +132,11 @@
     "externalBin": [
       "binaries/ffmpeg",
       "binaries/ffprobe"
+    ],
+    "fileAssociations":[
+      {
+        "ext": ["mp4","mov","webm","ogg","ogv","mp3","oga"]
+      }
     ]
   },
   "identifier": "com.taltmediaplayer.dev",

@@ -10,7 +10,7 @@ use strum_macros::Display;
 use tauri::Emitter;
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
-    Menu, MenuBuilder, MenuItem,
+    Menu, MenuBuilder, MenuItem, MenuItemType,
 };
 use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2WebMessageReceivedEventHandler;
 #[cfg(target_os = "windows")]
@@ -122,7 +122,7 @@ pub async fn refresh_tag_contextmenu(menu_name: &str, tags: Vec<String>) {
         }
 
         if !menu_item_map.contains_key(&key) && tags.contains(&key) {
-            let item = MenuItem::new_text_item(&key, &key, None, None, None);
+            let item = MenuItem::builder(MenuItemType::Text).id(&key).label(&key).build();
             submenu.insert(item, index as u32);
         }
     }
@@ -156,13 +156,13 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
-    builder.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", settings.video.fitToWindow, None);
+    builder.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window", settings.video.fitToWindow, false);
     builder.separator();
-    builder.text_with_accelerator(&PlayerMenu::TogglePlaylistWindow.to_string(), "Playlist", None, "Ctrl+P");
-    builder.text_with_accelerator(&PlayerMenu::ToggleFullscreen.to_string(), "Toggle Fullscreen", None, "F11");
-    builder.text(&PlayerMenu::PictureInPicture.to_string(), "Picture In Picture", None);
+    builder.text_with_accelerator(&PlayerMenu::TogglePlaylistWindow.to_string(), "Playlist", false, "Ctrl+P");
+    builder.text_with_accelerator(&PlayerMenu::ToggleFullscreen.to_string(), "Toggle Fullscreen", false, "F11");
+    builder.text(&PlayerMenu::PictureInPicture.to_string(), "Picture In Picture", false);
     builder.separator();
-    builder.text_with_accelerator(&PlayerMenu::Capture.to_string(), "Capture", None, "Ctrl+S");
+    builder.text_with_accelerator(&PlayerMenu::Capture.to_string(), "Capture", false, "Ctrl+S");
     builder.separator();
     create_theme_submenu(&mut builder, settings);
 
@@ -176,11 +176,11 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
 fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::PlaybackSpeed.to_string();
-    let mut parent = builder.submenu(&id, "Playback Speed", None);
+    let mut parent = builder.submenu(&id, "Playback Speed", false);
 
     for speed in PLAYBACK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(speed_str, speed_str, &id, speed == settings.video.playbackSpeed, None);
+        parent.radio(speed_str, speed_str, &id, speed == settings.video.playbackSpeed, false);
     }
 
     parent.build().unwrap();
@@ -188,11 +188,11 @@ fn create_playback_speed_submenu(builder: &mut MenuBuilder, settings: &Settings)
 
 fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::SeekSpeed.to_string();
-    let mut parent = builder.submenu(&id, "Seek Speed", None);
+    let mut parent = builder.submenu(&id, "Seek Speed", false);
 
     for speed in SEEK_SPEEDS {
         let speed_str = &speed.to_string();
-        parent.radio(speed_str, speed_str, &id, speed == settings.video.seekSpeed, None);
+        parent.radio(speed_str, speed_str, &id, speed == settings.video.seekSpeed, false);
     }
 
     parent.build().unwrap();
@@ -200,10 +200,10 @@ fn create_seek_speed_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 
 fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
     let id = PlayerMenu::Theme.to_string();
-    let mut parent = builder.submenu(&id, "Theme", None);
+    let mut parent = builder.submenu(&id, "Theme", false);
 
-    parent.radio("Dark", "Dark", &id, settings.theme == wcpopup::config::Theme::Dark, None);
-    parent.radio("Light", "Light", &id, settings.theme == wcpopup::config::Theme::Light, None);
+    parent.radio("Dark", "Dark", &id, settings.theme == wcpopup::config::Theme::Dark, false);
+    parent.radio("Light", "Light", &id, settings.theme == wcpopup::config::Theme::Light, false);
 
     parent.build().unwrap();
 }
@@ -214,23 +214,23 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     let config = get_menu_config(settings.theme);
     let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
 
-    builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", None, "Delete");
-    builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", None, "Shift+Delete");
+    builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", false, "Delete");
+    builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", false, "Shift+Delete");
     builder.separator();
-    builder.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", None, "Ctrl+C");
-    builder.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", None, "Ctrl+Shift+C");
-    builder.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", None, "Ctrl+R");
+    builder.text_with_accelerator(&PlaylistMenu::CopyFileName.to_string(), "Copy Name", false, "Ctrl+C");
+    builder.text_with_accelerator(&PlaylistMenu::CopyFullpath.to_string(), "Copy Full Path", false, "Ctrl+Shift+C");
+    builder.text_with_accelerator(&PlaylistMenu::Reveal.to_string(), "Reveal in File Explorer", false, "Ctrl+R");
     builder.separator();
-    builder.text_with_accelerator(&PlaylistMenu::Rename.to_string(), "Rename", None, "F2");
-    builder.text(&PlaylistMenu::Metadata.to_string(), "View Metadata", None);
-    builder.text(&PlaylistMenu::Convert.to_string(), "Convert", None);
+    builder.text_with_accelerator(&PlaylistMenu::Rename.to_string(), "Rename", false, "F2");
+    builder.text(&PlaylistMenu::Metadata.to_string(), "View Metadata", false);
+    builder.text(&PlaylistMenu::Convert.to_string(), "Convert", false);
     builder.separator();
     create_tag_context_menu(&mut builder, settings);
-    builder.text(&PlaylistMenu::ManageTags.to_string(), "Manage Tags", None);
+    builder.text(&PlaylistMenu::ManageTags.to_string(), "Manage Tags", false);
     builder.separator();
-    builder.text(&PlaylistMenu::Move.to_string(), "Move File", None);
+    builder.text(&PlaylistMenu::Move.to_string(), "Move File", false);
     builder.separator();
-    builder.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", None);
+    builder.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", false);
 
     let menu = builder.build().unwrap();
 
@@ -241,9 +241,9 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 }
 
 fn create_tag_context_menu(builder: &mut MenuBuilder, settings: &Settings) {
-    let mut parent = builder.submenu(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment", None);
+    let mut parent = builder.submenu(&PlaylistMenu::Tag.to_string(), "Add Tag to Comment", false);
     for tag in &settings.tags {
-        parent.text(tag, tag, None);
+        parent.text(tag, tag, false);
     }
     parent.build().unwrap();
 }
@@ -255,12 +255,12 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
 
     let id = &PlaylistMenu::Sort.to_string();
 
-    builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", settings.sort.groupBy, None);
+    builder.check(&SortMenu::GroupBy.to_string(), "Group By Directory", settings.sort.groupBy, false);
     builder.separator();
-    builder.radio(&SortMenu::NameAsc.to_string(), "Name(Asc)", id, settings.sort.order == SortOrder::NameAsc, None);
-    builder.radio(&SortMenu::NameDesc.to_string(), "Name(Desc)", id, settings.sort.order == SortOrder::NameDesc, None);
-    builder.radio(&SortMenu::DateAsc.to_string(), "Date(Asc)", id, settings.sort.order == SortOrder::DateAsc, None);
-    builder.radio(&SortMenu::DateDesc.to_string(), "Date(Desc", id, settings.sort.order == SortOrder::DateDesc, None);
+    builder.radio(&SortMenu::NameAsc.to_string(), "Name(Asc)", id, settings.sort.order == SortOrder::NameAsc, false);
+    builder.radio(&SortMenu::NameDesc.to_string(), "Name(Desc)", id, settings.sort.order == SortOrder::NameDesc, false);
+    builder.radio(&SortMenu::DateAsc.to_string(), "Date(Asc)", id, settings.sort.order == SortOrder::DateAsc, false);
+    builder.radio(&SortMenu::DateDesc.to_string(), "Date(Desc", id, settings.sort.order == SortOrder::DateDesc, false);
 
     let menu = builder.build().unwrap();
 
@@ -270,6 +270,7 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window.with_webview(|webview| {
         let mut token = EventRegistrationToken::default();
@@ -278,12 +279,14 @@ pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     })
 }
 
+#[cfg(target_os = "windows")]
 #[derive(Serialize)]
 struct File {
     path: String,
     kind: String,
 }
 
+#[cfg(target_os = "windows")]
 fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMessageReceivedEventArgs>) -> windows::core::Result<()> {
     unsafe {
         if let Some(args) = args {
@@ -328,6 +331,7 @@ fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMes
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
     string.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }

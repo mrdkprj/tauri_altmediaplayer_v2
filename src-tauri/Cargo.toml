@@ -22,7 +22,7 @@ async-std = "1.13.0"
 nonstd = { git = "https://github.com/mrdkprj/movefile.git", rev="ca510c52ac789ecfe9058bea28e9bb19ffcde074" }
 
 [dependencies.wcpopup]
-version = "0.3.4"
+version = "0.5.0"
 
 [target.'cfg(target_os = "windows")'.dependencies.webview2-com]
 version = "0.34"
@@ -32,6 +32,9 @@ version = "0.58"
 features = [
     "Foundation",
 ]
+
+[target.'cfg(target_os = "linux")'.dependencies.gtk]
+version = "0.18.2"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
