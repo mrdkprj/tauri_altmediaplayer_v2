@@ -2194,7 +2194,7 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "nonstd"
 version = "0.1.0"
-source = "git+https://github.com/mrdkprj/movefile.git?rev=ca510c52ac789ecfe9058bea28e9bb19ffcde074#ca510c52ac789ecfe9058bea28e9bb19ffcde074"
+source = "git+https://github.com/mrdkprj/movefile.git?rev=1049d439525ba40f35a81075292226e9ea05b2ac#1049d439525ba40f35a81075292226e9ea05b2ac"
 dependencies = [
  "gio",
  "gtk",
@@ -4652,9 +4652,9 @@ dependencies = [
 
 [[package]]
 name = "wcpopup"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f89ac797b7dd094c5a303407c569bb23a67c330ccdf6232fb4eaf29a04af8b7b"
+checksum = "a0e6220674b3babccd5e745999e41567802594b5d6dc4b9e78e6be8d6e09453a"
 dependencies = [
  "async-std",
  "gtk",

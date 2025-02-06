@@ -7,7 +7,6 @@ use settings::Settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::env;
 use std::path::PathBuf;
-use tauri::Emitter;
 use tauri::Manager;
 use tauri::WebviewWindow;
 pub mod helper;
@@ -21,9 +20,13 @@ fn get_window_handel(window: &WebviewWindow) -> isize {
     window.hwnd().unwrap().0 as _
 }
 
-#[derive(Clone, Serialize)]
-struct LoadFileEvent {
-    files: Vec<String>,
+#[tauri::command]
+fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
+    if let Some(urls) = app.try_state::<OpenedUrls>() {
+        return urls.inner().0.clone();
+    }
+
+    Vec::new()
 }
 
 #[derive(serde::Serialize)]
@@ -35,15 +38,6 @@ struct MoveFileRequest {
     sources: Vec<String>,
     dest: String,
     cancellationId: u32,
-}
-
-#[tauri::command]
-fn get_init_args(app_handle: tauri::AppHandle) -> Vec<String> {
-    if let Some(urls) = app_handle.try_state::<OpenedUrls>() {
-        return urls.inner().0.clone();
-    }
-
-    Vec::new()
 }
 
 #[tauri::command]
@@ -142,7 +136,7 @@ fn rename(payload: RenameInfo) -> Result<(), String> {
 
 #[tauri::command]
 fn stat(payload: String) -> Result<FileAttribute, String> {
-    nonstd::fs::get_file_attribute(&payload)
+    nonstd::fs::stat(&payload)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,7 +148,7 @@ struct FileAttributeEx {
 fn stat_all(payload: Vec<String>) -> Result<Vec<FileAttributeEx>, String> {
     let mut result = Vec::new();
     for path in payload {
-        let attribute = nonstd::fs::get_file_attribute(&path)?;
+        let attribute = nonstd::fs::stat(&path)?;
         result.push(FileAttributeEx {
             full_path: path,
             attribute,
@@ -262,6 +256,18 @@ fn write_all(payload: WriteAllFileInfo) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
+    let player = app.get_webview_window(PLAYER).unwrap();
+    helper::set_play_thumbs(&app, &player, payload);
+}
+
+#[tauri::command]
+fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
+    let player = app.get_webview_window(PLAYER).unwrap();
+    helper::set_pause_thumbs(&app, &player, payload);
+}
+
+#[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
     app.manage(payload);
 
@@ -281,6 +287,9 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     helper::create_player_menu(&player, &settings)?;
 
     helper::create_playlist_menu(&playlist, &settings)?;
+
+    #[cfg(target_os = "windows")]
+    helper::register_file_drop(&player)?;
     #[cfg(target_os = "windows")]
     helper::register_file_drop(&playlist)?;
 
@@ -292,17 +301,15 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
 #[allow(deprecated)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(urls) = app.try_state::<OpenedUrls>() {
+                let mut seconds = argv[1..].to_vec();
+                seconds.extend(urls.inner().0.clone());
+                app.manage(OpenedUrls(seconds));
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            app.emit(
-                "second-instance",
-                LoadFileEvent {
-                    files: argv[1..].to_vec(),
-                },
-            )
-            .unwrap();
-        }))
         .setup(|app| {
             let mut urls = Vec::new();
             for arg in env::args().skip(1) {
@@ -341,7 +348,9 @@ pub fn run() {
             write_text_file,
             remove,
             write_all,
-            stat_all
+            stat_all,
+            set_play_thumbs,
+            set_pause_thumbs
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

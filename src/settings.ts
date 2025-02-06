@@ -1,4 +1,3 @@
-import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { appDataDir } from "@tauri-apps/api/path";
 import path from "./path";
 import util from "./util";
@@ -33,23 +32,6 @@ const defaultSettings: Mp.Settings = {
         lang: "en",
     },
     tags: [],
-};
-
-export const toPhysicalPosition = (bounds: Mp.Bounds) => {
-    return new PhysicalPosition(bounds.x, bounds.y);
-};
-
-export const toPhysicalSize = (bounds: Mp.Bounds) => {
-    return new PhysicalSize(bounds.width, bounds.height);
-};
-
-export const toBounds = (position: PhysicalPosition, size: PhysicalSize): Mp.Bounds => {
-    return {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height,
-    };
 };
 
 export class Settings {

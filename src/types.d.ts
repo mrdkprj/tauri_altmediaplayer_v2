@@ -11,7 +11,6 @@ declare global {
         "toggle-playlist-visible": Mp.Event;
         close: Mp.Event;
         shortcut: Mp.ShortcutEvent;
-        progress: Mp.ProgressEvent;
         "open-player-context": Mp.Event;
         reload: Mp.Event;
         "save-capture": Mp.CaptureEvent;
@@ -87,6 +86,7 @@ declare global {
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
         type SeekSpeed = 0.03 | 0.05 | 0.1 | 0.5 | 1 | 3 | 5 | 10 | 20;
         type SortOrder = "NameAsc" | "NameDesc" | "DateAsc" | "DateDesc";
+        type ThumbButtonId = "Play" | "Pause" | "Previous" | "Next";
 
         type PlayerContextMenuSubTypeMap = {
             PlaybackSpeed: Mp.PlaybackSpeed;
@@ -273,7 +273,7 @@ declare global {
         };
 
         type FileDropEvent = Event & {
-            data?: DroppedFile[];
+            data?: Mp.DroppedFile[];
         };
 
         type DroppedFile = {
@@ -303,10 +303,6 @@ declare global {
             start: number;
             end: number;
             currentIndex: number;
-        };
-
-        type ProgressEvent = {
-            progress: number;
         };
 
         type ChangePlaylistRequest = {

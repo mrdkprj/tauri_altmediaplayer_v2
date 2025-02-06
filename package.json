@@ -13,7 +13,7 @@
     "start2": "tauri dev"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-rc.5"
+    "@tauri-apps/api": "^2.2.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.2",

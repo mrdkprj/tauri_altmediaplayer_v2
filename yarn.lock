@@ -364,15 +364,15 @@
     svelte-hmr "^0.16.0"
     vitefu "^0.2.5"
 
-"@tauri-apps/api@2.0.0-rc.5":
-  version "2.0.0-rc.5"
-  resolved "https://registry.yarnpkg.com/@tauri-apps/api/-/api-2.0.0-rc.5.tgz#9e790680f5cf691b0ae4c25c4de6696f340df401"
-  integrity sha512-JWs69pE9NsQdcqTpEVBepAZ08+jgQWuthIiTiaWRq/YlCLgnqq0KfC9sDem55uJ0YpgsytZuyj+m6b6q8oiD2g==
-
 "@tauri-apps/api@^2.0.0-rc.4":
   version "2.0.0-rc.6"
   resolved "https://registry.yarnpkg.com/@tauri-apps/api/-/api-2.0.0-rc.6.tgz#586e8dc1aeeb3b676e19b5e56b23a20bee676f15"
   integrity sha512-oENxL0C5WqHNSXWjZEbjnzoBwFFyn8do5S0elOg0ME1cLvWJOAKmqdCnWPpAwtzHQZ+xAzMU0/k8nPpJq4OQYA==
+
+"@tauri-apps/api@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/api/-/api-2.2.0.tgz#daaff2515b1a4ff1e763cf84a414548b02b566c5"
+  integrity sha512-R8epOeZl1eJEl603aUMIGb4RXlhPjpgxbGVEaqY+0G5JG9vzV/clNlzTeqc+NLYXVqXcn8mb4c5b9pJIUDEyAg==
 
 "@tauri-apps/cli-darwin-arm64@2.0.1":
   version "2.0.1"

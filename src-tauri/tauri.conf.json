@@ -35,7 +35,7 @@
         "skipTaskbar":false,
         "transparent":false,
         "theme": "Dark",
-        "dragDropEnabled":true,
+        "dragDropEnabled":false,
         "shadow":true,
         "url":"src/player/index.html",
         "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
@@ -121,6 +121,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources":[
+      "assets/*"
     ],
     "targets": "nsis",
     "windows": {

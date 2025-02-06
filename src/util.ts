@@ -1,4 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { message } from "@tauri-apps/plugin-dialog";
 import { Child, Command } from "@tauri-apps/plugin-shell";
 import { Rotations, Resolutions } from "./constants";
@@ -121,6 +122,23 @@ class Util {
             .flat() as Mp.MediaFile[];
         files.length = 0;
         files.push(...result);
+    }
+
+    toPhysicalPosition(bounds: Mp.Bounds) {
+        return new PhysicalPosition(bounds.x, bounds.y);
+    }
+
+    toPhysicalSize(bounds: Mp.Bounds) {
+        return new PhysicalSize(bounds.width, bounds.height);
+    }
+
+    toBounds(position: PhysicalPosition, size: PhysicalSize): Mp.Bounds {
+        return {
+            x: position.x,
+            y: position.y,
+            width: size.width,
+            height: size.height,
+        };
     }
 
     async showErrorMessage(ex: any) {

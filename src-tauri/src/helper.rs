@@ -1,5 +1,6 @@
 use crate::settings::{Settings, SortOrder};
 use async_std::sync::Mutex;
+use nonstd::shell::ThumbButton;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,15 +8,16 @@ use std::{
     os::windows::ffi::OsStrExt,
 };
 use strum_macros::Display;
-use tauri::Emitter;
+use tauri::{path::BaseDirectory, Emitter, Manager};
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
     Menu, MenuBuilder, MenuItem, MenuItemType,
 };
-use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2WebMessageReceivedEventHandler;
 #[cfg(target_os = "windows")]
 use webview2_com::{
-    Microsoft::Web::WebView2::Win32::{ICoreWebView2, ICoreWebView2File, ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventArgs2},
+    Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2, ICoreWebView2File, ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventArgs2, ICoreWebView2WebMessageReceivedEventHandler,
+    },
     WebMessageReceivedEventHandler,
 };
 #[cfg(target_os = "windows")]
@@ -270,6 +272,72 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     Ok(())
 }
 
+pub fn set_play_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
+    #[cfg(target_os = "windows")]
+    {
+        let buttons = get_thumb_buttons(app, true);
+        nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
+            ev.send(id).unwrap();
+        });
+    }
+}
+
+pub fn set_pause_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
+    #[cfg(target_os = "windows")]
+    {
+        let buttons = get_thumb_buttons(app, false);
+        nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
+            ev.send(id).unwrap();
+        });
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_thumb_buttons(app: &tauri::AppHandle, play: bool) -> [ThumbButton; 3] {
+    let backward = app.path().resolve("assets/backward.png", BaseDirectory::Resource).unwrap();
+    let forward = app.path().resolve("assets/forward.png", BaseDirectory::Resource).unwrap();
+
+    if play {
+        let play = app.path().resolve("assets/play.png", BaseDirectory::Resource).unwrap();
+        [
+            ThumbButton {
+                id: String::from("Previous"),
+                tool_tip: Some(String::from("Previous")),
+                icon: backward,
+            },
+            ThumbButton {
+                id: String::from("Play"),
+                tool_tip: Some(String::from("Play")),
+                icon: play,
+            },
+            ThumbButton {
+                id: String::from("Next"),
+                tool_tip: Some(String::from("Next")),
+                icon: forward,
+            },
+        ]
+    } else {
+        let pause = app.path().resolve("assets/pause.png", BaseDirectory::Resource).unwrap();
+        [
+            ThumbButton {
+                id: String::from("Previous"),
+                tool_tip: Some(String::from("Previous")),
+                icon: backward,
+            },
+            ThumbButton {
+                id: String::from("Pause"),
+                tool_tip: Some(String::from("Pause")),
+                icon: pause,
+            },
+            ThumbButton {
+                id: String::from("Next"),
+                tool_tip: Some(String::from("Next")),
+                icon: forward,
+            },
+        ]
+    }
+}
+
 #[cfg(target_os = "windows")]
 pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window.with_webview(|webview| {
@@ -279,7 +347,6 @@ pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     })
 }
 
-#[cfg(target_os = "windows")]
 #[derive(Serialize)]
 struct File {
     path: String,
@@ -291,18 +358,19 @@ fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMes
     unsafe {
         if let Some(args) = args {
             let mut webmessageasstring = PWSTR::null();
-            args.TryGetWebMessageAsString(&mut webmessageasstring).unwrap();
-            if webmessageasstring.to_string().unwrap() == "OnFileDrop" {
-                let args2: ICoreWebView2WebMessageReceivedEventArgs2 = args.cast().unwrap();
+            args.TryGetWebMessageAsString(&mut webmessageasstring)?;
+
+            if webmessageasstring.to_string().unwrap() == "getPathForFiles" {
+                let args2: ICoreWebView2WebMessageReceivedEventArgs2 = args.cast()?;
                 if let Ok(obj) = args2.AdditionalObjects() {
                     let mut count = 0;
                     let mut files = Vec::new();
-                    obj.Count(&mut count).unwrap();
+                    obj.Count(&mut count)?;
                     for i in 0..count {
-                        let value = obj.GetValueAtIndex(i).unwrap();
+                        let value = obj.GetValueAtIndex(i)?;
                         if let Ok(file) = value.cast::<ICoreWebView2File>() {
                             let mut path_ptr = PWSTR::null();
-                            file.Path(&mut path_ptr).unwrap();
+                            file.Path(&mut path_ptr)?;
                             let path_str = path_ptr.to_string().unwrap();
                             let full_path = std::path::Path::new(&path_str);
                             files.push(File {
@@ -316,12 +384,14 @@ fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMes
                         }
                     }
 
-                    if !files.is_empty() {
-                        if let Ok(str) = serde_json::to_string(&files) {
-                            let json = encode_wide(str);
-                            if let Some(webview) = webview {
-                                webview.PostWebMessageAsJson(PCWSTR::from_raw(json.as_ptr())).unwrap();
-                            }
+                    if files.is_empty() {
+                        return Ok(());
+                    }
+
+                    if let Ok(str) = serde_json::to_string(&files) {
+                        let json = encode_wide(str);
+                        if let Some(webview) = webview {
+                            webview.PostWebMessageAsJson(PCWSTR::from_raw(json.as_ptr()))?;
                         }
                     }
                 }

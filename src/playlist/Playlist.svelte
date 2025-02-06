@@ -5,13 +5,12 @@
     import editor from "./editor";
     import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
-    import { handleKeyEvent, Buttons, EmptyFile } from "../constants";
+    import { handleKeyEvent, Buttons, EmptyFile, PLATFROMS } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
     import { t, lang } from "../translation/useTranslation";
     import { IPC } from "../ipc";
     import util from "../util";
     import Deferred from "../deferred";
-    import { toPhysicalPosition, toPhysicalSize } from "../settings";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { ask, open } from "@tauri-apps/plugin-dialog";
@@ -25,23 +24,23 @@
     const ipc = new IPC("Playlist");
     const List_Item_Padding = 10;
 
-    const onContextMenu = (e: MouseEvent) => {
+    const onContextMenu = async (e: MouseEvent) => {
         e.preventDefault();
-        if (navigator.userAgent.includes("Linux")) {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
             openContextMenu = true;
         } else {
-            ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
+            await ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
         }
     };
 
-    const openSortMenu = (e: MouseEvent) => {
-        ipc.invoke("open_sort_context_menu", { x: e.screenX, y: e.screenY - 150 });
+    const openSortMenu = async (e: MouseEvent) => {
+        await ipc.invoke("open_sort_context_menu", { x: e.screenX, y: e.screenY - 150 });
     };
 
-    const onMouseUp = (e: MouseEvent) => {
-        if (navigator.userAgent.includes("Linux")) {
+    const onMouseUp = async (e: MouseEvent) => {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
             if (e.button == 2 && e.buttons == 0 && openContextMenu) {
-                ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
+                await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
                 openContextMenu = false;
             }
         }
@@ -65,20 +64,20 @@
         e.preventDefault();
         e.stopPropagation();
 
-        if (!navigator.userAgent.includes("Linux")) {
+        if (navigator.userAgent.includes(PLATFROMS.windows)) {
             if (e.dataTransfer && e.dataTransfer.files) {
-                window.chrome.webview.postMessageWithAdditionalObjects("OnFileDrop", e.dataTransfer.files);
+                window.chrome.webview.postMessageWithAdditionalObjects("getPathForFiles", e.dataTransfer.files);
             }
         }
     };
 
-    const onFileDrop = (e: Mp.FileDropEvent) => {
+    const onFileDrop = async (e: Mp.FileDropEvent) => {
         if ($appState.dragState.dragging) return;
 
         const files = getDropFiles(e);
 
         if (files.length) {
-            addToPlaylist(files);
+            await addToPlaylist(files);
         }
     };
 
@@ -88,14 +87,14 @@
         const files = getTauriDropFiles(e);
 
         if (files.length) {
-            addToPlaylist(files);
+            await addToPlaylist(files);
         }
     };
 
-    const onPlaylistItemClicked = (id: string) => {
+    const onPlaylistItemClicked = async (id: string) => {
         const index = getChildIndex(id);
         dispatch({ type: "currentIndex", value: index });
-        loadMediaFile(true);
+        await loadMediaFile(true);
     };
 
     const loadMediaFile = async (autoPlay: boolean, startFrom?: number) => {
@@ -136,7 +135,7 @@
 
         shuffleList();
 
-        loadMediaFile(true);
+        await loadMediaFile(true);
     };
 
     const addToPlaylist = async (fullPaths: string[]) => {
@@ -151,7 +150,7 @@
 
         if ($appState.files.length && $appState.currentIndex < 0) {
             dispatch({ type: "currentIndex", value: 0 });
-            loadMediaFile(false);
+            await loadMediaFile(false);
         }
     };
 
@@ -165,7 +164,7 @@
         return randomIndices.shift() as number;
     };
 
-    const changeIndex = (e: Mp.ChangePlaylistRequest) => {
+    const changeIndex = async (e: Mp.ChangePlaylistRequest) => {
         let nextIndex = $appState.shuffle ? getRandomIndex(e.index) : $appState.currentIndex + e.index;
 
         if (nextIndex >= $appState.files.length) {
@@ -178,7 +177,7 @@
 
         dispatch({ type: "currentIndex", value: nextIndex });
 
-        loadMediaFile(false);
+        await loadMediaFile(false);
     };
 
     const sortPlayList = () => {
@@ -225,9 +224,9 @@
         dispatch({ type: "files", value: $appState.files });
     };
 
-    const clearPlaylist = () => {
+    const clearPlaylist = async () => {
         dispatch({ type: "clear" });
-        loadMediaFile(false);
+        await loadMediaFile(false);
     };
 
     const clearSelection = () => {
@@ -254,7 +253,7 @@
         }
     };
 
-    const removeFromPlaylist = (autoPlay = false) => {
+    const removeFromPlaylist = async (autoPlay = false) => {
         if (!$appState.selection.selectedIds.length) return;
 
         const removeIndices = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id)).map((file) => $appState.files.indexOf(file));
@@ -275,7 +274,7 @@
         dispatch({ type: "currentIndex", value: getIndexAfterRemove(removeIndices) });
 
         if (isCurrentFileRemoved) {
-            loadMediaFile(autoPlay);
+            await loadMediaFile(autoPlay);
         }
     };
 
@@ -311,7 +310,7 @@
 
             await Promise.all(targetFilePaths.map(async (item) => await ipc.invoke("trash", item)));
 
-            removeFromPlaylist(result.playing);
+            await removeFromPlaylist(result.playing);
         } catch (ex: any) {
             await util.showErrorMessage(ex);
         }
@@ -356,7 +355,7 @@
 
             dispatch({ type: "endMove" });
 
-            removeFromPlaylist();
+            await removeFromPlaylist();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
             dispatch({ type: "endMove" });
@@ -494,13 +493,13 @@
         node.focus();
     };
 
-    const onRenameInputKeyDown = (e: KeyboardEvent) => {
+    const onRenameInputKeyDown = async (e: KeyboardEvent) => {
         if (!e.target || !(e.target instanceof HTMLInputElement)) return;
 
         if ($appState.rename.renaming && e.key === "Enter") {
             e.stopPropagation();
             e.preventDefault();
-            endEditFileName();
+            await endEditFileName();
         }
     };
 
@@ -581,7 +580,7 @@
             select(editor.data.id);
         } finally {
             if (fileIndex == $appState.currentIndex) {
-                loadMediaFile(releaseResult.playing, releaseResult.currentTime);
+                await loadMediaFile(releaseResult.playing, releaseResult.currentTime);
             }
             endRename();
         }
@@ -694,7 +693,7 @@
             );
 
             if (files.length) {
-                addToPlaylist(files);
+                await addToPlaylist(files);
             }
         }
     };
@@ -718,7 +717,7 @@
 
         if (!file) return;
 
-        ipc.invoke("reveal", file.fullPath);
+        await ipc.invoke("reveal", file.fullPath);
     };
 
     const openConvert = async (opener: Mp.DialogOpener) => {
@@ -730,7 +729,7 @@
         await ipc.sendTo("Tag", "open-tag-editor", {});
     };
 
-    const onKeydown = (e: KeyboardEvent) => {
+    const onKeydown = async (e: KeyboardEvent) => {
         if ($appState.rename.renaming) return;
 
         if ($appState.searchState.searching) {
@@ -758,7 +757,7 @@
 
         if (e.key === "Enter") {
             e.preventDefault();
-            return ipc.send("toggle-play", {});
+            return await ipc.send("toggle-play", {});
         }
 
         if (e.ctrlKey && e.key === "a") {
@@ -768,12 +767,12 @@
 
         if (e.ctrlKey && e.key === "z") {
             e.preventDefault();
-            return undoRename();
+            return await undoRename();
         }
 
         if (e.ctrlKey && e.key === "y") {
             e.preventDefault();
-            return redoRename();
+            return await redoRename();
         }
 
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -793,40 +792,40 @@
 
         const shortcut = handleShortcut("Playlist", e);
         if (shortcut) {
-            return onContextMenuSelect(shortcut);
+            return await onContextMenuSelect(shortcut);
         }
     };
 
-    const onContextMenuSelect = (e: Mp.ContextMenuEvent) => {
+    const onContextMenuSelect = async (e: Mp.ContextMenuEvent) => {
         const id = e.name ? e.name : e.id;
-        handleContextMenu(id as keyof Mp.PlaylistContextMenuSubTypeMap, e.id as keyof Mp.PlaylistContextMenuSubTypeMap);
+        await handleContextMenu(id as keyof Mp.PlaylistContextMenuSubTypeMap, e.id as keyof Mp.PlaylistContextMenuSubTypeMap);
     };
 
-    const handleContextMenu = (menuId: keyof Mp.PlaylistContextMenuSubTypeMap, value: keyof Mp.PlaylistContextMenuSubTypeMap) => {
+    const handleContextMenu = async (menuId: keyof Mp.PlaylistContextMenuSubTypeMap, value: keyof Mp.PlaylistContextMenuSubTypeMap) => {
         switch (menuId) {
             case "Remove":
-                removeFromPlaylist();
+                await removeFromPlaylist();
                 break;
             case "RemoveAll":
-                clearPlaylist();
+                await clearPlaylist();
                 break;
             case "Trash":
                 trash();
                 break;
             case "CopyFileName":
-                copyFileNameToClipboard(false);
+                await copyFileNameToClipboard(false);
                 break;
             case "CopyFullpath":
-                copyFileNameToClipboard(true);
+                await copyFileNameToClipboard(true);
                 break;
             case "Reveal":
-                reveal();
+                await reveal();
                 break;
             case "Metadata":
-                displayMetadata();
+                await displayMetadata();
                 break;
             case "Convert":
-                openConvert("user");
+                await openConvert("user");
                 break;
             case "Sort":
                 changeSortOrder(value as Mp.SortOrder);
@@ -835,7 +834,7 @@
                 startEditFileName();
                 break;
             case "Move":
-                moveFile();
+                await moveFile();
                 break;
             case "GroupBy":
                 toggleGroupBy();
@@ -844,10 +843,10 @@
                 //addTagToFile(args ?? "");
                 break;
             case "ManageTags":
-                openTagEditor();
+                await openTagEditor();
                 break;
             case "PasteFilePath":
-                pasteFilePath();
+                await pasteFilePath();
                 break;
         }
     };
@@ -865,9 +864,9 @@
 
         const playlist = WebviewWindow.getCurrent();
 
-        await playlist.setPosition(toPhysicalPosition(settings.playlistBounds));
+        await playlist.setPosition(util.toPhysicalPosition(settings.playlistBounds));
 
-        await playlist.setSize(toPhysicalSize(settings.playlistBounds));
+        await playlist.setSize(util.toPhysicalSize(settings.playlistBounds));
 
         if (settings.playlistVisible) {
             await playlist.show();
@@ -877,7 +876,7 @@
     onMount(() => {
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
-        if (navigator.userAgent.includes("Linux")) {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
             ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
         } else {
             window.chrome.webview.addEventListener("message", onFileDrop);
@@ -890,7 +889,7 @@
         prepare();
 
         return () => {
-            if (!navigator.userAgent.includes("Linux")) {
+            if (navigator.userAgent.includes(PLATFROMS.windows)) {
                 window.chrome.webview.removeEventListener("message", onFileDrop);
             }
             ipc.release();

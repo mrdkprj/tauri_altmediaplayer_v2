@@ -7,20 +7,23 @@
     import { t, lang } from "../translation/useTranslation";
     import { IPC } from "../ipc";
     import util from "../util";
-    import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions } from "../constants";
-    import { getTauriDropFiles } from "../fileDropHandler";
+    import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, PLATFROMS } from "../constants";
+    import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { getCurrentWindow, ProgressBarStatus } from "@tauri-apps/api/window";
     import { save } from "@tauri-apps/plugin-dialog";
     import path from "../path";
     import { open } from "@tauri-apps/plugin-shell";
-    import { Settings, toBounds, toPhysicalPosition, toPhysicalSize } from "../settings";
+    import { Settings } from "../settings";
     import { Window } from "@tauri-apps/api/window";
+    import { Channel } from "@tauri-apps/api/core";
 
     const ipc = new IPC("Player");
-    let openContextMenu = false;
     const settings = new Settings();
+
+    let openContextMenu = false;
     let video: HTMLVideoElement;
     let container: HTMLDivElement;
     let hideControlTimeout: number | null;
@@ -32,14 +35,17 @@
         video.currentTime = $appState.media.videoDuration * progress;
     };
 
-    const onTimeUpdate = () => {
+    const onTimeUpdate = async () => {
         if (!$appState.loaded) return;
 
         const duration = $appState.media.videoDuration > 0 ? $appState.media.videoDuration : 1;
 
         dispatch({ type: "currentTime", value: video.currentTime });
 
-        ipc.send("progress", { progress: video.currentTime / duration });
+        await getCurrentWindow().setProgressBar({
+            status: ProgressBarStatus.Normal,
+            progress: Math.floor((video.currentTime / duration) * 100),
+        });
     };
 
     const updateVolume = (volume: number) => {
@@ -83,7 +89,26 @@
         settings.data.audio.mute = $appState.media.mute;
     };
 
-    const onFileDrop = (e: Mp.TauriFileDropEvent) => {
+    const onDrop = (e: DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (navigator.userAgent.includes(PLATFROMS.windows)) {
+            if (e.dataTransfer && e.dataTransfer.files) {
+                window.chrome.webview.postMessageWithAdditionalObjects("getPathForFiles", e.dataTransfer.files);
+            }
+        }
+    };
+
+    const onFileDrop = async (e: Mp.FileDropEvent) => {
+        const files = getDropFiles(e);
+
+        if (files.length) {
+            ipc.sendTo("Playlist", "load-playlist", { files });
+        }
+    };
+
+    const onTauriFileDrop = (e: Mp.TauriFileDropEvent) => {
         const files = getTauriDropFiles(e);
 
         if (files.length) {
@@ -227,21 +252,24 @@
         }
     };
 
-    const onPlayed = () => {
+    const onPlayed = async () => {
         changePlayStatus("playing");
+        await ipc.invoke("set_pause_thumbs", createThumbClickEvent());
     };
 
-    const onPaused = () => {
+    const onPaused = async () => {
         if (video.currentTime == video.duration) return;
 
         changePlayStatus("paused");
+        await ipc.invoke("set_play_thumbs", createThumbClickEvent());
     };
 
-    const stop = () => {
+    const stop = async () => {
         if (!$appState.loaded) return;
 
         changePlayStatus("stopped");
         video.load();
+        await ipc.invoke("set_play_thumbs", createThumbClickEvent());
     };
 
     const changePlayStatus = (status: Mp.PlayStatus) => {
@@ -286,7 +314,7 @@
 
         settings.data.defaultPath = path.dirname(savePath);
 
-        ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
+        await ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
 
         await ipc.invoke("set_settings", settings.data);
     };
@@ -300,11 +328,11 @@
 
         if ($appState.isMaximized) {
             await player.unmaximize();
-            player.setPosition(toPhysicalPosition(settings.data.bounds));
+            player.setPosition(util.toPhysicalPosition(settings.data.bounds));
         } else {
             const position = await player.innerPosition();
             const size = await player.innerSize();
-            settings.data.bounds = toBounds(position, size);
+            settings.data.bounds = util.toBounds(position, size);
             await player.maximize();
         }
     };
@@ -391,10 +419,8 @@
         return Number((base + value).toFixed(2));
     };
 
-    const onKeydown = (e: KeyboardEvent) => {
+    const onKeydown = async (e: KeyboardEvent) => {
         e.preventDefault();
-
-        if (e.key === "F5") return ipc.invoke("restart", undefined);
 
         if (e.key === "ArrowRight") {
             showControl();
@@ -445,7 +471,7 @@
         }
 
         if (e.key === "Escape") {
-            return exitFullscreen();
+            return await exitFullscreen();
         }
 
         if (e.ctrlKey && e.key === "m") {
@@ -453,13 +479,13 @@
         }
 
         if (e.key === "Enter") {
-            return togglePlay();
+            return await togglePlay();
         }
 
         const shortcut = handleShortcut("Player", e);
 
         if (shortcut) {
-            return handleContextMenu(shortcut);
+            return await handleContextMenu(shortcut);
         }
     };
 
@@ -467,20 +493,20 @@
         changeVideoSize();
     };
 
-    const onContextMenu = (e: MouseEvent) => {
+    const onContextMenu = async (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (navigator.userAgent.includes("Linux")) {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
             openContextMenu = true;
         } else {
-            ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
+            await ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
         }
     };
 
-    const onMouseUp = (e: MouseEvent) => {
-        if (navigator.userAgent.includes("Linux")) {
+    const onMouseUp = async (e: MouseEvent) => {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
             if (e.button == 2 && e.buttons == 0 && openContextMenu) {
-                ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
+                await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
                 openContextMenu = false;
             }
         }
@@ -508,7 +534,7 @@
         await open(fullpath);
     };
 
-    const handleContextMenu = (e: Mp.ContextMenuEvent) => {
+    const handleContextMenu = async (e: Mp.ContextMenuEvent) => {
         const id = e.name ? e.name : e.id;
         switch (id) {
             case "PlaybackSpeed":
@@ -518,27 +544,51 @@
                 changeSeekSpeed(Number(e.id));
                 break;
             case "TogglePlaylistWindow":
-                togglePlaylistWindow();
+                await togglePlaylistWindow();
                 break;
             case "FitToWindow":
                 onChangeDisplayMode();
                 break;
             case "PictureInPicture":
-                requestPIP();
+                await requestPIP();
                 break;
             case "ToggleFullscreen":
-                toggleFullscreen();
+                await toggleFullscreen();
                 break;
             case "Theme":
-                changeTheme(e.id as Mp.Theme);
+                await changeTheme(e.id as Mp.Theme);
                 break;
             case "Capture":
-                captureMedia();
+                await captureMedia();
                 break;
             case "ViewSettingsJson":
-                showSettingsJson();
+                await showSettingsJson();
                 break;
         }
+    };
+
+    const onThumbClick = (message: Mp.ThumbButtonId) => {
+        console.log(message);
+        switch (message) {
+            case "Next":
+                playFoward(Buttons.right);
+                break;
+            case "Pause":
+                togglePlay();
+                break;
+            case "Play":
+                togglePlay();
+                break;
+            case "Previous":
+                playBackward(Buttons.right);
+                break;
+        }
+    };
+
+    const createThumbClickEvent = (): Channel<Mp.ThumbButtonId> => {
+        const onThumbClickEvent = new Channel<Mp.ThumbButtonId>();
+        onThumbClickEvent.onmessage = onThumbClick;
+        return onThumbClickEvent;
     };
 
     const beforeClose = async () => {
@@ -546,14 +596,14 @@
         if (!$appState.isMaximized) {
             const position = await player.innerPosition();
             const size = await player.innerSize();
-            settings.data.bounds = toBounds(position, size);
+            settings.data.bounds = util.toBounds(position, size);
         }
 
         const playlist = await Window.getByLabel("Playlist");
         if (playlist) {
             const position = await playlist.innerPosition();
             const size = await playlist.innerSize();
-            settings.data.playlistBounds = toBounds(position, size);
+            settings.data.playlistBounds = util.toBounds(position, size);
         }
 
         await settings.save();
@@ -563,39 +613,6 @@
 
     const close = async () => {
         await WebviewWindow.getCurrent().close();
-    };
-
-    const prepare = async () => {
-        await settings.init();
-
-        await ipc.invoke("prepare_windows", settings.data);
-
-        $lang = settings.data.locale.lang;
-
-        dispatch({ type: "isMaximized", value: settings.data.isMaximized });
-
-        updateVolume(settings.data.audio.volume);
-        updateAmpLevel(settings.data.audio.ampLevel);
-
-        dispatch({ type: "mute", value: settings.data.audio.mute });
-
-        dispatch({ type: "fitToWindow", value: settings.data.video.fitToWindow });
-        dispatch({ type: "playbackSpeed", value: settings.data.video.playbackSpeed });
-        dispatch({ type: "seekSpeed", value: settings.data.video.seekSpeed });
-
-        initPlayer();
-
-        const player = WebviewWindow.getCurrent();
-
-        await player.setPosition(toPhysicalPosition(settings.data.bounds));
-
-        await player.setSize(toPhysicalSize(settings.data.bounds));
-
-        if (settings.data.isMaximized) {
-            await player.maximize();
-        }
-
-        await player.show();
     };
 
     const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
@@ -619,12 +636,57 @@
         await ipc.invoke("refresh_tag_contextmenu", tags);
     };
 
+    const prepare = async () => {
+        await settings.init();
+
+        await ipc.invoke("prepare_windows", settings.data);
+
+        const files = await ipc.invoke("get_init_args", undefined);
+        console.log(files);
+        if (files.length) {
+            await ipc.sendTo("Playlist", "load-playlist", { files });
+        }
+
+        $lang = settings.data.locale.lang;
+
+        dispatch({ type: "isMaximized", value: settings.data.isMaximized });
+
+        updateVolume(settings.data.audio.volume);
+        updateAmpLevel(settings.data.audio.ampLevel);
+
+        dispatch({ type: "mute", value: settings.data.audio.mute });
+
+        dispatch({ type: "fitToWindow", value: settings.data.video.fitToWindow });
+        dispatch({ type: "playbackSpeed", value: settings.data.video.playbackSpeed });
+        dispatch({ type: "seekSpeed", value: settings.data.video.seekSpeed });
+
+        initPlayer();
+
+        const player = WebviewWindow.getCurrent();
+
+        await player.setPosition(util.toPhysicalPosition(settings.data.bounds));
+
+        await player.setSize(util.toPhysicalSize(settings.data.bounds));
+
+        if (settings.data.isMaximized) {
+            await player.maximize();
+        }
+
+        await player.show();
+
+        await ipc.invoke("set_play_thumbs", createThumbClickEvent());
+    };
+
     onMount(() => {
         prepare();
         ipc.receiveTauri("tauri://close-requested", beforeClose);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
-        ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onFileDrop);
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
+            ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
+        } else {
+            window.chrome.webview.addEventListener("message", onFileDrop);
+        }
         ipc.receive("toggle-play", togglePlay);
         ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
@@ -639,6 +701,9 @@
         ipc.receive("log", (data) => console.log(data.log));
 
         return () => {
+            if (navigator.userAgent.includes(PLATFROMS.windows)) {
+                window.chrome.webview.removeEventListener("message", onFileDrop);
+            }
             ipc.release();
         };
     });
@@ -670,6 +735,7 @@
         on:mouseup={onMouseUp}
         on:dblclick={togglePlay}
         on:contextmenu={onContextMenu}
+        on:drop={onDrop}
         role="button"
         tabindex="-1"
     >

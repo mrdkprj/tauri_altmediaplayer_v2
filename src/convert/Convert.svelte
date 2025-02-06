@@ -1,14 +1,16 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import RadioGroup from "./RadioGroup.svelte";
+
     import { AudioExtensions, VideoExtensions } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
     import { t } from "../translation/useTranslation";
     import { IPC } from "../ipc";
-    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { open, save } from "@tauri-apps/plugin-dialog";
     import util from "../util";
     import path from "../path";
+
+    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { open, save } from "@tauri-apps/plugin-dialog";
 
     const ipc = new IPC("Convert");
     let defaultPath = "";
@@ -72,11 +74,11 @@
             ],
         });
 
-        if (!selectedPath) return endConvert();
+        if (!selectedPath) return await endConvert();
 
         defaultPath = path.dirname(selectedPath);
 
-        ipc.sendTo("Player", "change-default-path", defaultPath);
+        await ipc.sendTo("Player", "change-default-path", defaultPath);
 
         const shouldReplace = file.fullPath === selectedPath;
 

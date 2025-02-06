@@ -64,8 +64,8 @@ type WriteAllFileInfo = {
 
 type TauriCommandMap = {
     prepare_windows: TauriCommand<Mp.Settings, boolean>;
+    get_init_args: TauriCommand<undefined, string[]>;
     get_settings: TauriCommand<undefined, Mp.Settings>;
-    restart: TauriCommand<undefined, undefined>;
     open_context_menu: TauriCommand<Mp.Position, undefined>;
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
@@ -92,6 +92,8 @@ type TauriCommandMap = {
     write_text_file: TauriCommand<WriteFileInfo, undefined>;
     write_all: TauriCommand<WriteAllFileInfo, undefined>;
     stat_all: TauriCommand<string[], FileAttributeExt[]>;
+    set_play_thumbs: TauriCommand<any, undefined>;
+    set_pause_thumbs: TauriCommand<any, undefined>;
 };
 
 export class IPCBase {
