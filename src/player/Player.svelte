@@ -337,9 +337,12 @@
         }
     };
 
-    const onWindowSizeChanged = (e: Mp.ResizeEvent) => {
-        dispatch({ type: "isMaximized", value: e.isMaximized });
-        settings.data.isMaximized = e.isMaximized;
+    const onWindowSizeChanged = async () => {
+        if ($appState.isFullScreen) return;
+
+        const isMaximized = await WebviewWindow.getCurrent().isMaximized();
+        dispatch({ type: "isMaximized", value: isMaximized });
+        settings.data.isMaximized = isMaximized;
     };
 
     const hideControl = () => {
@@ -363,12 +366,13 @@
     };
 
     const enterFullscreen = async () => {
+        // Cannot enter fullscreen if decoration is false
         dispatch({ type: "isFullScreen", value: true });
         hideControl();
 
-        await WebviewWindow.getCurrent().setFullscreen(true);
         const views = await WebviewWindow.getAll();
         views.filter((view) => view.label != "Player").forEach((view) => view.hide());
+        await WebviewWindow.getCurrent().setFullscreen(true);
     };
 
     const toggleFullscreen = async () => {
@@ -642,7 +646,7 @@
         await ipc.invoke("prepare_windows", settings.data);
 
         const files = await ipc.invoke("get_init_args", undefined);
-        console.log(files);
+
         if (files.length) {
             await ipc.sendTo("Playlist", "load-playlist", { files });
         }
@@ -691,7 +695,7 @@
         ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
         ipc.receive("release-file", releaseFile);
-        ipc.receive("after-toggle-maximize", onWindowSizeChanged);
+        ipc.receiveTauri("tauri://resize", onWindowSizeChanged);
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
         ipc.receive("change-sort-order", changeSortOrder);

@@ -35,6 +35,7 @@ const handlePlayerShortcut = (e: KeyboardEvent): Mp.ContextMenuEvent | null => {
 };
 
 const handlePlaylistShortcut = (e: KeyboardEvent): Mp.ContextMenuEvent | null => {
+    console.log(e.key);
     if (e.ctrlKey && e.key === "p") {
         e.preventDefault();
         return null;
