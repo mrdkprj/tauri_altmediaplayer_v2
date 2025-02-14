@@ -1,6 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { message } from "@tauri-apps/plugin-dialog";
 import { Child, Command } from "@tauri-apps/plugin-shell";
 import { Rotations, Resolutions } from "./constants";
 import { IPCBase } from "./ipc";
@@ -143,11 +142,12 @@ class Util {
 
     async showErrorMessage(ex: any) {
         const mgs = ex.message ? ex.message : ex;
-        await message(mgs, { kind: "error" });
+        await this.ipc.invoke("message", { dialog_type: "message", message: mgs, kind: "error" });
     }
 
     async getMediaMetadata(fullPath: string): Promise<Mp.Metadata> {
         const args = ["-hide_banner", "-v", "error", "-print_format", "json", "-show_streams", "-show_format", "-i", fullPath];
+
         const command = Command.sidecar("binaries/ffprobe", args);
 
         return new Promise(async (resolve, reject) => {

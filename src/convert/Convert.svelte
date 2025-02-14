@@ -10,7 +10,6 @@
     import path from "../path";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { open, save } from "@tauri-apps/plugin-dialog";
 
     const ipc = new IPC("Convert");
     let defaultPath = "";
@@ -64,8 +63,8 @@
         const extension = data.convertFormat.toLocaleLowerCase();
         const fileName = file.name.replace(path.extname(file.name), "");
 
-        const selectedPath = await save({
-            defaultPath: path.join(defaultPath, `${fileName}.${extension}`),
+        const result = await ipc.invoke("save", {
+            default_path: path.join(defaultPath, `${fileName}.${extension}`),
             filters: [
                 {
                     name: data.convertFormat === "MP4" ? "Video" : "Audio",
@@ -74,8 +73,9 @@
             ],
         });
 
-        if (!selectedPath) return await endConvert();
+        if (!result.file_paths.length) return await endConvert();
 
+        const selectedPath = result.file_paths[0];
         defaultPath = path.dirname(selectedPath);
 
         await ipc.sendTo("Player", "change-default-path", defaultPath);
@@ -146,15 +146,15 @@
     };
 
     const openDialog = async () => {
-        const selectedFile = await open({
+        const result = await ipc.invoke("open", {
             title: "Select file to convert",
-            multiple: false,
             filters: [{ name: "Media File", extensions: VideoExtensions.concat(AudioExtensions) }],
+            properties: ["OpenFile"],
         });
 
-        if (!selectedFile) return;
+        if (!result.file_paths.length) return;
 
-        const file = await util.toFile(selectedFile);
+        const file = await util.toFile(result.file_paths[0]);
         if (VideoExtensions.concat(AudioExtensions).includes(file.extension)) {
             changeSourceFile(file);
         } else {

@@ -13,9 +13,7 @@
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { getCurrentWindow, ProgressBarStatus } from "@tauri-apps/api/window";
-    import { save } from "@tauri-apps/plugin-dialog";
     import path from "../path";
-    import { open } from "@tauri-apps/plugin-shell";
     import { Settings } from "../settings";
     import { Window } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
@@ -305,12 +303,14 @@
         }
         const data = canvas.toDataURL("image/jpeg").replace(/^data:image\/jpeg;base64,/, "");
 
-        const savePath = await save({
-            defaultPath: path.join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
+        const result = await ipc.invoke("save", {
+            default_path: path.join(settings.data.defaultPath, `${$appState.currentFile.name}-${video.currentTime}.jpeg`),
             filters: [{ name: "Image", extensions: ["jpeg", "jpg"] }],
         });
 
-        if (!savePath) return;
+        if (!result.file_paths.length) return;
+
+        const savePath = result.file_paths[0];
 
         settings.data.defaultPath = path.dirname(savePath);
 
@@ -372,6 +372,7 @@
 
         const views = await WebviewWindow.getAll();
         views.filter((view) => view.label != "Player").forEach((view) => view.hide());
+
         await WebviewWindow.getCurrent().setFullscreen(true);
     };
 
@@ -535,7 +536,7 @@
 
     const showSettingsJson = async () => {
         const fullpath = settings.getSettingsFilePath();
-        await open(fullpath);
+        await ipc.invoke("launch", fullpath);
     };
 
     const handleContextMenu = async (e: Mp.ContextMenuEvent) => {
@@ -572,7 +573,6 @@
     };
 
     const onThumbClick = (message: Mp.ThumbButtonId) => {
-        console.log(message);
         switch (message) {
             case "Next":
                 playFoward(Buttons.right);

@@ -13,7 +13,6 @@
     import Deferred from "../deferred";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { ask, open } from "@tauri-apps/plugin-dialog";
     import path from "../path";
 
     let openContextMenu = false;
@@ -327,7 +326,7 @@
         if (!files.length) return;
 
         if (files.length > 1) {
-            const confimed = await ask("Move multiple files. Are you sure?", { title: "Move", kind: "warning" });
+            const confimed = await ipc.invoke("message", { dialog_type: "ask", message: "Move multiple files. Are you sure?", title: "Move", kind: "warning", buttons: ["Yes", "No"] });
             if (!confimed) return;
         }
 
@@ -337,10 +336,11 @@
 
         const settings = await ipc.invoke("get_settings", undefined);
         const defaultPath = settings.defaultPath ? settings.defaultPath : files[0].dir;
-        const destPath = await open({ defaultPath: defaultPath, multiple: false, directory: true });
+        const result = await ipc.invoke("open", { default_path: defaultPath, properties: ["OpenDirectory"] });
 
-        if (!destPath) return;
+        if (!result.file_paths.length) return;
 
+        const destPath = result.file_paths[0];
         try {
             await releaseFile($appState.selection.selectedIds);
 
@@ -704,7 +704,7 @@
 
         const metadata = await util.getMediaMetadata(file.fullPath);
         const metadataString = JSON.stringify(metadata, undefined, 2).replaceAll('"', "");
-        const result = await ask(metadataString, { kind: "info", okLabel: "OK", cancelLabel: "Copy" });
+        const result = await ipc.invoke("message", { dialog_type: "confirm", message: metadataString, kind: "info", buttons: ["OK", "Copy"], cancel_id: 1 });
         if (!result) {
             await ipc.invoke("write_text", metadataString);
         }

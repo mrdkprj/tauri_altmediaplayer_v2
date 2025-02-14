@@ -1,3 +1,4 @@
+use nonstd::dialog::FileDialogResult;
 use nonstd::ClipboardData;
 use nonstd::FileAttribute;
 use nonstd::Operation;
@@ -9,8 +10,10 @@ use std::env;
 use std::path::PathBuf;
 use tauri::Manager;
 use tauri::WebviewWindow;
-pub mod helper;
-pub mod settings;
+mod dialog;
+mod helper;
+mod settings;
+// mod shell;
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
@@ -29,7 +32,7 @@ fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
     Vec::new()
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 struct OpenedUrls(Vec<String>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -116,7 +119,7 @@ fn reveal(payload: String) -> Result<(), String> {
 
 #[tauri::command]
 fn trash(payload: String) -> Result<(), String> {
-    nonstd::shell::trash(payload)
+    nonstd::fs::trash(payload)
 }
 
 #[tauri::command]
@@ -169,7 +172,7 @@ fn copy_file(payload: CopyInfo) -> Result<u64, String> {
 
 #[tauri::command]
 fn mv(payload: CopyInfo) -> Result<(), String> {
-    nonstd::fs::mv(payload.from, payload.to, None, None)
+    nonstd::fs::mv(payload.from, payload.to)
 }
 
 #[tauri::command]
@@ -256,6 +259,26 @@ fn write_all(payload: WriteAllFileInfo) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn launch(payload: String) -> Result<(), String> {
+    nonstd::shell::open_path(payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn message(payload: dialog::DialogOptions) -> bool {
+    dialog::show(payload).await
+}
+
+#[tauri::command]
+async fn open(payload: dialog::FileDialogOptions) -> FileDialogResult {
+    dialog::open(payload).await
+}
+
+#[tauri::command]
+async fn save(payload: dialog::FileDialogOptions) -> FileDialogResult {
+    dialog::save(payload).await
+}
+
+#[tauri::command]
 fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
     let player = app.get_webview_window(PLAYER).unwrap();
     helper::set_play_thumbs(&app, &player, payload);
@@ -308,7 +331,6 @@ pub fn run() {
                 app.manage(OpenedUrls(seconds));
             }
         }))
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let mut urls = Vec::new();
@@ -350,7 +372,11 @@ pub fn run() {
             write_all,
             stat_all,
             set_play_thumbs,
-            set_pause_thumbs
+            set_pause_thumbs,
+            message,
+            open,
+            save,
+            launch
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

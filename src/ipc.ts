@@ -62,6 +62,50 @@ type WriteAllFileInfo = {
     data: Uint8Array;
 };
 
+type CommandOption = {
+    command: string;
+    args: string[];
+};
+
+type CommandStatus = {
+    success: boolean;
+    code?: number;
+};
+
+type CommandResult = {
+    status: CommandStatus;
+    stdout: string;
+    stderr: string;
+};
+
+type DialogOptions = {
+    dialog_type: "message" | "confirm" | "ask";
+    title?: string;
+    kind?: "info" | "warning" | "error";
+    cancel_id?: number;
+    buttons?: string[];
+    message: string;
+};
+
+type FileFilter = {
+    name: string;
+    extensions: string[];
+};
+
+type OpenProperty = "OpenFile" | "OpenDirectory" | "MultiSelections";
+
+type FileDialogOptions = {
+    title?: string;
+    default_path?: string;
+    filters?: FileFilter[];
+    properties?: OpenProperty[];
+};
+
+type FileDialogResult = {
+    canceled: boolean;
+    file_paths: string[];
+};
+
 type TauriCommandMap = {
     prepare_windows: TauriCommand<Mp.Settings, boolean>;
     get_init_args: TauriCommand<undefined, string[]>;
@@ -94,6 +138,11 @@ type TauriCommandMap = {
     stat_all: TauriCommand<string[], FileAttributeExt[]>;
     set_play_thumbs: TauriCommand<any, undefined>;
     set_pause_thumbs: TauriCommand<any, undefined>;
+    execute: TauriCommand<CommandOption, CommandResult>;
+    message: TauriCommand<DialogOptions, boolean>;
+    save: TauriCommand<FileDialogOptions, FileDialogResult>;
+    open: TauriCommand<FileDialogOptions, FileDialogResult>;
+    launch: TauriCommand<string, undefined>;
 };
 
 export class IPCBase {

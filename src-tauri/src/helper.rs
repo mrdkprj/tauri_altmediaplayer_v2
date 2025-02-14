@@ -1,6 +1,7 @@
 use crate::settings::{Settings, SortOrder};
 use async_std::sync::Mutex;
-use nonstd::shell::ThumbButton;
+#[cfg(target_os = "windows")]
+use nonstd::ThumbButton;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -278,7 +279,8 @@ pub fn set_play_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, 
         let buttons = get_thumb_buttons(app, true);
         nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
             ev.send(id).unwrap();
-        });
+        })
+        .unwrap();
     }
 }
 
@@ -288,7 +290,8 @@ pub fn set_pause_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow,
         let buttons = get_thumb_buttons(app, false);
         nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
             ev.send(id).unwrap();
-        });
+        })
+        .unwrap();
     }
 }
 
