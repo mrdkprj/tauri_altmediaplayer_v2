@@ -1,13 +1,13 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { Child, Command } from "@tauri-apps/plugin-shell";
 import { Rotations, Resolutions } from "./constants";
 import { IPCBase } from "./ipc";
 import path from "./path";
+import { Command } from "./shell";
 
 class Util {
     convertDestFile: string | null;
-    child: Child | null;
+    child: Command | null;
     ipc = new IPCBase();
 
     constructor() {
@@ -147,53 +147,30 @@ class Util {
 
     async getMediaMetadata(fullPath: string): Promise<Mp.Metadata> {
         const args = ["-hide_banner", "-v", "error", "-print_format", "json", "-show_streams", "-show_format", "-i", fullPath];
-
-        const command = Command.sidecar("binaries/ffprobe", args);
-
-        return new Promise(async (resolve, reject) => {
-            const result: string[] = [];
-
-            command.on("error", async (stderr: any) => {
-                console.log(stderr);
-                await this.cleanUp();
-                reject({});
-            });
-
-            command.on("close", async () => {
-                const metadata = JSON.parse(result.join("\n")) as Mp.Metadata;
-                metadata.Volume = await this.getVolume(fullPath);
-                resolve(metadata);
-            });
-            command.stdout.on("data", (line) => {
-                result.push(line);
-            });
-
-            this.child = await command.spawn();
-        });
+        this.child = new Command("binaries/ffprobe", args);
+        try {
+            const result = await this.child.spawn();
+            const metadata = JSON.parse(result.stdout) as Mp.Metadata;
+            metadata.Volume = await this.getVolume(fullPath);
+            return metadata;
+        } catch (_) {
+            await this.cleanUp();
+            return {} as Mp.Metadata;
+        }
     }
 
     async getVolume(sourcePath: string): Promise<Mp.MediaVolume> {
         const args = ["-i", sourcePath, "-vn", "-af", "volumedetect", "-f", "null", "-"];
-        const command = Command.sidecar("binaries/ffmpeg", args);
-
-        return new Promise(async (resolve, reject) => {
-            const result: string[] = [];
-
-            command.on("error", async (stderr: any) => {
-                console.log(stderr);
-                await this.cleanUp();
-                reject({ n_samples: "N/A", max_volume: "N/A", mean_volume: "N/A" });
-            });
-
-            command.on("close", () => {
-                this.finishConvert();
-                resolve(this.extractVolumeInfo(result.join("\n")));
-            });
-
-            command.stderr.on("data", (line) => result.push(line));
-
-            this.child = await command.spawn();
-        });
+        this.child = new Command("binaries/ffmpeg", args);
+        try {
+            const result = await this.child.spawn();
+            await this.finishConvert();
+            return this.extractVolumeInfo(result.stderr);
+        } catch (ex: any) {
+            console.log(ex);
+            await this.cleanUp();
+            return { n_samples: "N/A", max_volume: "N/A", mean_volume: "N/A" };
+        }
     }
 
     private extractVolumeInfo(std: string): Mp.MediaVolume {
@@ -207,25 +184,19 @@ class Util {
         };
     }
 
-    async cancelConvert() {
-        if (this.child) {
-            await this.child.kill();
-        }
-    }
-
     async convertAudio(sourcePath: string, destPath: string, options: Mp.ConvertOptions) {
         if (this.child) throw new Error("Process busy");
 
-        this.convertDestFile = destPath;
-
         const metadata = await this.getMediaMetadata(sourcePath);
+
+        this.convertDestFile = destPath;
 
         if (!metadata.streams[1].bit_rate) {
             metadata.streams[1].bit_rate = "0";
         }
 
         const audioBitrate = options.audioBitrate !== "BitrateNone" ? parseInt(options.audioBitrate) : Math.ceil(parseInt(metadata.streams[1].bit_rate) / 1000);
-        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}` : "";
+        let audioVolume = options.audioVolume !== "1" ? `volume=${options.audioVolume}dB` : "";
 
         if (options.maxAudioVolume) {
             const maxVolumeText = metadata.Volume.max_volume;
@@ -233,45 +204,37 @@ class Util {
             if (maxVolume >= 0) {
                 throw new Error("No max_volume");
             }
-            audioVolume = `volume=${maxVolume * -1}dB`;
+            audioVolume = `volume=${maxVolume * -1}dBdb`;
         }
 
         const args = ["-i", sourcePath, "-y", "-acodec", "libmp3lame", "-b:a", String(audioBitrate)];
 
         if (audioVolume) {
             args.push("-filter:a");
-            args.push(`volume=${audioVolume}dB`);
+            args.push(audioVolume);
         }
 
         args.push("-f");
         args.push("mp3");
         args.push(destPath);
 
-        const command = Command.sidecar("binaries/ffmpeg", args);
+        this.child = new Command("binaries/ffmpeg", args);
 
-        this.child = await command.spawn();
-
-        return new Promise((resolve, reject) => {
-            command.on("error", async (err: any) => {
-                await this.cleanUp();
-                reject(new Error(err.message));
-            });
-
-            command.on("close", () => {
-                this.finishConvert();
-                resolve(undefined);
-            });
-        });
+        try {
+            await this.child.spawn();
+            await this.finishConvert();
+        } catch (ex: any) {
+            await this.cleanUp();
+            throw new Error(ex.message ?? ex.status);
+        }
     }
 
     async convertVideo(sourcePath: string, destPath: string, options: Mp.ConvertOptions) {
-        console.log(options);
-
         if (this.child) throw new Error("Process busy");
 
-        this.convertDestFile = destPath;
-
         const metadata = await this.getMediaMetadata(sourcePath);
+
+        this.convertDestFile = destPath;
 
         const size = Resolutions[options.frameSize] ? Resolutions[options.frameSize] : await this.getSize(metadata);
         const rotate = options.rotation != "RotationNone";
@@ -318,21 +281,14 @@ class Util {
         args.push("mp4");
         args.push(destPath);
 
-        const command = Command.sidecar("binaries/ffmpeg", args);
-
-        this.child = await command.spawn();
-
-        return new Promise((resolve, reject) => {
-            command.on("error", async (err: any) => {
-                await this.cleanUp();
-                reject(new Error(err.message));
-            });
-
-            command.on("close", () => {
-                this.finishConvert();
-                resolve(undefined);
-            });
-        });
+        this.child = new Command("binaries/ffmpeg", args);
+        try {
+            await this.child.spawn();
+            await this.finishConvert();
+        } catch (ex: any) {
+            await this.cleanUp();
+            throw new Error(ex.message ?? ex.status);
+        }
     }
 
     private async getSize(metadata: Mp.Metadata) {
@@ -345,18 +301,27 @@ class Util {
         return `${metadata.streams[0].width}x${metadata.streams[0].height}`;
     }
 
-    private finishConvert() {
-        this.cancelConvert();
+    private async finishConvert() {
+        await this.cancelConvert();
         this.child = null;
         this.convertDestFile = null;
     }
 
+    async cancelConvert() {
+        if (this.child) {
+            await this.child.kill();
+        }
+    }
+
     private async cleanUp() {
-        if (this.convertDestFile && (await this.exists(this.convertDestFile))) {
-            await this.ipc.invoke("remove", this.convertDestFile);
+        if (this.convertDestFile) {
+            const found = await this.exists(this.convertDestFile);
+            if (found) {
+                await this.ipc.invoke("remove", this.convertDestFile);
+            }
         }
 
-        this.finishConvert();
+        await this.finishConvert();
     }
 }
 

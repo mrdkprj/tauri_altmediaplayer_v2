@@ -10,10 +10,11 @@ use std::env;
 use std::path::PathBuf;
 use tauri::Manager;
 use tauri::WebviewWindow;
+use tauri::WindowEvent;
 mod dialog;
 mod helper;
 mod settings;
-// mod shell;
+mod shell;
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
@@ -291,6 +292,16 @@ fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>)
 }
 
 #[tauri::command]
+async fn spawn(app: tauri::AppHandle, payload: shell::SpawnOption) -> Result<shell::Output, shell::Output> {
+    shell::spawn(&app, payload).await
+}
+
+#[tauri::command]
+async fn kill(payload: String) -> Result<(), String> {
+    shell::kill(payload)
+}
+
+#[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
     app.manage(payload);
 
@@ -331,7 +342,6 @@ pub fn run() {
                 app.manage(OpenedUrls(seconds));
             }
         }))
-        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let mut urls = Vec::new();
             for arg in env::args().skip(1) {
@@ -341,6 +351,13 @@ pub fn run() {
             app.manage(OpenedUrls(urls));
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::Destroyed = event {
+                if window.label() == PLAYER {
+                    shell::clear();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_init_args,
@@ -376,6 +393,8 @@ pub fn run() {
             message,
             open,
             save,
+            spawn,
+            kill,
             launch
         ])
         .run(tauri::generate_context!())

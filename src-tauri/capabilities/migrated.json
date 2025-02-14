@@ -31,30 +31,9 @@
     "core:window:allow-set-position",
     "core:window:allow-set-size",
     "core:window:allow-set-progress-bar",
-    "shell:allow-execute",
-    "shell:allow-open",
-    "shell:allow-spawn",
-    "shell:allow-kill",
     "core:webview:allow-internal-toggle-devtools",
     "core:webview:allow-webview-position",
-    "core:webview:allow-webview-size",
-    {
-      "identifier": "shell:allow-spawn",
-      "allow": [
-        {
-          "args": true,
-          "cmd": "",
-          "name": "binaries/ffmpeg",
-          "sidecar": true
-        },
-        {
-          "args": true,
-          "cmd": "",
-          "name": "binaries/ffprobe",
-          "sidecar": true
-        }
-      ]
-    }
+    "core:webview:allow-webview-size"
   ],
   "platforms": [
     "linux",

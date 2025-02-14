@@ -62,17 +62,18 @@ type WriteAllFileInfo = {
     data: Uint8Array;
 };
 
-type CommandOption = {
-    command: string;
-    args: string[];
+type SpawnOption = {
+    program: string;
+    args?: string[];
+    cancellation_token: string;
 };
 
-type CommandStatus = {
+export type CommandStatus = {
     success: boolean;
     code?: number;
 };
 
-type CommandResult = {
+export type CommandResult = {
     status: CommandStatus;
     stdout: string;
     stderr: string;
@@ -138,7 +139,8 @@ type TauriCommandMap = {
     stat_all: TauriCommand<string[], FileAttributeExt[]>;
     set_play_thumbs: TauriCommand<any, undefined>;
     set_pause_thumbs: TauriCommand<any, undefined>;
-    execute: TauriCommand<CommandOption, CommandResult>;
+    spawn: TauriCommand<SpawnOption, CommandResult>;
+    kill: TauriCommand<string, undefined>;
     message: TauriCommand<DialogOptions, boolean>;
     save: TauriCommand<FileDialogOptions, FileDialogResult>;
     open: TauriCommand<FileDialogOptions, FileDialogResult>;

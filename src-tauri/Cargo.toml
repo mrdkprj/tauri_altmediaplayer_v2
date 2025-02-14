@@ -11,13 +11,13 @@ tauri-build = { version = "2.0.0", features = [] }
 [dependencies]
 tauri = { version = "2.2.5", features = [ "tray-icon", "protocol-asset", "devtools"] }
 tauri-plugin-single-instance = "2.0.0"
-tauri-plugin-shell = "2.2.0"
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 once_cell = "1.19.0"
 async-std = "1.13.0"
+shared_child = "=1.0.1"
 nonstd = { git = "https://github.com/mrdkprj/movefile.git", rev="57e58fbb0c9eeb1a37362d2069f5ab1df2192672" }
 
 [dependencies.wcpopup]

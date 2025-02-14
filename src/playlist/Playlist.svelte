@@ -11,9 +11,9 @@
     import { IPC } from "../ipc";
     import util from "../util";
     import Deferred from "../deferred";
+    import path from "../path";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import path from "../path";
 
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;

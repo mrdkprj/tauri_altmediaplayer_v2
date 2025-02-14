@@ -96,9 +96,9 @@
                 await util.convertAudio(data.sourcePath, savePath, data.options);
             }
 
-            // if(shouldReplace){
-            //     await ipc.send("rename", {filePath:savePath, newPath:selectedPath})
-            // }
+            if (shouldReplace) {
+                await ipc.invoke("rename", { new: selectedPath, old: savePath });
+            }
 
             await endConvert();
         } catch (ex: any) {

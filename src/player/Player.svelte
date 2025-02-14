@@ -7,15 +7,14 @@
     import { t, lang } from "../translation/useTranslation";
     import { IPC } from "../ipc";
     import util from "../util";
+    import path from "../path";
+    import { Settings } from "../settings";
     import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, PLATFROMS } from "../constants";
     import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { getCurrentWindow, ProgressBarStatus } from "@tauri-apps/api/window";
-    import path from "../path";
-    import { Settings } from "../settings";
-    import { Window } from "@tauri-apps/api/window";
+    import { getCurrentWindow, ProgressBarStatus, Window } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
 
     const ipc = new IPC("Player");
