@@ -8,6 +8,7 @@ use settings::Settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::env;
 use std::path::PathBuf;
+use tauri::Emitter;
 use tauri::Manager;
 use tauri::WebviewWindow;
 use tauri::WindowEvent;
@@ -349,6 +350,14 @@ pub fn run() {
             }
 
             app.manage(OpenedUrls(urls));
+            app.emit_to(
+                tauri::EventTarget::WebviewWindow {
+                    label: PLAYER.to_string(),
+                },
+                "backend-ready",
+                String::new(),
+            )
+            .unwrap();
 
             Ok(())
         })

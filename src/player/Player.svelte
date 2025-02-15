@@ -644,12 +644,6 @@
 
         await ipc.invoke("prepare_windows", settings.data);
 
-        const files = await ipc.invoke("get_init_args", undefined);
-
-        if (files.length) {
-            await ipc.sendTo("Playlist", "load-playlist", { files });
-        }
-
         $lang = settings.data.locale.lang;
 
         dispatch({ type: "isMaximized", value: settings.data.isMaximized });
@@ -678,6 +672,15 @@
         await player.show();
 
         await ipc.invoke("set_play_thumbs", createThumbClickEvent());
+
+        await onBackendReady();
+    };
+
+    const onBackendReady = async () => {
+        const files = await ipc.invoke("get_init_args", undefined);
+        if (files.length) {
+            await ipc.sendTo("Playlist", "load-playlist", { files });
+        }
     };
 
     onMount(() => {
@@ -701,6 +704,7 @@
         ipc.receive("toggle-group-by", toggleGroupBy);
         ipc.receive("change-default-path", changeDefaultPath);
         ipc.receive("change-tags", changeTags);
+        ipc.receive("backend-ready", onBackendReady);
         ipc.receive("log", (data) => console.log(data.log));
 
         return () => {
