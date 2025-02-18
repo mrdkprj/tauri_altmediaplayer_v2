@@ -4,11 +4,13 @@ use shared_child::SharedChild;
 use std::{
     collections::HashMap,
     io::Read,
+    os::windows::process::CommandExt,
     path::PathBuf,
     process::{Command, Stdio},
     sync::{Arc, Mutex},
 };
 use tauri::Manager;
+use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SpawnOption {
@@ -41,6 +43,9 @@ pub async fn spawn(app: &tauri::AppHandle, option: SpawnOption) -> Result<Output
     }
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
+
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW.0);
 
     let token = option.cancellation_token.clone();
 
