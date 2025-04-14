@@ -170,7 +170,7 @@
     };
 
     const show = async (e: Mp.OpenConvertDialogEvent) => {
-        const settings = await ipc.invoke("get_settings", undefined);
+        const settings = await ipc.getSettings();
         if (!$appState.converting && e.opener == "user") {
             changeSourceFile(e.file);
         }

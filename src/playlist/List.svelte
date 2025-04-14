@@ -68,6 +68,7 @@
         <div
             title={file.fullPath}
             id={file.id}
+            data-name={file.name}
             draggable="true"
             class="playlist-item"
             class:current={$appState.currentIndex === index}

@@ -5,7 +5,7 @@
 
     import { appState, dispatch } from "./appStateReducer";
     import { t, lang } from "../translation/useTranslation";
-    import { IPC } from "../ipc";
+    import { IPC, toTauriSettings } from "../ipc";
     import util from "../util";
     import path from "../path";
     import { Settings } from "../settings";
@@ -315,7 +315,7 @@
 
         await ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
 
-        await ipc.invoke("set_settings", settings.data);
+        await ipc.invoke("set_settings", toTauriSettings(settings.data));
     };
 
     const minimize = async () => {
@@ -618,31 +618,14 @@
         await WebviewWindow.getCurrent().close();
     };
 
-    const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
-        settings.data.sort.order = sortOrder;
-        await ipc.invoke("set_settings", settings.data);
-    };
-
-    const toggleGroupBy = async () => {
-        settings.data.sort.groupBy = !settings.data.sort.groupBy;
-        await ipc.invoke("set_settings", settings.data);
-    };
-
-    const changeDefaultPath = async (defaultPath: string) => {
-        settings.data.defaultPath = defaultPath;
-        await ipc.invoke("set_settings", settings.data);
-    };
-
-    const changeTags = async (tags: string[]) => {
-        settings.data.tags = tags;
-        await ipc.invoke("set_settings", settings.data);
-        await ipc.invoke("refresh_tag_contextmenu", tags);
+    const onSettingsUpdate = (e: Mp.TauriSettings) => {
+        settings.data = JSON.parse(e.data);
     };
 
     const prepare = async () => {
         await settings.init();
 
-        await ipc.invoke("prepare_windows", settings.data);
+        await ipc.invoke("prepare_windows", toTauriSettings(settings.data));
 
         $lang = settings.data.locale.lang;
 
@@ -700,10 +683,7 @@
         ipc.receiveTauri("tauri://resize", onWindowSizeChanged);
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
-        ipc.receive("change-sort-order", changeSortOrder);
-        ipc.receive("toggle-group-by", toggleGroupBy);
-        ipc.receive("change-default-path", changeDefaultPath);
-        ipc.receive("change-tags", changeTags);
+        ipc.receive("settings-updated", onSettingsUpdate);
         ipc.receive("backend-ready", onBackendReady);
         ipc.receive("log", (data) => console.log(data.log));
 

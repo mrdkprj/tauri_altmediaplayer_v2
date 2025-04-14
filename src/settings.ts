@@ -31,7 +31,7 @@ const defaultSettings: Mp.Settings = {
         mode: "system",
         lang: "en",
     },
-    tags: [],
+    useDefaultFileManager: true,
 };
 
 export class Settings {
@@ -70,23 +70,6 @@ export class Settings {
     getSettingsFilePath() {
         return this.file;
     }
-
-    // private setLanguage(langs:string[]){
-
-    //     if(this.data.locale.mode == "system"){
-
-    //         if(langs[0].includes("ja")){
-    //             this.data.locale.lang = "ja"
-    //         }else{
-    //             this.data.locale.lang = "en"
-    //         }
-
-    //     }else{
-
-    //         this.data.locale.lang = this.data.locale.mode
-    //     }
-
-    // }
 
     private createSettings(rawSettings: any): Mp.Settings {
         const config = { ...defaultSettings } as any;

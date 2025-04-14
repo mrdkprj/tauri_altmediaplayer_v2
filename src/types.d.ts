@@ -1,83 +1,26 @@
 import type { FfprobeData } from "fluent-ffmpeg";
 
 declare global {
-    type RendererName = "Player" | "Playlist" | "Convert" | "Tag";
-    type Renderer = { [key in RendererName]: Electron.BrowserWindow | null };
-
-    type MainChannelEventMap = {
-        ready: Mp.ReadyEvent;
-        minimize: Mp.Event;
-        "toggle-maximize": Mp.Event;
-        "toggle-playlist-visible": Mp.Event;
-        close: Mp.Event;
-        shortcut: Mp.ShortcutEvent;
-        "open-player-context": Mp.Event;
-        reload: Mp.Event;
-        "save-capture": Mp.CaptureEvent;
-        "close-playlist": Mp.Event;
-        "trash-ready": Mp.TrashRequest;
-        "open-playlist-context": Mp.Event;
-        "change-playlist-order": Mp.ChangePlaylistOrderRequet;
-        "toggle-play": Mp.Event;
-        "toggle-fullscreen": Mp.FullscreenChange;
-        "close-convert": Mp.Event;
-        "request-convert": Mp.ConvertRequest;
-        "open-convert-sourcefile-dialog": Mp.OpenFileDialogRequest;
-        "request-cancel-convert": Mp.Event;
-        "rename-file": Mp.RenameRequest;
-        "playlist-item-selection-change": Mp.PlaylistItemSelectionChange;
-        "open-sort-context": Mp.Position;
-        "media-state-change": Mp.MediaState;
-        "close-tag": Mp.Event;
-        "save-tags": Mp.SaveTagsEvent;
-        error: Mp.ErrorEvent;
-    };
+    type RendererName = "Player" | "Playlist" | "Convert";
 
     type RendererChannelEventMap = {
-        ready: Mp.ReadyEvent;
         "backend-ready": Mp.Event;
-        "request-settings": Mp.Event;
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
-        "open-context-menu": Mp.PopupContextMenuRequest;
         "load-playlist": Mp.LoadPlaylistEvent;
         "load-file": Mp.FileLoadEvent;
         "change-playlist": Mp.ChangePlaylistRequest;
-        drop: Mp.DropRequest;
         "toggle-play": Mp.Event;
         "toggle-fullscreen": Mp.Event;
-        "change-display-mode": Mp.SettingsChangeEvent;
-        "capture-media": Mp.Event;
         restart: Mp.Event;
         "release-file": Mp.ReleaseFileRequest;
         "file-released": Mp.ReleaseFileResult;
         log: Mp.Logging;
-        "after-toggle-maximize": Mp.ResizeEvent;
         "toggle-convert": Mp.Event;
-        "change-playback-speed": Mp.ChangePlaybackSpeedRequest;
-        "change-seek-speed": Mp.ChangeSeekSpeedRequest;
-        "after-remove-playlist": Mp.RemovePlaylistItemResult;
-        "change-sort-order": Mp.SortOrder;
-        "toggle-group-by": Mp.Event;
-        "clear-playlist": Mp.Event;
-        "sort-type-change": Mp.SortType;
-        "start-rename": Mp.Event;
-        "after-rename": Mp.RenameResult;
-        "after-sourcefile-select": Mp.FileSelectResult;
         "open-convert": Mp.OpenConvertDialogEvent;
-        "change-default-path": string;
-        "after-convert": Mp.Event;
-        "picture-in-picture": Mp.Event;
-        "open-tag-editor": Mp.Event;
-        "change-tags": string[];
         "move-progress": Mp.MoveProgressEvent;
+        "settings-updated": Mp.TauriSettings;
     };
-
-    interface Api {
-        send: <K extends keyof MainChannelEventMap>(channel: K, data: MainChannelEventMap[K]) => void;
-        receive: <K extends keyof RendererChannelEventMap>(channel: K, listener: (data: RendererChannelEventMap[K]) => void) => void;
-        removeAllListeners: <K extends keyof RendererChannelEventMap>(channel: K) => void;
-    }
 
     namespace Mp {
         type Lang = "en" | "ja";
@@ -110,13 +53,12 @@ declare global {
             Reveal: null;
             Metadata: null;
             Convert: null;
-            Tag: string;
-            ManageTags: null;
             Sort: Mp.SortOrder;
             Rename: null;
             Move: null;
             GroupBy: null;
             PasteFilePath: null;
+            useDefaultFileManager: null;
         };
 
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";
@@ -127,19 +69,9 @@ declare global {
 
         type DialogOpener = "system" | "user";
 
-        type SecondInstanceState = {
-            timeout: NodeJS.Timeout | null;
-            requireInitPlaylist: boolean;
-        };
-
         type ContextMenuEvent = {
             id: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
             name: string;
-        };
-
-        type PopupContextMenuRequest = {
-            type: Mp.ContextMenuType;
-            position: Mp.Position;
         };
 
         type ContextMenuType = "Player" | "Playlist" | "Sort";
@@ -200,7 +132,18 @@ declare global {
                 mode: "system" | Mp.Lang;
                 lang: Mp.Lang;
             };
-            tags: string[];
+            useDefaultFileManager: boolean;
+        };
+
+        type TauriSettings = {
+            data: string;
+            theme: Mp.Theme;
+            fitToWindow: boolean;
+            playbackSpeed: number;
+            seekSpeed: number;
+            groupBy: boolean;
+            order: Mp.SortOrder;
+            useDefaultFileManager: boolean;
         };
 
         type MediaFile = {
@@ -236,6 +179,11 @@ declare global {
             selectedIds: string[];
         };
 
+        type MoveUptoSelection = {
+            selectId: string | undefined;
+            scrollToId: string | undefined;
+        };
+
         type PlaylistDragState = {
             dragging: boolean;
             startElement: HTMLElement | null;
@@ -265,10 +213,6 @@ declare global {
             maxAudioVolume: boolean;
         };
 
-        type ReadyEvent = {
-            settings: Mp.Settings;
-        };
-
         type LoadPlaylistEvent = {
             files: string[];
         };
@@ -288,16 +232,8 @@ declare global {
             position: Position;
         };
 
-        type ResizeEvent = {
-            isMaximized: boolean;
-        };
-
         type FullscreenChange = {
             fullscreen: boolean;
-        };
-
-        type DropRequest = {
-            files: string[];
         };
 
         type ChangePlaylistOrderRequet = {
@@ -353,10 +289,6 @@ declare global {
             transferred: number;
         };
 
-        type SaveTagsEvent = {
-            tags: string[];
-        };
-
         type OpenConvertDialogEvent = {
             file: MediaFile;
             opener: DialogOpener;
@@ -366,10 +298,6 @@ declare global {
             sourcePath: string;
             convertFormat: ConvertFormat;
             options: ConvertOptions;
-        };
-
-        type FileSelectResult = {
-            file: MediaFile;
         };
 
         type OpenFileDialogRequest = {

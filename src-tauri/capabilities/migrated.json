@@ -5,8 +5,7 @@
   "windows": [
     "Player",
     "Playlist",
-    "Convert",
-    "Tag"
+    "Convert"
   ],
   "permissions": [
     "core:window:allow-destroy",

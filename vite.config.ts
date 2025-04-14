@@ -24,7 +24,6 @@ export default defineConfig(async () => ({
                 player: resolve(__dirname, "src/player/index.html"),
                 playlist: resolve(__dirname, "src/playlist/index.html"),
                 convert: resolve(__dirname, "src/convert/index.html"),
-                tag: resolve(__dirname, "src/tag/index.html"),
             },
         },
     },

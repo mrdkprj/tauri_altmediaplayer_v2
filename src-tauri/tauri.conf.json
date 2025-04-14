@@ -37,8 +37,7 @@
         "theme": "Dark",
         "dragDropEnabled":false,
         "shadow":true,
-        "url":"src/player/index.html",
-        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
+        "url":"src/player/index.html"
       },
       {
         "title":"",
@@ -57,8 +56,7 @@
         "dragDropEnabled":false,
         "theme": "Dark",
         "shadow":false,
-        "url":"src/playlist/index.html",
-        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
+        "url":"src/playlist/index.html"
       },
       {
         "title":"",
@@ -78,30 +76,7 @@
         "transparent":false,
         "theme": "Dark",
         "shadow":false,
-        "url":"src/convert/index.html",
-        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
-      },
-      {
-        "title":"",
-        "label":"Tag",
-        "width": 400,
-        "height": 600,
-        "minHeight": 250,
-        "fullscreen": false,
-        "resizable": true,
-        "maximizable":false,
-        "minimizable":false,
-        "closable":true,
-        "focus":false,
-        "visible":false,
-        "decorations":false,
-        "skipTaskbar":true,
-        "parent":"Playlist",
-        "transparent":false,
-        "theme": "Dark",
-        "shadow":false,
-        "url":"src/tag/index.html",
-        "additionalBrowserArgs":"--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=msWebView2BrowserHitTransparent"
+        "url":"src/convert/index.html"
       }
   ],
   "withGlobalTauri": true

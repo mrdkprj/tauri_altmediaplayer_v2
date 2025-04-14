@@ -1,20 +1,10 @@
-use nonstd::dialog::FileDialogResult;
-use nonstd::ClipboardData;
-use nonstd::FileAttribute;
-use nonstd::Operation;
-use serde::Deserialize;
-use serde::Serialize;
-use settings::Settings;
+use nonstd::{dialog::FileDialogResult, ClipboardData, FileAttribute, Operation};
+use serde::{Deserialize, Serialize};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-use std::env;
-use std::path::PathBuf;
-use tauri::Emitter;
-use tauri::Manager;
-use tauri::WebviewWindow;
-use tauri::WindowEvent;
+use std::{env, path::PathBuf};
+use tauri::{Emitter, Manager, WebviewWindow, WindowEvent};
 mod dialog;
 mod helper;
-mod settings;
 mod shell;
 
 static PLAYER: &str = "Player";
@@ -37,26 +27,31 @@ fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
 #[derive(Serialize)]
 struct OpenedUrls(Vec<String>);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[allow(non_snake_case)]
-struct MoveFileRequest {
-    sources: Vec<String>,
-    dest: String,
-    cancellationId: u32,
-}
-
 #[tauri::command]
 fn set_settings(app: tauri::AppHandle, payload: Settings) {
     app.manage(payload);
 }
 
 #[tauri::command]
-fn get_settings(window: tauri::WebviewWindow) -> Settings {
+fn update_settings(app: tauri::AppHandle, payload: Settings) {
+    app.manage(payload.clone());
+    app.emit_to(
+        tauri::EventTarget::WebviewWindow {
+            label: PLAYER.to_string(),
+        },
+        "settings-updated",
+        payload,
+    )
+    .unwrap();
+}
+
+#[tauri::command]
+fn get_settings(window: tauri::WebviewWindow) -> String {
     let app = window.app_handle();
     if let Some(settings) = app.try_state::<Settings>() {
-        settings.inner().clone()
+        settings.data.clone()
     } else {
-        Settings::default()
+        String::from("{}")
     }
 }
 
@@ -109,14 +104,14 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
     }
 }
 
-#[tauri::command]
-async fn refresh_tag_contextmenu(payload: Vec<String>) {
-    helper::refresh_tag_contextmenu(PLAY_LIST, payload).await;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RevealArgs {
+    file_path: String,
+    use_file_manager: bool,
 }
-
 #[tauri::command]
-fn reveal(payload: String) -> Result<(), String> {
-    nonstd::shell::show_item_in_folder(payload)
+fn reveal(payload: RevealArgs) -> Result<(), String> {
+    shell::reveal(payload.file_path, payload.use_file_manager)
 }
 
 #[tauri::command]
@@ -163,18 +158,13 @@ fn stat_all(payload: Vec<String>) -> Result<Vec<FileAttributeEx>, String> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CopyInfo {
-    from: String,
+struct MoveInfo {
+    from: Vec<String>,
     to: String,
 }
 #[tauri::command]
-fn copy_file(payload: CopyInfo) -> Result<u64, String> {
-    std::fs::copy(payload.from, payload.to).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn mv(payload: CopyInfo) -> Result<(), String> {
-    nonstd::fs::mv(payload.from, payload.to)
+fn mv_all(payload: MoveInfo) -> Result<(), String> {
+    nonstd::fs::mv_all(&payload.from, payload.to)
 }
 
 #[tauri::command]
@@ -293,7 +283,7 @@ fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>)
 }
 
 #[tauri::command]
-async fn spawn(app: tauri::AppHandle, payload: shell::SpawnOption) -> Result<shell::Output, shell::Output> {
+async fn spawn(app: tauri::AppHandle, payload: nonstd::process::SpawnOption) -> Result<nonstd::process::Output, nonstd::process::Output> {
     shell::spawn(&app, payload).await
 }
 
@@ -302,6 +292,18 @@ async fn kill(payload: String) -> Result<(), String> {
     shell::kill(payload)
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[allow(non_snake_case)]
+pub struct Settings {
+    pub data: String,
+    pub theme: wcpopup::config::Theme,
+    pub fitToWindow: bool,
+    pub playbackSpeed: f64,
+    pub seekSpeed: f64,
+    pub groupBy: bool,
+    pub order: String,
+    pub useDefaultFileManager: bool,
+}
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
     app.manage(payload);
@@ -373,17 +375,16 @@ pub fn run() {
             prepare_windows,
             get_settings,
             set_settings,
+            update_settings,
             change_theme,
             open_context_menu,
             open_sort_context_menu,
-            refresh_tag_contextmenu,
             reveal,
             trash,
             exists,
             rename,
             stat,
-            copy_file,
-            mv,
+            mv_all,
             is_uris_available,
             read_uris,
             read_text,

@@ -43,6 +43,7 @@ type AppState = {
     dragState: DragState;
     searchState: SearchState;
     moveState: MoveState;
+    useFileManager: boolean;
 };
 
 export const initialAppState: AppState = {
@@ -78,6 +79,7 @@ export const initialAppState: AppState = {
         started: false,
         progress: 0,
     },
+    useFileManager: false,
 };
 
 type AppAction =
@@ -105,6 +107,7 @@ type AppAction =
     | { type: "toggleSearch"; value: boolean }
     | { type: "highlightItems"; value: string[] }
     | { type: "changeHighlight"; value: number }
+    | { type: "toggleUseFileManager" }
     | { type: "startMove" }
     | { type: "moveProgress"; value: number }
     | { type: "endMove" };
@@ -206,6 +209,9 @@ const updater = (state: AppState, action: AppAction) => {
 
         case "moveProgress":
             return { ...state, moveState: { ...state.moveState, progress: action.value } };
+
+        case "toggleUseFileManager":
+            return { ...state, useFileManager: !state.useFileManager };
 
         default:
             return state;

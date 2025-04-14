@@ -315,26 +315,22 @@
         }
     };
 
-    /* move */
-    let cancellationId = -1;
-
     const moveFile = async () => {
-        if (cancellationId >= 0) throw new Error("Move is in progress");
-
         const files = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id));
 
         if (!files.length) return;
+
+        const sourceDirs = new Set(files.map((file) => file.dir));
+
+        if (sourceDirs.size > 1) return;
 
         if (files.length > 1) {
             const confimed = await ipc.invoke("message", { dialog_type: "ask", message: "Move multiple files. Are you sure?", title: "Move", kind: "warning", buttons: ["Yes", "No"] });
             if (!confimed) return;
         }
 
-        const sourceDirs = new Set(files.map((file) => file.dir));
+        const settings = await ipc.getSettings();
 
-        if (sourceDirs.size > 1) return;
-
-        const settings = await ipc.invoke("get_settings", undefined);
         const defaultPath = settings.defaultPath ? settings.defaultPath : files[0].dir;
         const result = await ipc.invoke("open", { default_path: defaultPath, properties: ["OpenDirectory"] });
 
@@ -346,12 +342,13 @@
 
             settings.defaultPath = destPath;
 
-            await ipc.sendTo("Player", "change-default-path", destPath);
+            await ipc.updateSettings(settings);
 
             dispatch({ type: "startMove" });
 
             const sourcePaths = files.map((file) => file.fullPath);
-            await ipc.invoke("move_files", { sources: sourcePaths, dest: destPath, cancellationId });
+
+            await ipc.invoke("mv_all", { from: sourcePaths, to: destPath });
 
             dispatch({ type: "endMove" });
 
@@ -359,8 +356,6 @@
         } catch (ex: any) {
             await util.showErrorMessage(ex);
             dispatch({ type: "endMove" });
-        } finally {
-            cancellationId = -1;
         }
     };
 
@@ -470,18 +465,68 @@
     };
 
     const moveSelectionUpto = (e: KeyboardEvent) => {
-        if (!e.shiftKey) return;
-
         if (!$appState.files.length) return;
 
         e.preventDefault();
 
-        const targetId = e.key === "Home" ? $appState.files[0].id : $appState.files[$appState.files.length - 1].id;
+        const nextSelection = findNextSelection(e.key === "Home", e.ctrlKey);
 
-        if (!targetId) return;
+        if (!nextSelection.selectId || !nextSelection.scrollToId) return;
 
-        selectByShift(targetId);
-        scrollToElement(targetId);
+        if (e.shiftKey) {
+            selectByShift(nextSelection.selectId);
+        } else {
+            select(nextSelection.selectId);
+        }
+        scrollToElement(nextSelection.scrollToId);
+    };
+
+    const findNextSelection = (upward: boolean, ctrlKey: boolean): Mp.MoveUptoSelection => {
+        const defaultTarget = upward ? $appState.files[0] : $appState.files[$appState.files.length - 1];
+
+        const nextSelection: Mp.MoveUptoSelection = { selectId: defaultTarget.id, scrollToId: $appState.sortType.groupBy ? defaultTarget.id : encodeURIComponent(defaultTarget.dir) };
+
+        const dirs = Array.from(document.querySelectorAll(".group"));
+
+        if (dirs.length <= 1 || !$appState.sortType.groupBy || ctrlKey) {
+            return nextSelection;
+        }
+
+        const current = document.getElementById($appState.selection.selectedId);
+        const currentIndex = $appState.files.findIndex((file) => file.id == $appState.selection.selectedId);
+
+        if (!current || currentIndex < 0) return nextSelection;
+
+        const nearest = upward ? current.previousElementSibling : current.nextElementSibling;
+
+        if (!nearest) return nextSelection;
+
+        const currentFile = $appState.files[currentIndex];
+        let dir = currentFile.dir;
+
+        if (nearest.classList.contains("group")) {
+            if (upward && currentIndex > 0) {
+                dir = $appState.files[currentIndex - 1].dir;
+            }
+            if (!upward && currentIndex < $appState.files.length - 1) {
+                dir = $appState.files[currentIndex + 1].dir;
+            }
+        }
+
+        const targetIndex = upward ? $appState.files.findIndex((file) => file.dir == dir) : $appState.files.findLastIndex((file) => file.dir == dir);
+
+        if (targetIndex < 0) return nextSelection;
+
+        const target = $appState.files[targetIndex];
+        let scrollToId = target.id;
+        if (upward) {
+            scrollToId = encodeURIComponent(target.dir);
+        }
+        if (!upward && targetIndex < $appState.files.length - 1) {
+            scrollToId = encodeURIComponent($appState.files[targetIndex + 1].dir);
+        }
+
+        return { selectId: target.id, scrollToId };
     };
 
     const setRenameInputFocus = (node: HTMLInputElement) => {
@@ -508,7 +553,7 @@
 
         if (!selectedElement) return;
 
-        const fileName = selectedElement.textContent ?? "";
+        const fileName = selectedElement.getAttribute("data-name") ?? "";
 
         const rect = selectedElement.getBoundingClientRect();
 
@@ -657,15 +702,19 @@
         shuffleList();
     };
 
-    const changeSortOrder = (sortOrder: Mp.SortOrder) => {
+    const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
         dispatch({ type: "sortType", value: { order: sortOrder, groupBy: $appState.sortType.groupBy } });
         sortPlayList();
-        ipc.sendTo("Player", "change-sort-order", sortOrder);
+        const settings = await ipc.getSettings();
+        settings.sort.order = sortOrder;
+        await ipc.updateSettings(settings);
     };
 
-    const toggleGroupBy = () => {
+    const toggleGroupBy = async () => {
         dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy } });
-        ipc.sendTo("Player", "toggle-group-by", {});
+        const settings = await ipc.getSettings();
+        settings.sort.groupBy = $appState.sortType.groupBy;
+        await ipc.updateSettings(settings);
     };
 
     const copyFileNameToClipboard = async (fullPath: boolean) => {
@@ -717,16 +766,19 @@
 
         if (!file) return;
 
-        await ipc.invoke("reveal", file.fullPath);
+        await ipc.invoke("reveal", { file_path: file.fullPath, use_file_manager: $appState.useFileManager });
+    };
+
+    const toggleUseFileManager = async () => {
+        dispatch({ type: "toggleUseFileManager" });
+        const settings = await ipc.getSettings();
+        settings.useDefaultFileManager = $appState.useFileManager;
+        await ipc.updateSettings(settings);
     };
 
     const openConvert = async (opener: Mp.DialogOpener) => {
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId) ?? EmptyFile;
         await ipc.sendTo("Convert", "open-convert", { file, opener });
-    };
-
-    const openTagEditor = async () => {
-        await ipc.sendTo("Tag", "open-tag-editor", {});
     };
 
     const onKeydown = async (e: KeyboardEvent) => {
@@ -828,7 +880,7 @@
                 await openConvert("user");
                 break;
             case "Sort":
-                changeSortOrder(value as Mp.SortOrder);
+                await changeSortOrder(value as Mp.SortOrder);
                 break;
             case "Rename":
                 startEditFileName();
@@ -837,16 +889,13 @@
                 await moveFile();
                 break;
             case "GroupBy":
-                toggleGroupBy();
-                break;
-            case "Tag":
-                //addTagToFile(args ?? "");
-                break;
-            case "ManageTags":
-                await openTagEditor();
+                await toggleGroupBy();
                 break;
             case "PasteFilePath":
                 await pasteFilePath();
+                break;
+            case "useDefaultFileManager":
+                await toggleUseFileManager();
                 break;
         }
     };
@@ -857,7 +906,8 @@
     };
 
     const prepare = async () => {
-        const settings = await ipc.invoke("get_settings", undefined);
+        const settings = await ipc.getSettings();
+
         $lang = settings.locale.lang;
 
         dispatch({ type: "sortType", value: { order: settings.sort.order, groupBy: settings.sort.groupBy } });
@@ -874,6 +924,7 @@
     };
 
     onMount(() => {
+        prepare();
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         if (navigator.userAgent.includes(PLATFROMS.linux)) {
@@ -885,8 +936,6 @@
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
         ipc.receive("move-progress", onFileMoveProgress);
-
-        prepare();
 
         return () => {
             if (navigator.userAgent.includes(PLATFROMS.windows)) {

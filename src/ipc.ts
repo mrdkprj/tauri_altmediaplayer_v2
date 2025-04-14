@@ -6,18 +6,13 @@ type TauriCommand<Req, Res> = {
     Response: Res;
 };
 
-// type WriteFileInfo = {
-//     fullPath: string;
-//     data: string;
-// };
-
 type RenameInfo = {
     new: string;
     old: string;
 };
 
-type CopyInfo = {
-    from: string;
+type MoveInfo = {
+    from: string[];
     to: string;
 };
 
@@ -107,24 +102,25 @@ type FileDialogResult = {
     file_paths: string[];
 };
 
+type RevealArgs = {
+    file_path: string;
+    use_file_manager: boolean;
+};
+
 type TauriCommandMap = {
-    prepare_windows: TauriCommand<Mp.Settings, boolean>;
+    prepare_windows: TauriCommand<Mp.TauriSettings, boolean>;
     get_init_args: TauriCommand<undefined, string[]>;
-    get_settings: TauriCommand<undefined, Mp.Settings>;
     open_context_menu: TauriCommand<Mp.Position, undefined>;
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
-    refresh_tag_contextmenu: TauriCommand<string[], any>;
-    set_settings: TauriCommand<Mp.Settings, undefined>;
-    reveal: TauriCommand<string, undefined>;
+    set_settings: TauriCommand<Mp.TauriSettings, undefined>;
+    reveal: TauriCommand<RevealArgs, undefined>;
     trash: TauriCommand<string, undefined>;
-    move_files: TauriCommand<Mp.MoveFileRequest, undefined>;
     remove: TauriCommand<string, undefined>;
     exists: TauriCommand<string, boolean>;
     rename: TauriCommand<RenameInfo, boolean>;
     stat: TauriCommand<string, FileAttribute>;
-    copy_file: TauriCommand<CopyInfo, undefined>;
-    mv: TauriCommand<CopyInfo, undefined>;
+    mv_all: TauriCommand<MoveInfo, undefined>;
     is_uris_available: TauriCommand<undefined, boolean>;
     read_uris: TauriCommand<undefined, ClipboardData>;
     read_text: TauriCommand<undefined, string>;
@@ -147,11 +143,33 @@ type TauriCommandMap = {
     launch: TauriCommand<string, undefined>;
 };
 
+export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
+    return {
+        data: JSON.stringify(settings),
+        theme: settings.theme,
+        fitToWindow: settings.video.fitToWindow,
+        playbackSpeed: settings.video.playbackSpeed,
+        seekSpeed: settings.video.seekSpeed,
+        groupBy: settings.sort.groupBy,
+        order: settings.sort.order,
+        useDefaultFileManager: settings.useDefaultFileManager,
+    };
+};
+
 export class IPCBase {
     invoke = async <K extends keyof TauriCommandMap>(channel: K, data: TauriCommandMap[K]["Request"]): Promise<TauriCommandMap[K]["Response"]> => {
         return await invoke<TauriCommandMap[K]["Response"]>(channel, {
             payload: data,
         });
+    };
+
+    getSettings = async (): Promise<Mp.Settings> => {
+        const settingsJSON = await invoke<string>("get_settings");
+        return JSON.parse(settingsJSON);
+    };
+
+    updateSettings = async (settings: Mp.Settings) => {
+        return await invoke("update_settings", { payload: toTauriSettings(settings) });
     };
 }
 
@@ -174,11 +192,6 @@ export class IPC extends IPCBase {
         this.funcs.push(fn);
     };
 
-    receiveAny = async <K extends keyof RendererChannelEventMap>(channel: K, handler: (e: RendererChannelEventMap[K]) => void) => {
-        const fn = await once<RendererChannelEventMap[K]>(channel, (e) => handler(e.payload), { target: { kind: "Any" } });
-        this.funcs.push(fn);
-    };
-
     receiveTauri = async <T>(event: EventName, handler: (e: T) => void) => {
         const fn = await listen<T>(event, (e) => handler(e.payload), {
             target: { kind: "WebviewWindow", label: this.label },
@@ -186,7 +199,7 @@ export class IPC extends IPCBase {
         this.funcs.push(fn);
     };
 
-    send = async <K extends keyof MainChannelEventMap>(channel: K, data: MainChannelEventMap[K]) => {
+    send = async <K extends keyof RendererChannelEventMap>(channel: K, data: RendererChannelEventMap[K]) => {
         await emit(channel, data);
     };
 
