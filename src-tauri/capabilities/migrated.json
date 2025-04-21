@@ -32,7 +32,8 @@
     "core:window:allow-set-progress-bar",
     "core:webview:allow-internal-toggle-devtools",
     "core:webview:allow-webview-position",
-    "core:webview:allow-webview-size"
+    "core:webview:allow-webview-size",
+    "core:window:allow-set-decorations"
   ],
   "platforms": [
     "linux",

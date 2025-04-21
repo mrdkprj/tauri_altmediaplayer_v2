@@ -358,6 +358,8 @@
         }
         dispatch({ type: "autohide", value: false });
 
+        // Cannot enter fullscreen if decoration is false
+        await WebviewWindow.getCurrent().setDecorations(false);
         await WebviewWindow.getCurrent().setFullscreen(false);
         if (settings.data.playlistVisible) {
             (await WebviewWindow.getByLabel("Playlist"))?.show();
@@ -365,13 +367,13 @@
     };
 
     const enterFullscreen = async () => {
-        // Cannot enter fullscreen if decoration is false
         dispatch({ type: "isFullScreen", value: true });
         hideControl();
 
         const views = await WebviewWindow.getAll();
         views.filter((view) => view.label != "Player").forEach((view) => view.hide());
-
+        // Cannot enter fullscreen if decoration is false
+        await WebviewWindow.getCurrent().setDecorations(true);
         await WebviewWindow.getCurrent().setFullscreen(true);
     };
 
