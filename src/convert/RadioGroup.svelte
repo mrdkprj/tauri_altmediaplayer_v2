@@ -4,12 +4,21 @@
         target: T;
     };
 
-    export let options: T[];
-    export let labels: string[];
-    export let name: string;
-    export let checkedOption: T | null = null;
-    export let disableIf: DisableIf | null = null;
-    export let onChange: (e: Mp.RadioGroupChangeEvent<T>) => void;
+    let {
+        options,
+        labels,
+        name,
+        checkedOption = null,
+        disableIf = null,
+        onChange,
+    }: {
+        options: T[];
+        labels: string[];
+        name: string;
+        checkedOption: T | null;
+        disableIf?: DisableIf | null;
+        onChange: (e: Mp.RadioGroupChangeEvent<T>) => void;
+    } = $props();
 
     const _onChange = (e: Event) => {
         const target = e.target as HTMLInputElement;
@@ -19,7 +28,7 @@
 
 {#each options as option, index}
     <div class="radio">
-        <input type="radio" value={option} {name} checked={option == checkedOption} on:change={_onChange} disabled={disableIf ? disableIf.condition && option == disableIf.target : false} />
+        <input type="radio" value={option} {name} checked={option == checkedOption} onchange={_onChange} disabled={disableIf ? disableIf.condition && option == disableIf.target : false} />
         <label for="">{labels[index]}</label>
     </div>
 {/each}

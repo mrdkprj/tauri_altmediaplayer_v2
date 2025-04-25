@@ -946,11 +946,11 @@
     });
 </script>
 
-<svelte:window on:contextmenu={onContextMenu} on:keydown={onKeydown} on:mouseup={onMouseUp} />
+<svelte:window oncontextmenu={onContextMenu} onkeydown={onKeydown} onmouseup={onMouseUp} />
 
 <div class="viewport">
     <div class="title-bar">
-        <div class="close-btn" on:click={close} on:keydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
+        <div class="close-btn" onclick={close} onkeydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
     </div>
 
     <div
@@ -959,9 +959,9 @@
         bind:this={fileListContainer}
         role="button"
         tabindex="-1"
-        on:scroll={endEditFileName}
-        on:dragover={(e) => e.preventDefault()}
-        on:drop={onDrop}
+        onscroll={endEditFileName}
+        ondragover={(e) => e.preventDefault()}
+        ondrop={onDrop}
     >
         {#if $appState.rename.renaming}
             <input
@@ -969,22 +969,22 @@
                 class="input rename"
                 style="top:{$appState.rename.rect.top}px; left:{$appState.rename.rect.left}px; width:{$appState.rename.rect.width}px; height:{$appState.rename.rect.height}px"
                 spellCheck="false"
-                on:blur={$appState.preventBlur ? undefined : endEditFileName}
-                on:keydown={onRenameInputKeyDown}
+                onblur={$appState.preventBlur ? undefined : endEditFileName}
+                onkeydown={onRenameInputKeyDown}
                 bind:value={$appState.rename.inputValue}
                 use:setRenameInputFocus
             />
         {/if}
         {#if $appState.searchState.searching}
             <div class="searchArea">
-                <input type="text" spellcheck="false" class="input search" on:input={onSearchInput} use:setSearchInputFocus />
+                <input type="text" spellcheck="false" class="input search" oninput={onSearchInput} use:setSearchInputFocus />
                 <span class="searchResult">{$appState.searchState.itemIds.length ? $appState.searchState.highlighIndex + 1 : 0}/{$appState.searchState.itemIds.length}</span>
             </div>
         {/if}
         <List {onPlaylistItemClicked} onEndDrag={changePlaylistItemOrder} onMouseDown={onPlaylistItemMousedown} {scrollToElement} {getChildIndex} />
     </div>
     <div class="playlist-footer" class:shuffle={$appState.shuffle}>
-        <div class="btn shuffle-btn" title={$t("shuffle")} on:click={toggleShuffle} on:keydown={handleKeyEvent} role="button" tabindex="-1">
+        <div class="btn shuffle-btn" title={$t("shuffle")} onclick={toggleShuffle} onkeydown={handleKeyEvent} role="button" tabindex="-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                 <path
                     fill-rule="evenodd"
@@ -995,7 +995,7 @@
                 />
             </svg>
         </div>
-        <div class="btn" title={$t("sort")} on:click={openSortMenu} on:keydown={handleKeyEvent} role="button" tabindex="-1">
+        <div class="btn" title={$t("sort")} onclick={openSortMenu} onkeydown={handleKeyEvent} role="button" tabindex="-1">
             {#if $appState.sortType.order == "NameAsc"}
                 <svg xmlns="http://www.w3.org/2000/svg" id="nameAsc" fill="currentColor" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="M10.082 5.629 9.664 7H8.598l1.789-5.332h1.234L13.402 7h-1.12l-.419-1.371h-1.781zm1.57-.785L11 2.687h-.047l-.652 2.157h1.351z" />

@@ -4359,27 +4359,17 @@ dependencies = [
 
 [[package]]
 name = "wcpopup"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "137792cb2832486cf38ad93cb8d278e9bb758c89332aa30e27c5a6337cdd5f90"
+checksum = "e0879ec872fd3d4481baad4c0db2cd7123d43b791090a6f1e888ec7fd7031336"
 dependencies = [
  "async-std",
  "gtk",
  "once_cell",
  "serde",
- "wcpopup_win_hook",
  "windows 0.60.0",
  "windows-numerics",
  "windows-version",
-]
-
-[[package]]
-name = "wcpopup_win_hook"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb03b946975aa5bc3f8298d432db40e0e077a1cde7bc94432342810f03bf12de"
-dependencies = [
- "windows 0.60.0",
 ]
 
 [[package]]

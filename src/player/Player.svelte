@@ -698,8 +698,8 @@
     });
 </script>
 
-<svelte:window on:keydown={onKeydown} on:resize={onResize} on:contextmenu={(e) => e.preventDefault()} />
-<svelte:document on:mousemove={onMousemove} />
+<svelte:window onkeydown={onKeydown} onresize={onResize} oncontextmenu={(e) => e.preventDefault()} />
+<svelte:document onmousemove={onMousemove} />
 
 <div class="player-viewport" class:full-screen={$appState.isFullScreen} class:loaded={$appState.loaded} class:autohide={$appState.autohide}>
     <div data-tauri-drag-region class="player-title-bar">
@@ -709,22 +709,22 @@
         </div>
         <div data-tauri-drag-region class="title">{$appState.currentFile.name}</div>
         <div class="window-area">
-            <div class="minimize" on:click={minimize} on:keydown={handleKeyEvent} role="button" tabindex="-1">&minus;</div>
-            <div class="maximize" on:click={toggleMaximize} on:keydown={handleKeyEvent} role="button" tabindex="-1">
+            <div class="minimize" onclick={minimize} onkeydown={handleKeyEvent} role="button" tabindex="-1">&minus;</div>
+            <div class="maximize" onclick={toggleMaximize} onkeydown={handleKeyEvent} role="button" tabindex="-1">
                 <div class:minbtn={$appState.isMaximized} class:maxbtn={!$appState.isMaximized}></div>
             </div>
-            <div class="close" on:click={close} on:keydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
+            <div class="close" onclick={close} onkeydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
         </div>
     </div>
 
     <div
         bind:this={container}
         class="video-container"
-        on:dragover={(e) => e.preventDefault()}
-        on:mouseup={onMouseUp}
-        on:dblclick={togglePlay}
-        on:contextmenu={onContextMenu}
-        on:drop={onDrop}
+        ondragover={(e) => e.preventDefault()}
+        onmouseup={onMouseUp}
+        ondblclick={togglePlay}
+        oncontextmenu={onContextMenu}
+        ondrop={onDrop}
         role="button"
         tabindex="-1"
     >
@@ -732,17 +732,17 @@
             bind:this={video}
             class="video"
             src={$appState.currentFile.src}
-            on:loadeddata={onMediaLoaded}
-            on:ended={() => changeFile(FORWARD)}
-            on:timeupdate={onTimeUpdate}
-            on:play={onPlayed}
-            on:pause={onPaused}
-            on:contextmenu={onContextMenu}
-            on:emptied={onEmptied}
-            on:error={onLoadError}
+            onloadeddata={onMediaLoaded}
+            onended={() => changeFile(FORWARD)}
+            ontimeupdate={onTimeUpdate}
+            onplay={onPlayed}
+            onpause={onPaused}
+            oncontextmenu={onContextMenu}
+            onemptied={onEmptied}
+            onerror={onLoadError}
             muted={$appState.media.mute}
             crossorigin="anonymous"
-        />
+        ></video>
     </div>
 
     <Footer

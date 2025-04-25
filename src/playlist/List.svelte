@@ -1,16 +1,23 @@
 <script lang="ts">
-    import { afterUpdate } from "svelte";
     import { appState, dispatch } from "./appStateReducer";
 
-    export let onPlaylistItemClicked: (id: string) => void;
-    export let onEndDrag: (data: Mp.ChangePlaylistOrderRequet) => void;
-    export let onMouseDown: (e: MouseEvent) => void;
-    export let scrollToElement: (id: string) => void;
-    export let getChildIndex: (id: string | null | undefined) => number;
+    let {
+        onPlaylistItemClicked,
+        onEndDrag,
+        onMouseDown,
+        scrollToElement,
+        getChildIndex,
+    }: {
+        onPlaylistItemClicked: (id: string) => void;
+        onEndDrag: (data: Mp.ChangePlaylistOrderRequet) => void;
+        onMouseDown: (e: MouseEvent) => void;
+        scrollToElement: (id: string) => void;
+        getChildIndex: (id: string | null | undefined) => number;
+    } = $props();
 
     let listSize = 0;
 
-    afterUpdate(() => {
+    $effect(() => {
         if ($appState.files.length != listSize) {
             listSize = $appState.files.length;
             scrollToElement($appState.selection.selectedId);
@@ -77,11 +84,11 @@
             class:highlight-current={$appState.searchState.itemIds[$appState.searchState.highlighIndex] == file.id}
             class:draghover={$appState.dragState.targetId == file.id}
             data-dir={encodeURIComponent(file.dir)}
-            on:mousedown={onMouseDown}
-            on:dblclick={onItemClicked}
-            on:dragstart={startDragPlaylistItem}
-            on:dragenter={toggleHighlightDropTarget}
-            on:dragend={endDragPlaylistItem}
+            onmousedown={onMouseDown}
+            ondblclick={onItemClicked}
+            ondragstart={startDragPlaylistItem}
+            ondragenter={toggleHighlightDropTarget}
+            ondragend={endDragPlaylistItem}
             role="button"
             tabindex="-1"
         >

@@ -3,16 +3,29 @@
     import { Buttons, handleKeyEvent } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
 
-    export let onMouseEnter: () => void;
-    export let onUpdateTime: (progress: number) => void;
-    export let onUpdateVolume: (progress: number) => void;
-    export let onUpdateAmpLevel: (progress: number) => void;
-    export let onClickPlay: () => void;
-    export let onClickStop: () => void;
-    export let onClickPrevious: (button: number) => void;
-    export let onClickNext: (button: number) => void;
-    export let onClickMute: () => void;
-    export let t: (key: keyof Mp.Labels) => string;
+    let {
+        onMouseEnter,
+        onUpdateTime,
+        onUpdateVolume,
+        onUpdateAmpLevel,
+        onClickPlay,
+        onClickStop,
+        onClickPrevious,
+        onClickNext,
+        onClickMute,
+        t,
+    }: {
+        onMouseEnter: () => void;
+        onUpdateTime: (progress: number) => void;
+        onUpdateVolume: (progress: number) => void;
+        onUpdateAmpLevel: (progress: number) => void;
+        onClickPlay: () => void;
+        onClickStop: () => void;
+        onClickPrevious: (button: number) => void;
+        onClickNext: (button: number) => void;
+        onClickMute: () => void;
+        t: (key: keyof Mp.Labels) => string;
+    } = $props();
 
     const formatTime = (secondValue: number) => {
         const hours = Math.floor(secondValue / 3600)
@@ -41,10 +54,10 @@
     };
 </script>
 
-<div class="footer" on:mouseenter={onMouseEnter} role="button" tabindex="-1">
+<div class="footer" onmouseenter={onMouseEnter} role="button" tabindex="-1">
     <div class="footer-menu">
         <div class="footer-top">
-            <div class="time-area" on:mouseenter={() => updatePreventAutohide(true)} on:mouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
+            <div class="time-area" onmouseenter={() => updatePreventAutohide(true)} onmouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
                 <Slider
                     sliderClass={["time"]}
                     trackValueClass={["current-time"]}
@@ -62,10 +75,10 @@
             <div class="btn-area">
                 <div
                     class="btn-large"
-                    on:click={onClickPlay}
-                    on:keydown={handleKeyEvent}
-                    on:mouseenter={() => updatePreventAutohide(true)}
-                    on:mouseleave={() => updatePreventAutohide(false)}
+                    onclick={onClickPlay}
+                    onkeydown={handleKeyEvent}
+                    onmouseenter={() => updatePreventAutohide(true)}
+                    onmouseleave={() => updatePreventAutohide(false)}
                     role="button"
                     tabindex="-1"
                 >
@@ -79,18 +92,18 @@
                         </svg>
                     {/if}
                 </div>
-                <div class="btn" on:click={onClickStop} on:keydown={handleKeyEvent} role="button" tabindex="-1">
+                <div class="btn" onclick={onClickStop} onkeydown={handleKeyEvent} role="button" tabindex="-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z" />
                     </svg>
                 </div>
                 <div
                     class="btn"
-                    on:click={() => onClickPrevious(Buttons.left)}
-                    on:contextmenu={() => onClickPrevious(Buttons.right)}
-                    on:keydown={handleKeyEvent}
-                    on:mouseenter={() => updatePreventAutohide(true)}
-                    on:mouseleave={() => updatePreventAutohide(false)}
+                    onclick={() => onClickPrevious(Buttons.left)}
+                    oncontextmenu={() => onClickPrevious(Buttons.right)}
+                    onkeydown={handleKeyEvent}
+                    onmouseenter={() => updatePreventAutohide(true)}
+                    onmouseleave={() => updatePreventAutohide(false)}
                     role="button"
                     tabindex="-1"
                 >
@@ -102,11 +115,11 @@
                 </div>
                 <div
                     class="btn"
-                    on:click={() => onClickNext(Buttons.left)}
-                    on:contextmenu={() => onClickNext(Buttons.right)}
-                    on:keydown={handleKeyEvent}
-                    on:mouseenter={() => updatePreventAutohide(true)}
-                    on:mouseleave={() => updatePreventAutohide(false)}
+                    onclick={() => onClickNext(Buttons.left)}
+                    oncontextmenu={() => onClickNext(Buttons.right)}
+                    onkeydown={handleKeyEvent}
+                    onmouseenter={() => updatePreventAutohide(true)}
+                    onmouseleave={() => updatePreventAutohide(false)}
                     role="button"
                     tabindex="-1"
                 >
@@ -127,11 +140,11 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <div class="volume-area" on:mouseenter={() => updatePreventAutohide(true)} on:mouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
+            <div class="volume-area" onmouseenter={() => updatePreventAutohide(true)} onmouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
                 <Slider sliderClass={["volume"]} thumbType="dot" onSlide={onUpdateVolume} value={$appState.media.videoVolume} valuePosition="right" />
             </div>
-            <div class="amp-area" class:mute={$appState.media.mute} on:mouseenter={() => updatePreventAutohide(true)} on:mouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
-                <div class="btn sound" on:click={onClickMute} on:keydown={handleKeyEvent} role="button" tabindex="-1" title={t("mute")}>
+            <div class="amp-area" class:mute={$appState.media.mute} onmouseenter={() => updatePreventAutohide(true)} onmouseleave={() => updatePreventAutohide(false)} role="button" tabindex="-1">
+                <div class="btn sound" onclick={onClickMute} onkeydown={handleKeyEvent} role="button" tabindex="-1" title={t("mute")}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                         <path
                             d="M9 4a.5.5 0 0 0-.812-.39L5.825 5.5H3.5A.5.5 0 0 0 3 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 9 12V4zm3.025 4a4.486 4.486 0 0 1-1.318 3.182L10 10.475A3.489 3.489 0 0 0 11.025 8 3.49 3.49 0 0 0 10 5.525l.707-.707A4.486 4.486 0 0 1 12.025 8z"

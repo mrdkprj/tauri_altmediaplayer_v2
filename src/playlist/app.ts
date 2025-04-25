@@ -1,8 +1,9 @@
 import "./playlist.css";
 import "../common.css";
 import Playlist from "./Playlist.svelte";
+import { mount } from "svelte";
 
-const app = new Playlist({
+const app = mount(Playlist, {
     target: document.body,
 });
 

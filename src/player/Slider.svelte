@@ -1,16 +1,29 @@
 <script lang="ts">
     import { onMount } from "svelte";
 
-    export let sliderClass: string[];
-    export let trackValueClass: string[] = [];
-    export let thumbType: "dot" | "lever";
-    export let onSlide: (progress: number) => void;
-    export let displayFormatter: ((progress: number) => string) | null = null;
-    export let onTooltip: ((progress: number) => string) | null = null;
-    export let max: number | null = null;
-    export let value: number;
-    export let valuePosition: "left" | "right";
-    export let offSet: number | null = null;
+    let {
+        sliderClass,
+        trackValueClass = [],
+        thumbType,
+        onSlide,
+        displayFormatter = null,
+        onTooltip = null,
+        max = null,
+        value,
+        valuePosition,
+        offSet = null,
+    }: {
+        sliderClass: string[];
+        trackValueClass?: string[];
+        thumbType: "dot" | "lever";
+        onSlide: (progress: number) => void;
+        displayFormatter?: ((progress: number) => string) | null;
+        onTooltip?: ((progress: number) => string) | null;
+        max?: number | null;
+        value: number;
+        valuePosition: "left" | "right";
+        offSet?: number | null;
+    } = $props();
 
     type TooltipState = {
         visible: boolean;
@@ -18,12 +31,12 @@
         top: number;
         left: number;
     };
+    let sliding = $state(false);
+    let toolTip = $state<TooltipState>({ visible: false, text: "", top: 0, left: 0 });
 
     const THUM_WIDTH = 8;
 
-    let sliding = false;
     let rect: DOMRect;
-    let toolTip: TooltipState = { visible: false, text: "", top: 0, left: 0 };
     let slider: HTMLDivElement;
     let startX = 0;
 
@@ -77,13 +90,13 @@
         toolTip = { ...toolTip, visible: false, text: "" };
     };
 
-    $: getRate = () => {
+    const rate = $derived.by(() => {
         if (max) {
             return `${(value / max) * 100}%`;
         }
 
         return `${Math.floor(value * 100)}%`;
-    };
+    });
 
     const setRect = () => {
         rect = slider.getBoundingClientRect();
@@ -94,40 +107,32 @@
     });
 </script>
 
-<svelte:window on:resize={setRect} />
-<svelte:document on:mousemove={moveSlider} on:mouseup={endSlide} />
+<svelte:window onresize={setRect} />
+<svelte:document onmousemove={moveSlider} onmouseup={endSlide} />
 
 {#if toolTip.visible}
     <div class="tooltip" style="left:{toolTip.left}px; top:{toolTip.top}px">{toolTip.text}</div>
 {/if}
 
 {#if valuePosition === "left"}
-    <div class="track-value {trackValueClass?.join(' ')}">{displayFormatter ? displayFormatter(value) : getRate()}</div>
+    <div class="track-value {trackValueClass?.join(' ')}">{displayFormatter ? displayFormatter(value) : rate}</div>
 {/if}
 
 <div
     class="slider {sliderClass.join(' ')}"
     class:sliding
     bind:this={slider}
-    on:mousedown={onTrackMousedown}
-    on:mouseenter={showTooltip}
-    on:mousemove={showTooltip}
-    on:mouseleave={hideTooltip}
+    onmousedown={onTrackMousedown}
+    onmouseenter={showTooltip}
+    onmousemove={showTooltip}
+    onmouseleave={hideTooltip}
     role="button"
     tabindex="-1"
 >
-    <div class="track" style:width={getRate()}></div>
-    <div
-        class="thumb"
-        class:lever={thumbType === "lever"}
-        style="left:max({getRate()} - {THUM_WIDTH}px, 0px)"
-        on:mousedown={startSlide}
-        title={onTooltip ? "" : getRate()}
-        role="button"
-        tabindex="-1"
-    ></div>
+    <div class="track" style:width={rate}></div>
+    <div class="thumb" class:lever={thumbType === "lever"} style="left:max({rate} - {THUM_WIDTH}px, 0px)" onmousedown={startSlide} title={onTooltip ? "" : rate} role="button" tabindex="-1"></div>
 </div>
 
 {#if valuePosition === "right"}
-    <div class="track-value {trackValueClass?.join(' ')}">{displayFormatter ? displayFormatter(value) : getRate()}</div>
+    <div class="track-value {trackValueClass?.join(' ')}">{displayFormatter ? displayFormatter(value) : rate}</div>
 {/if}

@@ -12,7 +12,6 @@
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
     const ipc = new IPC("Convert");
-    let defaultPath = "";
 
     const changeSourceFile = (file: Mp.MediaFile) => {
         dispatch({ type: "sourceFile", value: file.fullPath });
@@ -63,8 +62,10 @@
         const extension = data.convertFormat.toLocaleLowerCase();
         const fileName = file.name.replace(path.extname(file.name), "");
 
+        const settings = await ipc.getSettings();
+
         const result = await ipc.invoke("save", {
-            default_path: path.join(defaultPath, `${fileName}.${extension}`),
+            default_path: path.join(settings.defaultPath, `${fileName}.${extension}`),
             filters: [
                 {
                     name: data.convertFormat === "MP4" ? "Video" : "Audio",
@@ -76,9 +77,8 @@
         if (!result.file_paths.length) return await endConvert();
 
         const selectedPath = result.file_paths[0];
-        defaultPath = path.dirname(selectedPath);
-
-        await ipc.sendTo("Player", "change-default-path", defaultPath);
+        settings.defaultPath = path.dirname(selectedPath);
+        await ipc.updateSettings(settings);
 
         const shouldReplace = file.fullPath === selectedPath;
 
@@ -170,11 +170,9 @@
     };
 
     const show = async (e: Mp.OpenConvertDialogEvent) => {
-        const settings = await ipc.getSettings();
         if (!$appState.converting && e.opener == "user") {
             changeSourceFile(e.file);
         }
-        defaultPath = settings.defaultPath;
         await WebviewWindow.getCurrent().show();
     };
 
@@ -187,11 +185,11 @@
     });
 </script>
 
-<svelte:window on:keydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} />
 
 <div class="viewport">
     <div class="title-bar">
-        <div class="close-btn" on:click={closeDialog} on:keydown={onKeydown} role="button" tabindex="-1">&times;</div>
+        <div class="close-btn" onclick={closeDialog} onkeydown={onKeydown} role="button" tabindex="-1">&times;</div>
     </div>
     <div class="convert-viewport">
         <div class="container">
@@ -199,7 +197,7 @@
             <div class="option-area">
                 <div class="text">
                     <input type="text" class="source-file-input" readonly value={$appState.sourceFile} />
-                    <div class="btn" on:click={openDialog} on:keydown={onKeydown} role="button" tabindex="-1">
+                    <div class="btn" onclick={openDialog} onkeydown={onKeydown} role="button" tabindex="-1">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                             <path
                                 d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9zM2.5 3a.5.5 0 0 0-.5.5V6h12v-.5a.5.5 0 0 0-.5-.5H9c-.964 0-1.71-.629-2.174-1.154C6.374 3.334 5.82 3 5.264 3H2.5zM14 7H2v5.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V7z"
@@ -254,17 +252,17 @@
                         onChange={onChangeAudioBitrate}
                     />
                 </div>
-                <div class="option-label">{$t("volume")}<label><input type="checkbox" class="max-volume" on:change={onMaxVolumeChange} />{$t("maximizeVolue")}</label></div>
+                <div class="option-label">{$t("volume")}<label><input type="checkbox" class="max-volume" onchange={onMaxVolumeChange} />{$t("maximizeVolue")}</label></div>
                 <div class="option-area">
-                    <input type="range" min="1" max="5" step="0.5" value={$appState.audioVolume} on:change={onVolumeChange} disabled={$appState.maxVolume} />
+                    <input type="range" min="1" max="5" step="0.5" value={$appState.audioVolume} onchange={onVolumeChange} disabled={$appState.maxVolume} />
                     <span id="volumeLabel">{`${parseFloat($appState.audioVolume) * 100}%`}</span>
                 </div>
             </div>
 
             <div class="button">
-                <button disabled={$appState.converting} on:click={requestConvert}>{$t("start")}</button>
-                <button disabled={!$appState.converting} on:click={requestCancelConvert}>{$t("cancel")}</button>
-                <button on:click={closeDialog}>{$t("close")}</button>
+                <button disabled={$appState.converting} onclick={requestConvert}>{$t("start")}</button>
+                <button disabled={!$appState.converting} onclick={requestCancelConvert}>{$t("cancel")}</button>
+                <button onclick={closeDialog}>{$t("close")}</button>
             </div>
         </div>
     </div>
