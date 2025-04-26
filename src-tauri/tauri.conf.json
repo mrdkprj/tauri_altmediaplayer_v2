@@ -30,7 +30,7 @@
         "minimizable":true,
         "closable":true,
         "focus":true,
-        "visible":true,
+        "visible":false,
         "decorations":false,
         "skipTaskbar":false,
         "transparent":false,
