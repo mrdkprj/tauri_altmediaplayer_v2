@@ -82,7 +82,7 @@
   "withGlobalTauri": true
   },
   "build": {
-    "beforeBuildCommand": "yarn buildts",
+    "beforeBuildCommand": "yarn build",
     "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
