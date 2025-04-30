@@ -28,27 +28,6 @@ fn relative_command_path(app: &tauri::AppHandle, command: String) -> Result<Path
     }
 }
 
-pub fn reveal(file_path: String, use_file_manager: bool) -> Result<(), String> {
-    if use_file_manager {
-        nonstd::shell::show_item_in_folder(file_path)
-    } else {
-        let output = std::process::Command::new("powershell")
-            .arg("-Command")
-            .arg("Get-ItemProperty HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, InstallLocation, MainBinaryName | ConvertTo-Json")
-            .output()
-            .unwrap();
-
-        let data: serde_json::Value = serde_json::from_str(std::str::from_utf8(&output.stdout).unwrap()).map_err(|e| e.to_string())?;
-
-        let target: Vec<&serde_json::Value> = data.as_array().unwrap().iter().filter(|item| item["DisplayName"].as_str().unwrap_or_default() == "explite").collect();
-        if target.is_empty() {
-            println!("No reveal alternative found");
-            return Ok(());
-        }
-        let file_manager = target.first().unwrap();
-        let location = file_manager["InstallLocation"].as_str().unwrap_or_default().replace('\"', "");
-        let mut local_app_data = PathBuf::from(location);
-        local_app_data.push(file_manager["MainBinaryName"].as_str().unwrap());
-        nonstd::shell::open_path_with(file_path, local_app_data)
-    }
+pub fn reveal(file_path: String) -> Result<(), String> {
+    nonstd::shell::show_item_in_folder(file_path)
 }

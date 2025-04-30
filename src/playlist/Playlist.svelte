@@ -12,8 +12,9 @@
     import util from "../util";
     import Deferred from "../deferred";
     import path from "../path";
-
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+
+    // import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
@@ -766,14 +767,7 @@
 
         if (!file) return;
 
-        await ipc.invoke("reveal", { file_path: file.fullPath, use_file_manager: $appState.useFileManager });
-    };
-
-    const toggleUseFileManager = async () => {
-        dispatch({ type: "toggleUseFileManager" });
-        const settings = await ipc.getSettings();
-        settings.useDefaultFileManager = $appState.useFileManager;
-        await ipc.updateSettings(settings);
+        await ipc.invoke("reveal", file.fullPath);
     };
 
     const openConvert = async (opener: Mp.DialogOpener) => {
@@ -893,9 +887,6 @@
                 break;
             case "PasteFilePath":
                 await pasteFilePath();
-                break;
-            case "useDefaultFileManager":
-                await toggleUseFileManager();
                 break;
         }
     };

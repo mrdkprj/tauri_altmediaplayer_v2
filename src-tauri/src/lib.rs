@@ -104,14 +104,9 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct RevealArgs {
-    file_path: String,
-    use_file_manager: bool,
-}
 #[tauri::command]
-fn reveal(payload: RevealArgs) -> Result<(), String> {
-    shell::reveal(payload.file_path, payload.use_file_manager)
+fn reveal(payload: String) -> Result<(), String> {
+    shell::reveal(payload)
 }
 
 #[tauri::command]
@@ -302,7 +297,6 @@ pub struct Settings {
     pub seekSpeed: f64,
     pub groupBy: bool,
     pub order: String,
-    pub useDefaultFileManager: bool,
 }
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {

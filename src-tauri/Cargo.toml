@@ -9,7 +9,7 @@ edition = "2021"
 tauri-build = { version = "2.0.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.4.0", features = [ "tray-icon", "protocol-asset", "devtools"] }
+tauri = { version = "2.5.1", features = [ "tray-icon", "protocol-asset", "devtools"] }
 tauri-plugin-single-instance = "2.0.0"
 strum_macros = "0.26"
 serde = { version = "1.0", features = ["derive"] }
@@ -20,8 +20,8 @@ nonstd = { git = "https://github.com/mrdkprj/nonstd.git", rev="e55b9e22c2119feb1
 wcpopup = {version = "0.6.5", features = ["webview"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-webview2-com = "0.36"
-windows = "0.60"
+webview2-com = "0.37"
+windows = "0.61"
 
 [target.'cfg(target_os = "linux")'.dependencies.gtk]
 version = "0.18.2"

@@ -102,11 +102,6 @@ type FileDialogResult = {
     file_paths: string[];
 };
 
-type RevealArgs = {
-    file_path: string;
-    use_file_manager: boolean;
-};
-
 type TauriCommandMap = {
     prepare_windows: TauriCommand<Mp.TauriSettings, boolean>;
     get_init_args: TauriCommand<undefined, string[]>;
@@ -114,7 +109,7 @@ type TauriCommandMap = {
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
     set_settings: TauriCommand<Mp.TauriSettings, undefined>;
-    reveal: TauriCommand<RevealArgs, undefined>;
+    reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
     remove: TauriCommand<string, undefined>;
     exists: TauriCommand<string, boolean>;
@@ -152,7 +147,6 @@ export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
         seekSpeed: settings.video.seekSpeed,
         groupBy: settings.sort.groupBy,
         order: settings.sort.order,
-        useDefaultFileManager: settings.useDefaultFileManager,
     };
 };
 

@@ -58,7 +58,6 @@ declare global {
             Move: null;
             GroupBy: null;
             PasteFilePath: null;
-            useDefaultFileManager: null;
         };
 
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";
@@ -132,7 +131,6 @@ declare global {
                 mode: "system" | Mp.Lang;
                 lang: Mp.Lang;
             };
-            useDefaultFileManager: boolean;
         };
 
         type TauriSettings = {
@@ -143,7 +141,6 @@ declare global {
             seekSpeed: number;
             groupBy: boolean;
             order: Mp.SortOrder;
-            useDefaultFileManager: boolean;
         };
 
         type MediaFile = {

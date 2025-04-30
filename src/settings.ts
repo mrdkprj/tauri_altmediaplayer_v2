@@ -31,7 +31,6 @@ const defaultSettings: Mp.Settings = {
         mode: "system",
         lang: "en",
     },
-    useDefaultFileManager: true,
 };
 
 export class Settings {

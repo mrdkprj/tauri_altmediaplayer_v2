@@ -128,7 +128,7 @@ pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) ->
 
     let config = get_menu_config(settings.theme);
 
-    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
+    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
 
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
@@ -188,7 +188,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     let hwnd = window.hwnd().unwrap();
 
     let config = get_menu_config(settings.theme);
-    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
+    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
 
     builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", false, "Delete");
     builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", false, "Shift+Delete");
@@ -202,7 +202,6 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
     builder.text(&PlaylistMenu::Convert.to_string(), "Convert", false);
     builder.separator();
     builder.text(&PlaylistMenu::Move.to_string(), "Move File", false);
-    builder.check("useDefaultFileManager", "Use File Manager", settings.useDefaultFileManager, false);
     builder.separator();
     builder.text(&PlaylistMenu::RemoveAll.to_string(), "Clear Playlist", false);
 
@@ -217,7 +216,7 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
     let hwnd = window.hwnd().unwrap();
     let config = get_menu_config(settings.theme);
-    let mut builder = MenuBuilder::new_for_hwnd_from_config(hwnd, config);
+    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
 
     let id = &PlaylistMenu::Sort.to_string();
 
