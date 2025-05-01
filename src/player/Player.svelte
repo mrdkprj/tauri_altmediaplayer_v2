@@ -658,10 +658,8 @@
 
         await ipc.invoke("set_play_thumbs", createThumbClickEvent());
 
-        await onBackendReady();
-    };
+        await ipc.sendTo("Playlist", "all-ready", {});
 
-    const onBackendReady = async () => {
         const files = await ipc.invoke("get_init_args", undefined);
         if (files.length) {
             await ipc.sendTo("Playlist", "load-playlist", { files });
@@ -669,7 +667,7 @@
     };
 
     onMount(() => {
-        prepare();
+        ipc.receiveOnce("backend-ready", prepare);
         ipc.receiveTauri("tauri://close-requested", beforeClose);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
@@ -686,7 +684,6 @@
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
         ipc.receive("settings-updated", onSettingsUpdate);
-        ipc.receive("backend-ready", onBackendReady);
         ipc.receive("log", (data) => console.log(data.log));
 
         return () => {

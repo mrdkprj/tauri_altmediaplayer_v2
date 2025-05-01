@@ -915,7 +915,7 @@
     };
 
     onMount(() => {
-        prepare();
+        ipc.receive("all-ready", prepare);
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         if (navigator.userAgent.includes(PLATFROMS.linux)) {

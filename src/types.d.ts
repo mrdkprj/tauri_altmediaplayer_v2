@@ -5,6 +5,7 @@ declare global {
 
     type RendererChannelEventMap = {
         "backend-ready": Mp.Event;
+        "all-ready": Mp.Event;
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "load-playlist": Mp.LoadPlaylistEvent;

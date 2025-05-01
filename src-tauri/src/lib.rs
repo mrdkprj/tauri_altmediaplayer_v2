@@ -346,16 +346,21 @@ pub fn run() {
             }
 
             app.manage(OpenedUrls(urls));
-            app.emit_to(
-                tauri::EventTarget::WebviewWindow {
-                    label: PLAYER.to_string(),
-                },
-                "backend-ready",
-                String::new(),
-            )
-            .unwrap();
 
             Ok(())
+        })
+        .on_page_load(|window, _| {
+            if window.webview_windows().len() == 3 {
+                window
+                    .emit_to(
+                        tauri::EventTarget::WebviewWindow {
+                            label: PLAYER.to_string(),
+                        },
+                        "backend-ready",
+                        String::new(),
+                    )
+                    .unwrap();
+            }
         })
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
