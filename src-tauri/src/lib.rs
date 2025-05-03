@@ -11,6 +11,15 @@ static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
 static THEME_DARK: &str = "Dark";
 
+#[cfg(target_os = "linux")]
+fn get_window_handel(window: &WebviewWindow) -> isize {
+    use gtk::{ffi::GtkApplicationWindow, glib::translate::ToGlibPtr};
+
+    let ptr: *mut GtkApplicationWindow = window.gtk_window().unwrap().to_glib_none().0;
+    ptr as isize
+}
+
+#[cfg(target_os = "windows")]
 fn get_window_handel(window: &WebviewWindow) -> isize {
     window.hwnd().unwrap().0 as _
 }
@@ -75,10 +84,11 @@ async fn open_context_menu(window: tauri::WebviewWindow, payload: helper::Positi
     #[cfg(target_os = "linux")]
     {
         let gtk_window = window.clone();
+        let label = gtk_window.label().to_string();
         window
             .run_on_main_thread(move || {
                 gtk::glib::spawn_future_local(async move {
-                    helper::popup_menu(&window, window.label(), payload).await;
+                    helper::popup_menu(&gtk_window, &label, payload).await;
                 });
             })
             .unwrap();
@@ -97,7 +107,7 @@ async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::P
         window
             .run_on_main_thread(move || {
                 gtk::glib::spawn_future_local(async move {
-                    helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
+                    helper::popup_menu(&gtk_window, helper::SORT_MENU_NAME, payload).await;
                 });
             })
             .unwrap();
@@ -158,8 +168,19 @@ struct MoveInfo {
     to: String,
 }
 #[tauri::command]
-async fn mv_all(payload: MoveInfo) -> Result<(), String> {
-    nonstd::fs::mv_all(&payload.from, payload.to)
+async fn mv_all(window: WebviewWindow, payload: MoveInfo) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        nonstd::fs::mv_all(&payload.from, payload.to)
+    }
+    #[cfg(target_os = "linux")]
+    {
+        window
+            .run_on_main_thread(move || {
+                gtk::glib::spawn_future_local(async move { nonstd::fs::mv_all(&payload.from, payload.to).await });
+            })
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[tauri::command]

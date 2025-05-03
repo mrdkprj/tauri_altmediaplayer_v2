@@ -188,7 +188,7 @@
 <svelte:window onkeydown={onKeydown} />
 
 <div class="viewport">
-    <div class="title-bar">
+    <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title-bar">
         <div class="close-btn" onclick={closeDialog} onkeydown={onKeydown} role="button" tabindex="-1">&times;</div>
     </div>
     <div class="convert-viewport">

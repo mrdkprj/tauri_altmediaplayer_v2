@@ -152,6 +152,8 @@ div:focus{
     color: var(--menu-color);
     background-color: var(--menu-bgcolor);
     border-bottom: 1px solid var(--menu-border-color);
+    user-select: none;
+    -webkit-user-select: none;
     -webkit-app-region: drag;
 }
 

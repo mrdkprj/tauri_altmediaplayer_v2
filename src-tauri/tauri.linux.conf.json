@@ -1,0 +1,81 @@
+{
+    "app": {
+        "windows": [
+            {
+                "title":"",
+                "label":"Player",
+                "minHeight":400,
+                "minWidth":400,
+                "fullscreen": false,
+                "resizable": true,
+                "maximizable":true,
+                "minimizable":true,
+                "closable":true,
+                "focus":true,
+                "visible":false,
+                "decorations":false,
+                "skipTaskbar":false,
+                "transparent":false,
+                "theme": "Dark",
+                "dragDropEnabled":true,
+                "shadow":true,
+                "url":"src/player/index.html"
+            },
+            {
+                "title":"",
+                "label":"Playlist",
+                "fullscreen": false,
+                "resizable": true,
+                "maximizable":false,
+                "minimizable":false,
+                "closable":true,
+                "focus":false,
+                "visible":false,
+                "decorations":false,
+                "skipTaskbar":true,
+                "parent":"Player",
+                "transparent":false,
+                "dragDropEnabled":true,
+                "theme": "Dark",
+                "shadow":false,
+                "url":"src/playlist/index.html"
+            },
+            {
+                "title":"",
+                "label":"Convert",
+                "width": 640,
+                "height": 700,
+                "fullscreen": false,
+                "resizable": true,
+                "maximizable":false,
+                "minimizable":false,
+                "closable":true,
+                "focus":false,
+                "visible":false,
+                "decorations":false,
+                "skipTaskbar":true,
+                "parent":"Player",
+                "transparent":false,
+                "theme": "Dark",
+                "shadow":false,
+                "url":"src/convert/index.html"
+            }
+        ]
+    },
+    "bundle": {
+        "active": true,
+        "category": "Video",
+        "icon": [
+            "icons/icon.icns",
+            "icons/icon.ico"
+        ],
+        "resources":[
+            "assets/*"
+        ],
+            "fileAssociations":[
+            {
+                "ext": ["mp4","mov","webm","ogg","ogv","mp3","oga"]
+            }
+        ]
+    }    
+}

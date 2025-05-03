@@ -602,7 +602,14 @@
 
         await settings.save();
 
-        await WebviewWindow.getCurrent().destroy();
+        // On Linux, all windows created must be closed.
+        if (navigator.userAgent.includes("Linux")) {
+            await playlist?.close();
+            const convert = await Window.getByLabel("Convert");
+            await convert?.close();
+        }
+
+        await player.destroy();
     };
 
     const close = async () => {
@@ -688,12 +695,12 @@
 <svelte:document onmousemove={onMousemove} />
 
 <div class="player-viewport" class:full-screen={$appState.isFullScreen} class:loaded={$appState.loaded} class:autohide={$appState.autohide}>
-    <div data-tauri-drag-region class="player-title-bar">
-        <div data-tauri-drag-region class="icon-area">
+    <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="player-title-bar">
+        <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="icon-area">
             <img class="ico" src={icon} alt="" />
             <span>{APP_NAME}</span>
         </div>
-        <div data-tauri-drag-region class="title">{$appState.currentFile.name}</div>
+        <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title">{$appState.currentFile.name}</div>
         <div class="window-area">
             <div class="minimize" onclick={minimize} onkeydown={handleKeyEvent} role="button" tabindex="-1">&minus;</div>
             <div class="maximize" onclick={toggleMaximize} onkeydown={handleKeyEvent} role="button" tabindex="-1">

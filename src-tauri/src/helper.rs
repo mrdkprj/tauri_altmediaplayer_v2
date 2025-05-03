@@ -1,4 +1,4 @@
-use crate::Settings;
+use crate::{get_window_handel, Settings};
 use async_std::sync::Mutex;
 #[cfg(target_os = "windows")]
 use nonstd::ThumbButton;
@@ -6,6 +6,9 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
 use strum_macros::Display;
+#[cfg(target_os = "linux")]
+use tauri::Emitter;
+#[cfg(target_os = "windows")]
 use tauri::{path::BaseDirectory, Emitter, Manager};
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
@@ -114,11 +117,11 @@ fn get_menu_config(theme: MenuTheme) -> Config {
 }
 
 pub fn create_player_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
-    let hwnd = window.hwnd().unwrap();
+    let window_handle = get_window_handel(window);
 
     let config = get_menu_config(settings.theme);
 
-    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
+    let mut builder = MenuBuilder::new_from_config(window_handle, config);
 
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
@@ -175,10 +178,9 @@ fn create_theme_submenu(builder: &mut MenuBuilder, settings: &Settings) {
 }
 
 pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
-    let hwnd = window.hwnd().unwrap();
-
+    let window_handle = get_window_handel(window);
     let config = get_menu_config(settings.theme);
-    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
+    let mut builder = MenuBuilder::new_from_config(window_handle, config);
 
     builder.text_with_accelerator(&PlaylistMenu::Remove.to_string(), "Remove", false, "Delete");
     builder.text_with_accelerator(&PlaylistMenu::Trash.to_string(), "Trash", false, "Shift+Delete");
@@ -204,9 +206,9 @@ pub fn create_playlist_menu(window: &tauri::WebviewWindow, settings: &Settings) 
 }
 
 pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> tauri::Result<()> {
-    let hwnd = window.hwnd().unwrap();
+    let window_handle = get_window_handel(window);
     let config = get_menu_config(settings.theme);
-    let mut builder = MenuBuilder::new_from_config(hwnd.0 as _, config);
+    let mut builder = MenuBuilder::new_from_config(window_handle, config);
 
     let id = &PlaylistMenu::Sort.to_string();
 
@@ -225,6 +227,7 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     Ok(())
 }
 
+#[allow(unused_variables)]
 pub fn set_play_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
     #[cfg(target_os = "windows")]
     {
@@ -236,6 +239,7 @@ pub fn set_play_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, 
     }
 }
 
+#[allow(unused_variables)]
 pub fn set_pause_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
     #[cfg(target_os = "windows")]
     {

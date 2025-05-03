@@ -915,7 +915,7 @@
 <svelte:window oncontextmenu={onContextMenu} onkeydown={onKeydown} onmouseup={onMouseUp} />
 
 <div class="viewport">
-    <div class="title-bar">
+    <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title-bar">
         <div class="close-btn" onclick={close} onkeydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
     </div>
 
