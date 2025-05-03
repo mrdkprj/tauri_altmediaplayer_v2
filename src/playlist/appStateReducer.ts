@@ -27,11 +27,6 @@ type SearchState = {
     value: string;
 };
 
-type MoveState = {
-    started: boolean;
-    progress: number;
-};
-
 type AppState = {
     currentIndex: number;
     selection: Mp.PlaylistItemSelection;
@@ -42,8 +37,6 @@ type AppState = {
     rename: RenameState;
     dragState: DragState;
     searchState: SearchState;
-    moveState: MoveState;
-    useFileManager: boolean;
 };
 
 export const initialAppState: AppState = {
@@ -75,11 +68,6 @@ export const initialAppState: AppState = {
         highlighIndex: 0,
         value: "",
     },
-    moveState: {
-        started: false,
-        progress: 0,
-    },
-    useFileManager: false,
 };
 
 type AppAction =
@@ -106,11 +94,7 @@ type AppAction =
     | { type: "endDrag" }
     | { type: "toggleSearch"; value: boolean }
     | { type: "highlightItems"; value: string[] }
-    | { type: "changeHighlight"; value: number }
-    | { type: "toggleUseFileManager" }
-    | { type: "startMove" }
-    | { type: "moveProgress"; value: number }
-    | { type: "endMove" };
+    | { type: "changeHighlight"; value: number };
 
 const updater = (state: AppState, action: AppAction) => {
     switch (action.type) {
@@ -200,18 +184,6 @@ const updater = (state: AppState, action: AppAction) => {
 
         case "changeHighlight":
             return { ...state, searchState: { ...state.searchState, highlighIndex: action.value } };
-
-        case "startMove":
-            return { ...state, moveState: { ...state.moveState, started: true, progress: 0 } };
-
-        case "endMove":
-            return { ...state, moveState: { ...state.moveState, started: false, progress: 0 } };
-
-        case "moveProgress":
-            return { ...state, moveState: { ...state.moveState, progress: action.value } };
-
-        case "toggleUseFileManager":
-            return { ...state, useFileManager: !state.useFileManager };
 
         default:
             return state;

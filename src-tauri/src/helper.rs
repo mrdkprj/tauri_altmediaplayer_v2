@@ -1,26 +1,16 @@
+use crate::Settings;
 use async_std::sync::Mutex;
 #[cfg(target_os = "windows")]
 use nonstd::ThumbButton;
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, os::windows::ffi::OsStrExt};
+use serde::Deserialize;
+use std::collections::HashMap;
 use strum_macros::Display;
 use tauri::{path::BaseDirectory, Emitter, Manager};
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
     Menu, MenuBuilder,
 };
-#[cfg(target_os = "windows")]
-use webview2_com::{
-    Microsoft::Web::WebView2::Win32::{
-        ICoreWebView2, ICoreWebView2File, ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventArgs2, ICoreWebView2WebMessageReceivedEventHandler,
-    },
-    WebMessageReceivedEventHandler,
-};
-#[cfg(target_os = "windows")]
-use windows::core::{Interface, PCWSTR, PWSTR};
-
-use crate::Settings;
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -304,69 +294,8 @@ fn get_thumb_buttons(app: &tauri::AppHandle, play: bool) -> [ThumbButton; 3] {
 }
 
 #[cfg(target_os = "windows")]
-pub fn register_file_drop(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+pub fn register_file_drop(window: &tauri::WebviewWindow, target_id: String) -> tauri::Result<()> {
     window.with_webview(|webview| {
-        let mut token = 0;
-        let event_handler: ICoreWebView2WebMessageReceivedEventHandler = WebMessageReceivedEventHandler::create(Box::new(drop_handler));
-        unsafe { webview.controller().CoreWebView2().unwrap().add_WebMessageReceived(&event_handler, &mut token).unwrap() };
+        nonstd::webview2::register_file_drop(unsafe { &webview.controller().CoreWebView2().unwrap() }, Some(target_id));
     })
-}
-
-#[derive(Serialize)]
-struct File {
-    path: String,
-    kind: String,
-}
-
-#[cfg(target_os = "windows")]
-fn drop_handler(webview: Option<ICoreWebView2>, args: Option<ICoreWebView2WebMessageReceivedEventArgs>) -> windows::core::Result<()> {
-    unsafe {
-        if let Some(args) = args {
-            let mut webmessageasstring = PWSTR::null();
-            args.TryGetWebMessageAsString(&mut webmessageasstring)?;
-
-            if webmessageasstring.to_string().unwrap() == "getPathForFiles" {
-                let args2: ICoreWebView2WebMessageReceivedEventArgs2 = args.cast()?;
-                if let Ok(obj) = args2.AdditionalObjects() {
-                    let mut count = 0;
-                    let mut files = Vec::new();
-                    obj.Count(&mut count)?;
-                    for i in 0..count {
-                        let value = obj.GetValueAtIndex(i)?;
-                        if let Ok(file) = value.cast::<ICoreWebView2File>() {
-                            let mut path_ptr = PWSTR::null();
-                            file.Path(&mut path_ptr)?;
-                            let path_str = path_ptr.to_string().unwrap();
-                            let full_path = std::path::Path::new(&path_str);
-                            files.push(File {
-                                kind: if full_path.is_file() {
-                                    "file".to_string()
-                                } else {
-                                    "dir".to_string()
-                                },
-                                path: full_path.to_string_lossy().to_string(),
-                            });
-                        }
-                    }
-
-                    if files.is_empty() {
-                        return Ok(());
-                    }
-
-                    if let Ok(str) = serde_json::to_string(&files) {
-                        let json = encode_wide(str);
-                        if let Some(webview) = webview {
-                            webview.PostWebMessageAsJson(PCWSTR::from_raw(json.as_ptr()))?;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn encode_wide(string: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
-    string.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }

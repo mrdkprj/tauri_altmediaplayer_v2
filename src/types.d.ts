@@ -19,7 +19,6 @@ declare global {
         log: Mp.Logging;
         "toggle-convert": Mp.Event;
         "open-convert": Mp.OpenConvertDialogEvent;
-        "move-progress": Mp.MoveProgressEvent;
         "settings-updated": Mp.TauriSettings;
     };
 
@@ -142,6 +141,8 @@ declare global {
             seekSpeed: number;
             groupBy: boolean;
             order: Mp.SortOrder;
+            playerDropTarget: string;
+            playlistDropTarget: string;
         };
 
         type MediaFile = {
@@ -282,11 +283,6 @@ declare global {
             cancellationId: number;
         };
 
-        type MoveProgressEvent = {
-            totalFileSize: number;
-            transferred: number;
-        };
-
         type OpenConvertDialogEvent = {
             file: MediaFile;
             opener: DialogOpener;
@@ -388,16 +384,6 @@ declare global {
  */
 export interface WebView extends EventTarget {
     /**
-     * Contains asynchronous proxies for all host objects added via CoreWebView2.AddHostObjectToScript
-     * as well as options to configure those proxies, and the container for synchronous proxies.
-     *
-     * If you call coreWebView2.AddHostObjectToScript("myObject", object); in your native code,
-     * an asynchronous proxy for object is available to your web-side code, by using
-     * chrome.webview.hostObjects.myObject.
-     */
-    hostObjects: HostObjectsAsyncRoot;
-
-    /**
      * The standard EventTarget.addEventListener method. Use it to subscribe to the message event
      * or sharedbufferreceived event. The message event receives messages posted from the WebView2
      * host via CoreWebView2.PostWebMessageAsJson or CoreWebView2.PostWebMessageAsString. The
@@ -411,25 +397,6 @@ export interface WebView extends EventTarget {
     addEventListener(type: string, listener: WebViewEventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
 
     /**
-     * When the page calls postMessage, the message parameter is converted to JSON and is posted
-     * asynchronously to the WebView2 host process. This will result in either the
-     * CoreWebView2.WebMessageReceived event or the CoreWebView2Frame.WebMessageReceived event being
-     * raised, depending on if postMessage is called from the top-level document in the WebView2
-     * or from a child frame. See CoreWebView2.WebMessageReceived( Win32/C++, .NET, WinRT).
-     * See CoreWebView2Frame.WebMessageReceived( Win32/C++, .NET, WinRT).
-     * @param message The message to send to the WebView2 host. This can be any object that can be
-     *                serialized to JSON.
-     */
-    postMessage(message: any): void;
-
-    /**
-     * Call with the ArrayBuffer from the chrome.webview.sharedbufferreceived event to release the
-     * underlying shared memory resource.
-     * @param buffer An ArrayBuffer from the chrome.webview.sharedbufferreceived event.
-     */
-    releaseBuffer(buffer: ArrayBuffer): void;
-
-    /**
      * The standard EventTarget.removeEventListener method. Use it to unsubscribe to the message
      * or sharedbufferreceived event.
      * @param type The name of the event to unsubscribe from. Valid values are message and sharedbufferreceived.
@@ -437,8 +404,6 @@ export interface WebView extends EventTarget {
      * @param options Options to control how the event is handled.
      */
     removeEventListener(type: string, listener: WebViewEventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-
-    postMessageWithAdditionalObjects(eventName: string, data: any): void;
 }
 
 // Global object

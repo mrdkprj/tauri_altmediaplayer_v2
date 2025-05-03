@@ -86,17 +86,6 @@
         settings.data.audio.mute = $appState.media.mute;
     };
 
-    const onDrop = (e: DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (navigator.userAgent.includes(PLATFROMS.windows)) {
-            if (e.dataTransfer && e.dataTransfer.files) {
-                window.chrome.webview.postMessageWithAdditionalObjects("getPathForFiles", e.dataTransfer.files);
-            }
-        }
-    };
-
     const onFileDrop = async (e: Mp.FileDropEvent) => {
         const files = getDropFiles(e);
 
@@ -716,12 +705,12 @@
 
     <div
         bind:this={container}
+        id="videoContainer"
         class="video-container"
         ondragover={(e) => e.preventDefault()}
         onmouseup={onMouseUp}
         ondblclick={togglePlay}
         oncontextmenu={onContextMenu}
-        ondrop={onDrop}
         role="button"
         tabindex="-1"
     >

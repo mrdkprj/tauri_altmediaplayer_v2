@@ -14,8 +14,6 @@
     import path from "../path";
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
-    // import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-
     let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
@@ -56,19 +54,6 @@
         }
 
         return toggleSelect(e);
-    };
-
-    const onDrop = (e: DragEvent) => {
-        if ($appState.dragState.dragging) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (navigator.userAgent.includes(PLATFROMS.windows)) {
-            if (e.dataTransfer && e.dataTransfer.files) {
-                window.chrome.webview.postMessageWithAdditionalObjects("getPathForFiles", e.dataTransfer.files);
-            }
-        }
     };
 
     const onFileDrop = async (e: Mp.FileDropEvent) => {
@@ -345,23 +330,14 @@
 
             await ipc.updateSettings(settings);
 
-            dispatch({ type: "startMove" });
-
             const sourcePaths = files.map((file) => file.fullPath);
 
             await ipc.invoke("mv_all", { from: sourcePaths, to: destPath });
 
-            dispatch({ type: "endMove" });
-
             await removeFromPlaylist();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
-            dispatch({ type: "endMove" });
         }
-    };
-
-    const onFileMoveProgress = (e: Mp.MoveProgressEvent) => {
-        dispatch({ type: "moveProgress", value: e.transferred });
     };
 
     const toggleSelect = (e: MouseEvent) => {
@@ -926,7 +902,6 @@
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
-        ipc.receive("move-progress", onFileMoveProgress);
 
         return () => {
             if (navigator.userAgent.includes(PLATFROMS.windows)) {
@@ -946,13 +921,13 @@
 
     <div
         class="playlist-viewport"
+        id="playlistViewport"
         class:group-by={$appState.sortType.groupBy}
         bind:this={fileListContainer}
         role="button"
         tabindex="-1"
         onscroll={endEditFileName}
         ondragover={(e) => e.preventDefault()}
-        ondrop={onDrop}
     >
         {#if $appState.rename.renaming}
             <input
@@ -1024,10 +999,5 @@
                 </svg>
             {/if}
         </div>
-        {#if $appState.moveState.started}
-            <div class="btn">
-                <div class="loader8"></div>
-            </div>
-        {/if}
     </div>
 </div>

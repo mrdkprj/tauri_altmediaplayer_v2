@@ -158,7 +158,7 @@ struct MoveInfo {
     to: String,
 }
 #[tauri::command]
-fn mv_all(payload: MoveInfo) -> Result<(), String> {
+async fn mv_all(payload: MoveInfo) -> Result<(), String> {
     nonstd::fs::mv_all(&payload.from, payload.to)
 }
 
@@ -297,6 +297,8 @@ pub struct Settings {
     pub seekSpeed: f64,
     pub groupBy: bool,
     pub order: String,
+    pub playerDropTarget: String,
+    pub playlistDropTarget: String,
 }
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
@@ -320,9 +322,9 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     helper::create_playlist_menu(&playlist, &settings)?;
 
     #[cfg(target_os = "windows")]
-    helper::register_file_drop(&player)?;
+    helper::register_file_drop(&player, settings.playerDropTarget.clone())?;
     #[cfg(target_os = "windows")]
-    helper::register_file_drop(&playlist)?;
+    helper::register_file_drop(&playlist, settings.playlistDropTarget.clone())?;
 
     helper::create_sort_menu(&playlist, &settings)?;
 
