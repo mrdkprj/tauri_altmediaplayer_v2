@@ -10,7 +10,7 @@
     import path from "../path";
     import { Settings } from "../settings";
     import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, PLATFROMS } from "../constants";
-    import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
+    import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -88,14 +88,6 @@
 
     const onFileDrop = async (e: Mp.FileDropEvent) => {
         const files = getDropFiles(e);
-
-        if (files.length) {
-            ipc.sendTo("Playlist", "load-playlist", { files });
-        }
-    };
-
-    const onTauriFileDrop = (e: Mp.TauriFileDropEvent) => {
-        const files = getTauriDropFiles(e);
 
         if (files.length) {
             ipc.sendTo("Playlist", "load-playlist", { files });
@@ -668,7 +660,7 @@
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
+            ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         } else {
             window.chrome.webview.addEventListener("message", onFileDrop);
         }

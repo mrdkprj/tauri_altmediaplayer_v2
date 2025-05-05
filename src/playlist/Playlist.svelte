@@ -3,7 +3,7 @@
     import List from "./List.svelte";
 
     import editor from "./editor";
-    import { getDropFiles, getTauriDropFiles } from "../fileDropHandler";
+    import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
     import { handleKeyEvent, Buttons, EmptyFile, PLATFROMS } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
@@ -60,16 +60,6 @@
         if ($appState.dragState.dragging) return;
 
         const files = getDropFiles(e);
-
-        if (files.length) {
-            await addToPlaylist(files);
-        }
-    };
-
-    const onTauriFileDrop = async (e: Mp.TauriFileDropEvent) => {
-        if ($appState.dragState.dragging) return;
-
-        const files = getTauriDropFiles(e);
 
         if (files.length) {
             await addToPlaylist(files);
@@ -895,7 +885,7 @@
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            ipc.receiveTauri<Mp.TauriFileDropEvent>("tauri://drag-drop", onTauriFileDrop);
+            ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         } else {
             window.chrome.webview.addEventListener("message", onFileDrop);
         }

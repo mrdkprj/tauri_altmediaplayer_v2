@@ -217,18 +217,10 @@ declare global {
         };
 
         type FileDropEvent = Event & {
-            data?: Mp.DroppedFile[];
-        };
-
-        type DroppedFile = {
-            kind: string;
-            name: string;
-            path: string;
-        };
-
-        type TauriFileDropEvent = {
-            paths: string[];
-            position: Position;
+            data?: {
+                paths: string[];
+            };
+            paths?: string[];
         };
 
         type FullscreenChange = {
