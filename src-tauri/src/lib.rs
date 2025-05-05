@@ -167,6 +167,7 @@ struct MoveInfo {
     from: Vec<String>,
     to: String,
 }
+#[allow(unused_variables)]
 #[tauri::command]
 async fn mv_all(window: WebviewWindow, payload: MoveInfo) -> Result<(), String> {
     #[cfg(target_os = "windows")]
