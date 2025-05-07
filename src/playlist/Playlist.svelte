@@ -863,6 +863,8 @@
     };
 
     const prepare = async () => {
+        await ipc.invoke("listen_file_drop", "playlistViewport");
+
         const settings = await ipc.getSettings();
 
         $lang = settings.locale.lang;
@@ -884,19 +886,12 @@
         ipc.receive("all-ready", prepare);
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            ipc.receiveTauri("tauri://drag-drop", onFileDrop);
-        } else {
-            window.chrome.webview.addEventListener("message", onFileDrop);
-        }
+        ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("file-released", onReleaseFile);
 
         return () => {
-            if (navigator.userAgent.includes(PLATFROMS.windows)) {
-                window.chrome.webview.removeEventListener("message", onFileDrop);
-            }
             ipc.release();
         };
     });

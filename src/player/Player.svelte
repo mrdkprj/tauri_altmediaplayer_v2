@@ -578,6 +578,8 @@
     };
 
     const beforeClose = async () => {
+        await ipc.invoke("unlisten_file_drop", undefined);
+
         const player = Window.getCurrent();
         if (!$appState.isMaximized) {
             const position = await player.innerPosition();
@@ -616,6 +618,7 @@
         await settings.init();
 
         await ipc.invoke("prepare_windows", toTauriSettings(settings.data));
+        await ipc.invoke("listen_file_drop", "videoContainer");
 
         $lang = settings.data.locale.lang;
 
@@ -659,11 +662,7 @@
         ipc.receiveTauri("tauri://close-requested", beforeClose);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            ipc.receiveTauri("tauri://drag-drop", onFileDrop);
-        } else {
-            window.chrome.webview.addEventListener("message", onFileDrop);
-        }
+        ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         ipc.receive("toggle-play", togglePlay);
         ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
@@ -675,9 +674,6 @@
         ipc.receive("log", (data) => console.log(data.log));
 
         return () => {
-            if (navigator.userAgent.includes(PLATFROMS.windows)) {
-                window.chrome.webview.removeEventListener("message", onFileDrop);
-            }
             ipc.release();
         };
     });

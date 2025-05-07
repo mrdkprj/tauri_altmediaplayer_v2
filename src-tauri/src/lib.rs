@@ -309,6 +309,38 @@ async fn kill(payload: String) -> Result<(), String> {
     shell::kill(payload)
 }
 
+#[tauri::command]
+fn listen_file_drop(window: WebviewWindow, app: tauri::AppHandle, payload: String) -> tauri::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        let label = window.label().to_string();
+        window.with_webview(move |webview| {
+            nonstd::webview2::register_file_drop(unsafe { &webview.controller().CoreWebView2().unwrap() }, Some(payload), move |event| {
+                // app.get_webview_window(&label).unwrap().emit("tauri://drag-drop", event).unwrap();
+                app.emit_to(
+                    tauri::EventTarget::WebviewWindow {
+                        label: label.to_string(),
+                    },
+                    "tauri://drag-drop",
+                    event,
+                )
+                .unwrap();
+            })
+            .unwrap();
+        })
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Ok(())
+    }
+}
+
+#[tauri::command]
+fn unlisten_file_drop() {
+    #[cfg(target_os = "windows")]
+    nonstd::webview2::clear();
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Settings {
@@ -319,8 +351,6 @@ pub struct Settings {
     pub seekSpeed: f64,
     pub groupBy: bool,
     pub order: String,
-    pub playerDropTarget: String,
-    pub playlistDropTarget: String,
 }
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
@@ -342,11 +372,6 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     helper::create_player_menu(&player, &settings)?;
 
     helper::create_playlist_menu(&playlist, &settings)?;
-
-    #[cfg(target_os = "windows")]
-    helper::register_file_drop(&player, settings.playerDropTarget.clone())?;
-    #[cfg(target_os = "windows")]
-    helper::register_file_drop(&playlist, settings.playlistDropTarget.clone())?;
 
     helper::create_sort_menu(&playlist, &settings)?;
 
@@ -428,7 +453,9 @@ pub fn run() {
             save,
             spawn,
             kill,
-            launch
+            launch,
+            listen_file_drop,
+            unlisten_file_drop
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

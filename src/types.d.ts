@@ -141,8 +141,6 @@ declare global {
             seekSpeed: number;
             groupBy: boolean;
             order: Mp.SortOrder;
-            playerDropTarget: string;
-            playlistDropTarget: string;
         };
 
         type MediaFile = {
@@ -216,11 +214,8 @@ declare global {
             files: string[];
         };
 
-        type FileDropEvent = Event & {
-            data?: {
-                paths: string[];
-            };
-            paths?: string[];
+        type FileDropEvent = {
+            paths: string[];
         };
 
         type FullscreenChange = {
@@ -370,40 +365,4 @@ declare global {
     }
 }
 
-/**
- * window.chrome.webview is the class to access the WebView2-specific APIs that are available
- * to the script running within WebView2 Runtime.
- */
-export interface WebView extends EventTarget {
-    /**
-     * The standard EventTarget.addEventListener method. Use it to subscribe to the message event
-     * or sharedbufferreceived event. The message event receives messages posted from the WebView2
-     * host via CoreWebView2.PostWebMessageAsJson or CoreWebView2.PostWebMessageAsString. The
-     * sharedbufferreceived event receives shared buffers posted from the WebView2 host via
-     * CoreWebView2.PostSharedBufferToScript.
-     * See CoreWebView2.PostWebMessageAsJson( Win32/C++, .NET, WinRT).
-     * @param type The name of the event to subscribe to. Valid values are message, and sharedbufferreceived.
-     * @param listener The callback to invoke when the event is raised.
-     * @param options Options to control how the event is handled.
-     */
-    addEventListener(type: string, listener: WebViewEventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-
-    /**
-     * The standard EventTarget.removeEventListener method. Use it to unsubscribe to the message
-     * or sharedbufferreceived event.
-     * @param type The name of the event to unsubscribe from. Valid values are message and sharedbufferreceived.
-     * @param listener The callback to remove from the event.
-     * @param options Options to control how the event is handled.
-     */
-    removeEventListener(type: string, listener: WebViewEventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-}
-
-// Global object
-declare global {
-    interface Window {
-        chrome: {
-            webview: WebView;
-        };
-    }
-}
 export {};

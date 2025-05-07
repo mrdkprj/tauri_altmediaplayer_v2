@@ -136,6 +136,8 @@ type TauriCommandMap = {
     save: TauriCommand<FileDialogOptions, FileDialogResult>;
     open: TauriCommand<FileDialogOptions, FileDialogResult>;
     launch: TauriCommand<string, undefined>;
+    listen_file_drop: TauriCommand<string, undefined>;
+    unlisten_file_drop: TauriCommand<undefined, undefined>;
 };
 
 export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
@@ -147,8 +149,6 @@ export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
         seekSpeed: settings.video.seekSpeed,
         groupBy: settings.sort.groupBy,
         order: settings.sort.order,
-        playerDropTarget: "videoContainer",
-        playlistDropTarget: "playlistViewport",
     };
 };
 

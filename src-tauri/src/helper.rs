@@ -296,10 +296,3 @@ fn get_thumb_buttons(app: &tauri::AppHandle, play: bool) -> [ThumbButton; 3] {
         ]
     }
 }
-
-#[cfg(target_os = "windows")]
-pub fn register_file_drop(window: &tauri::WebviewWindow, target_id: String) -> tauri::Result<()> {
-    window.with_webview(|webview| {
-        nonstd::webview2::register_file_drop(unsafe { &webview.controller().CoreWebView2().unwrap() }, Some(target_id));
-    })
-}
