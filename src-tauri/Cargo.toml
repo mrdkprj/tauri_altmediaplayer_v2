@@ -16,8 +16,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 once_cell = "1.19.0"
 async-std = "1.13.0"
-nonstd = { git = "https://github.com/mrdkprj/nonstd.git", rev="63c571d1106fcc1685bd0b287d847f3dfc6b87ef", features = ["webview2"] }
-wcpopup = {version = "0.6.5", features = ["webview"] }
+nonstd = { git = "https://github.com/mrdkprj/nonstd.git", rev="f78082c1a6da03bd36838e63ae086437ce5573fb", features = ["webview2"] }
+wcpopup = { version = "0.7.0", features = ["webview"] }
 
 [target.'cfg(target_os = "linux")'.dependencies.gtk]
 version = "0.18.2"

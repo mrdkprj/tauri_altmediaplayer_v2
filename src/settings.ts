@@ -63,7 +63,11 @@ export class Settings {
     }
 
     async save() {
-        await ipc.invoke("write_text_file", { fullPath: this.file, data: JSON.stringify(this.data) });
+        try {
+            await ipc.invoke("write_text_file", { fullPath: this.file, data: JSON.stringify(this.data) });
+        } catch (ex: any) {
+            console.log("Failed to save settings");
+        }
     }
 
     getSettingsFilePath() {

@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { Rotations, Resolutions } from "./constants";
+import { Rotations, Resolutions, PLATFROMS } from "./constants";
 import { IPCBase } from "./ipc";
 import path from "./path";
 import { Command } from "./shell";
@@ -146,6 +146,25 @@ class Util {
     }
 
     async getMediaMetadata(fullPath: string): Promise<Mp.Metadata> {
+        if (navigator.userAgent.includes(PLATFROMS.linux)) {
+            return await this.getMediaMetadataForLinux(fullPath);
+        } else {
+            return await this.getMediaMetadataForWindows(fullPath);
+        }
+    }
+
+    private async getMediaMetadataForWindows(fullPath: string): Promise<Mp.Metadata> {
+        try {
+            const metadata = (await this.ipc.invoke("get_media_metadata", fullPath)) as Mp.Metadata;
+            metadata.Volume = await this.getVolume(fullPath);
+            return metadata;
+        } catch (_) {
+            await this.cleanUp();
+            return {} as Mp.Metadata;
+        }
+    }
+
+    private async getMediaMetadataForLinux(fullPath: string): Promise<Mp.Metadata> {
         const args = ["-hide_banner", "-v", "error", "-print_format", "json", "-show_streams", "-show_format", "-i", fullPath];
         this.child = new Command("binaries/ffprobe", args);
         try {

@@ -341,6 +341,12 @@ fn unlisten_file_drop() {
     nonstd::webview2::clear();
 }
 
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn get_media_metadata(payload: String) -> nonstd::media::Metadata {
+    nonstd::media::get_media_metadata(payload)
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Settings {
@@ -455,7 +461,9 @@ pub fn run() {
             kill,
             launch,
             listen_file_drop,
-            unlisten_file_drop
+            unlisten_file_drop,
+            #[cfg(target_os = "windows")]
+            get_media_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

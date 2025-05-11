@@ -138,6 +138,7 @@ type TauriCommandMap = {
     launch: TauriCommand<string, undefined>;
     listen_file_drop: TauriCommand<string, undefined>;
     unlisten_file_drop: TauriCommand<undefined, undefined>;
+    get_media_metadata: TauriCommand<string, any>;
 };
 
 export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {

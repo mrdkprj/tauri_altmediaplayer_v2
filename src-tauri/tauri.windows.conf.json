@@ -80,13 +80,12 @@
         }
         },
         "externalBin": [
-            "binaries/ffmpeg",
-            "binaries/ffprobe"
+            "binaries/ffmpeg"
         ],
         "fileAssociations":[
             {
                 "ext": ["mp4","mov","webm","ogg","ogv","mp3","oga"]
             }
         ]
-    }    
+    }
 }
