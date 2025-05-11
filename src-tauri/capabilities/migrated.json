@@ -11,7 +11,6 @@
     "core:window:allow-destroy",
     "core:app:default",
     "core:resources:default",
-    "core:tray:default",
     "core:path:default",
     "core:event:default",
     "core:window:default",

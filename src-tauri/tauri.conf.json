@@ -15,9 +15,6 @@
         "style-src": "'unsafe-inline' 'self'"
       }
     },
-    "trayIcon": {
-      "iconPath": "icons/icon.ico"
-    },
     "withGlobalTauri": true
   },
   "build": {
