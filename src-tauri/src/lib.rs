@@ -343,8 +343,8 @@ fn unlisten_file_drop() {
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
-fn get_media_metadata(payload: String) -> nonstd::media::Metadata {
-    nonstd::media::get_media_metadata(payload)
+fn get_media_metadata(payload: String) -> Result<nonstd::media::Metadata, String> {
+    nonstd::media::get_media_metadata(payload).map_err(|e| e.message())
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -24,6 +24,8 @@
 
     const onContextMenu = async (e: MouseEvent) => {
         e.preventDefault();
+        if ($appState.rename.renaming) return;
+
         if (navigator.userAgent.includes(PLATFROMS.linux)) {
             openContextMenu = true;
         } else {
@@ -37,6 +39,7 @@
 
     const onMouseUp = async (e: MouseEvent) => {
         if (navigator.userAgent.includes(PLATFROMS.linux)) {
+            if ($appState.rename.renaming) return;
             if (e.button == 2 && e.buttons == 0 && openContextMenu) {
                 await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
                 openContextMenu = false;

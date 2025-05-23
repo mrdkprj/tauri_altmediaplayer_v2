@@ -94,9 +94,13 @@
         }
     };
 
-    const initPlayer = () => {
+    const initPlayer = async () => {
         dispatch({ type: "init" });
         video.load();
+        await getCurrentWindow().setProgressBar({
+            status: ProgressBarStatus.Normal,
+            progress: 0,
+        });
     };
 
     const loadMedia = (e: Mp.FileLoadEvent) => {
