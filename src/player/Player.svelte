@@ -32,14 +32,14 @@
         video.currentTime = $appState.media.videoDuration * progress;
     };
 
-    const onTimeUpdate = async () => {
+    const onTimeUpdate = () => {
         if (!$appState.loaded) return;
 
         const duration = $appState.media.videoDuration > 0 ? $appState.media.videoDuration : 1;
 
         dispatch({ type: "currentTime", value: video.currentTime });
 
-        await getCurrentWindow().setProgressBar({
+        getCurrentWindow().setProgressBar({
             status: ProgressBarStatus.Normal,
             progress: Math.floor((video.currentTime / duration) * 100),
         });
@@ -94,10 +94,10 @@
         }
     };
 
-    const initPlayer = async () => {
+    const initPlayer = () => {
         dispatch({ type: "init" });
         video.load();
-        await getCurrentWindow().setProgressBar({
+        getCurrentWindow().setProgressBar({
             status: ProgressBarStatus.Normal,
             progress: 0,
         });
@@ -129,7 +129,7 @@
         }
     };
 
-    const onLoadError = async () => {
+    const onLoadError = () => {
         if (video.error && video.error.code == video.error.MEDIA_ERR_DECODE) {
             onMediaLoaded();
             return;
@@ -147,7 +147,7 @@
         video.autoplay = false;
 
         if (loaded) {
-            await util.showErrorMessage($t("unsupportedMedia"));
+            util.showErrorMessage($t("unsupportedMedia"));
         }
     };
 
@@ -234,33 +234,33 @@
         }
     };
 
-    const onPlayed = async () => {
+    const onPlayed = () => {
         changePlayStatus("playing");
-        await ipc.invoke("set_pause_thumbs", createThumbClickEvent());
+        ipc.invoke("set_pause_thumbs", createThumbClickEvent());
     };
 
-    const onPaused = async () => {
+    const onPaused = () => {
         if (video.currentTime == video.duration) return;
 
         changePlayStatus("paused");
-        await ipc.invoke("set_play_thumbs", createThumbClickEvent());
+        ipc.invoke("set_play_thumbs", createThumbClickEvent());
     };
 
-    const stop = async () => {
+    const stop = () => {
         if (!$appState.loaded) return;
 
         changePlayStatus("stopped");
         video.load();
-        await ipc.invoke("set_play_thumbs", createThumbClickEvent());
+        ipc.invoke("set_play_thumbs", createThumbClickEvent());
     };
 
     const changePlayStatus = (status: Mp.PlayStatus) => {
         dispatch({ type: "playStatus", value: status });
     };
 
-    const requestPIP = async () => {
+    const requestPIP = () => {
         if ($appState.loaded) {
-            await video.requestPictureInPicture();
+            video.requestPictureInPicture();
         }
     };
 
@@ -303,8 +303,8 @@
         await ipc.invoke("set_settings", toTauriSettings(settings.data));
     };
 
-    const minimize = async () => {
-        await WebviewWindow.getCurrent().minimize();
+    const minimize = () => {
+        WebviewWindow.getCurrent().minimize();
     };
 
     const toggleMaximize = async () => {

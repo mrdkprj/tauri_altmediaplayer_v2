@@ -1,5 +1,5 @@
-use nonstd::dialog::{message, FileDialogResult, FileFilter, MessageDialogKind, MessageDialogOptions, OpenDialogOptions, OpenProperty, SaveDialogOptions};
 use serde::{Deserialize, Serialize};
+use zouni::dialog::{message, FileDialogResult, FileFilter, MessageDialogKind, MessageDialogOptions, OpenDialogOptions, OpenProperty, SaveDialogOptions};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogOptions {
@@ -82,7 +82,7 @@ pub async fn open(options: FileDialogOptions) -> FileDialogResult {
         properties: options.properties,
     };
 
-    nonstd::dialog::open(options).await
+    zouni::dialog::open(options).await
 }
 
 pub async fn save(options: FileDialogOptions) -> FileDialogResult {
@@ -92,5 +92,5 @@ pub async fn save(options: FileDialogOptions) -> FileDialogResult {
         filters: options.filters,
     };
 
-    nonstd::dialog::save(options).await
+    zouni::dialog::save(options).await
 }

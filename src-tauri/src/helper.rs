@@ -1,7 +1,5 @@
 use crate::{get_window_handel, Settings};
 use async_std::sync::Mutex;
-#[cfg(target_os = "windows")]
-use nonstd::ThumbButton;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -14,6 +12,8 @@ use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme as MenuTheme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
     Menu, MenuBuilder,
 };
+#[cfg(target_os = "windows")]
+use zouni::ThumbButton;
 
 static MENU_MAP: Lazy<Mutex<HashMap<String, Menu>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -227,28 +227,22 @@ pub fn create_sort_menu(window: &tauri::WebviewWindow, settings: &Settings) -> t
     Ok(())
 }
 
-#[allow(unused_variables)]
+#[cfg(target_os = "windows")]
 pub fn set_play_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
-    #[cfg(target_os = "windows")]
-    {
-        let buttons = get_thumb_buttons(app, true);
-        nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
-            ev.send(id).unwrap();
-        })
-        .unwrap();
-    }
+    let buttons = get_thumb_buttons(app, true);
+    zouni::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
+        ev.send(id).unwrap();
+    })
+    .unwrap();
 }
 
-#[allow(unused_variables)]
+#[cfg(target_os = "windows")]
 pub fn set_pause_thumbs(app: &tauri::AppHandle, receiver: &tauri::WebviewWindow, ev: tauri::ipc::Channel<String>) {
-    #[cfg(target_os = "windows")]
-    {
-        let buttons = get_thumb_buttons(app, false);
-        nonstd::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
-            ev.send(id).unwrap();
-        })
-        .unwrap();
-    }
+    let buttons = get_thumb_buttons(app, false);
+    zouni::shell::set_thumbar_buttons(receiver.hwnd().unwrap().0 as _, &buttons, move |id| {
+        ev.send(id).unwrap();
+    })
+    .unwrap();
 }
 
 #[cfg(target_os = "windows")]

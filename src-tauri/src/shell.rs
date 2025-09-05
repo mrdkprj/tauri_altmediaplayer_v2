@@ -1,21 +1,21 @@
-use nonstd::process::{Output, SpawnOption};
 use std::path::PathBuf;
 use tauri::Manager;
+use zouni::process::{Output, SpawnOption};
 
 pub async fn spawn(app: &tauri::AppHandle, option: SpawnOption) -> Result<Output, Output> {
     let mut modified_option = option.clone();
     let command_name = PathBuf::from(option.program).components().last().unwrap().as_os_str().to_string_lossy().into_owned();
     let command_path = relative_command_path(app, command_name).unwrap();
     modified_option.program = command_path.to_string_lossy().to_string();
-    nonstd::process::spawn(modified_option).await
+    zouni::process::spawn(modified_option).await
 }
 
 pub fn kill(cancellation_token: String) -> Result<(), String> {
-    nonstd::process::kill(cancellation_token)
+    zouni::process::kill(cancellation_token)
 }
 
 pub fn clear() {
-    nonstd::process::clear();
+    zouni::process::clear();
 }
 
 fn relative_command_path(app: &tauri::AppHandle, command: String) -> Result<PathBuf, String> {
@@ -29,5 +29,5 @@ fn relative_command_path(app: &tauri::AppHandle, command: String) -> Result<Path
 }
 
 pub fn reveal(file_path: String) -> Result<(), String> {
-    nonstd::shell::show_item_in_folder(file_path)
+    zouni::shell::show_item_in_folder(file_path)
 }

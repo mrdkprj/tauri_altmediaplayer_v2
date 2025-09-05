@@ -80,7 +80,8 @@
         }
         },
         "externalBin": [
-            "binaries/ffmpeg"
+            "binaries/ffmpeg",
+            "binaries/ffprobe"
         ],
         "fileAssociations":[
             {

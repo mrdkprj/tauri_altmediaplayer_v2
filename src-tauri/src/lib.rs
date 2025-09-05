@@ -1,8 +1,8 @@
-use nonstd::{dialog::FileDialogResult, ClipboardData, FileAttribute, Operation};
 use serde::{Deserialize, Serialize};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::{env, path::PathBuf};
 use tauri::{Emitter, Manager, WebviewWindow, WindowEvent};
+use zouni::{dialog::FileDialogResult, ClipboardData, FileAttribute, Operation};
 mod dialog;
 mod helper;
 mod shell;
@@ -121,7 +121,7 @@ fn reveal(payload: String) -> Result<(), String> {
 
 #[tauri::command]
 fn trash(payload: String) -> Result<(), String> {
-    nonstd::fs::trash(payload)
+    zouni::fs::trash(payload)
 }
 
 #[tauri::command]
@@ -141,7 +141,7 @@ fn rename(payload: RenameInfo) -> Result<(), String> {
 
 #[tauri::command]
 fn stat(payload: String) -> Result<FileAttribute, String> {
-    nonstd::fs::stat(&payload)
+    zouni::fs::stat(&payload)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,7 +153,7 @@ struct FileAttributeEx {
 fn stat_all(payload: Vec<String>) -> Result<Vec<FileAttributeEx>, String> {
     let mut result = Vec::new();
     for path in payload {
-        let attribute = nonstd::fs::stat(&path)?;
+        let attribute = zouni::fs::stat(&path)?;
         result.push(FileAttributeEx {
             full_path: path,
             attribute,
@@ -172,13 +172,13 @@ struct MoveInfo {
 async fn mv_all(window: WebviewWindow, payload: MoveInfo) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        nonstd::fs::mv_all(&payload.from, payload.to)
+        zouni::fs::mv_all(&payload.from, payload.to)
     }
     #[cfg(target_os = "linux")]
     {
         window
             .run_on_main_thread(move || {
-                gtk::glib::spawn_future_local(async move { nonstd::fs::mv_all(&payload.from, payload.to).await });
+                gtk::glib::spawn_future_local(async move { zouni::fs::mv_all(&payload.from, payload.to).await });
             })
             .map_err(|e| e.to_string())
     }
@@ -186,17 +186,17 @@ async fn mv_all(window: WebviewWindow, payload: MoveInfo) -> Result<(), String> 
 
 #[tauri::command]
 fn is_uris_available() -> bool {
-    nonstd::clipboard::is_uris_available()
+    zouni::clipboard::is_uris_available()
 }
 
 #[tauri::command]
 fn read_uris(window: WebviewWindow) -> Result<ClipboardData, String> {
-    nonstd::clipboard::read_uris(get_window_handel(&window))
+    zouni::clipboard::read_uris(get_window_handel(&window))
 }
 
 #[tauri::command]
 fn read_text(window: WebviewWindow) -> Result<String, String> {
-    nonstd::clipboard::read_text(get_window_handel(&window))
+    zouni::clipboard::read_text(get_window_handel(&window))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,12 +208,12 @@ struct WriteUriInfo {
 
 #[tauri::command]
 fn write_uris(window: WebviewWindow, payload: WriteUriInfo) -> Result<(), String> {
-    nonstd::clipboard::write_uris(get_window_handel(&window), &payload.fullPaths, payload.operation)
+    zouni::clipboard::write_uris(get_window_handel(&window), &payload.fullPaths, payload.operation)
 }
 
 #[tauri::command]
 fn write_text(window: WebviewWindow, payload: String) -> Result<(), String> {
-    nonstd::clipboard::write_text(get_window_handel(&window), payload)
+    zouni::clipboard::write_text(get_window_handel(&window), payload)
 }
 
 #[tauri::command]
@@ -269,7 +269,7 @@ fn write_all(payload: WriteAllFileInfo) -> Result<(), String> {
 
 #[tauri::command]
 fn launch(payload: String) -> Result<(), String> {
-    nonstd::shell::open_path(payload).map_err(|e| e.to_string())
+    zouni::shell::open_path(payload).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -289,18 +289,24 @@ async fn save(payload: dialog::FileDialogOptions) -> FileDialogResult {
 
 #[tauri::command]
 fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
-    let player = app.get_webview_window(PLAYER).unwrap();
-    helper::set_play_thumbs(&app, &player, payload);
+    #[cfg(target_os = "windows")]
+    {
+        let player = app.get_webview_window(PLAYER).unwrap();
+        helper::set_play_thumbs(&app, &player, payload);
+    }
 }
 
 #[tauri::command]
 fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
-    let player = app.get_webview_window(PLAYER).unwrap();
-    helper::set_pause_thumbs(&app, &player, payload);
+    #[cfg(target_os = "windows")]
+    {
+        let player = app.get_webview_window(PLAYER).unwrap();
+        helper::set_pause_thumbs(&app, &player, payload);
+    }
 }
 
 #[tauri::command]
-async fn spawn(app: tauri::AppHandle, payload: nonstd::process::SpawnOption) -> Result<nonstd::process::Output, nonstd::process::Output> {
+async fn spawn(app: tauri::AppHandle, payload: zouni::process::SpawnOption) -> Result<zouni::process::Output, zouni::process::Output> {
     shell::spawn(&app, payload).await
 }
 
@@ -315,8 +321,7 @@ fn listen_file_drop(window: WebviewWindow, app: tauri::AppHandle, payload: Strin
     {
         let label = window.label().to_string();
         window.with_webview(move |webview| {
-            nonstd::webview2::register_file_drop(unsafe { &webview.controller().CoreWebView2().unwrap() }, Some(payload), move |event| {
-                // app.get_webview_window(&label).unwrap().emit("tauri://drag-drop", event).unwrap();
+            zouni::webview2::register_file_drop(unsafe { &webview.controller().CoreWebView2().unwrap() }, Some(payload), move |event| {
                 app.emit_to(
                     tauri::EventTarget::WebviewWindow {
                         label: label.to_string(),
@@ -338,13 +343,7 @@ fn listen_file_drop(window: WebviewWindow, app: tauri::AppHandle, payload: Strin
 #[tauri::command]
 fn unlisten_file_drop() {
     #[cfg(target_os = "windows")]
-    nonstd::webview2::clear();
-}
-
-#[cfg(target_os = "windows")]
-#[tauri::command]
-fn get_media_metadata(payload: String) -> Result<nonstd::media::Metadata, String> {
-    nonstd::media::get_media_metadata(payload).map_err(|e| e.message())
+    zouni::webview2::clear();
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -462,8 +461,6 @@ pub fn run() {
             launch,
             listen_file_drop,
             unlisten_file_drop,
-            #[cfg(target_os = "windows")]
-            get_media_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
