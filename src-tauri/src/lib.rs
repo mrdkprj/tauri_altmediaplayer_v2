@@ -1,18 +1,33 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::{env, path::PathBuf};
 use tauri::{Emitter, Manager, WebviewWindow, WindowEvent};
-use zouni::{dialog::FileDialogResult, ClipboardData, FileAttribute, Operation};
+use zouni::{
+    dialog::{FileDialogResult, MessageResult},
+    ClipboardData, FileAttribute, Operation,
+};
 mod dialog;
 mod helper;
+mod menu;
+// mod session;
 mod shell;
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Default, Clone)]
+struct Sort {
+    order: String,
+    groupBy: bool,
+}
+
+#[derive(Serialize)]
+struct OpenedUrls(Vec<String>);
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
-static THEME_DARK: &str = "Dark";
 
 #[cfg(target_os = "linux")]
-fn get_window_handel(window: &WebviewWindow) -> isize {
+fn get_window_handle(window: &WebviewWindow) -> isize {
     use gtk::{ffi::GtkApplicationWindow, glib::translate::ToGlibPtr};
 
     let ptr: *mut GtkApplicationWindow = window.gtk_window().unwrap().to_glib_none().0;
@@ -20,7 +35,7 @@ fn get_window_handel(window: &WebviewWindow) -> isize {
 }
 
 #[cfg(target_os = "windows")]
-fn get_window_handel(window: &WebviewWindow) -> isize {
+fn get_window_handle(window: &WebviewWindow) -> isize {
     window.hwnd().unwrap().0 as _
 }
 
@@ -33,85 +48,48 @@ fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
     Vec::new()
 }
 
-#[derive(Serialize)]
-struct OpenedUrls(Vec<String>);
-
 #[tauri::command]
-fn set_settings(app: tauri::AppHandle, payload: Settings) {
-    app.manage(payload);
-}
-
-#[tauri::command]
-fn update_settings(app: tauri::AppHandle, payload: Settings) {
-    app.manage(payload.clone());
-    app.emit_to(
-        tauri::EventTarget::WebviewWindow {
-            label: PLAYER.to_string(),
-        },
-        "settings-updated",
-        payload,
-    )
-    .unwrap();
-}
-
-#[tauri::command]
-fn get_settings(window: tauri::WebviewWindow) -> String {
-    let app = window.app_handle();
-    if let Some(settings) = app.try_state::<Settings>() {
-        settings.data.clone()
+fn set_sort(app: tauri::AppHandle, payload: Sort) {
+    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
+        *sort.lock().unwrap() = payload;
     } else {
-        String::from("{}")
+        app.manage(Mutex::new(payload));
     }
 }
 
 #[tauri::command]
-fn change_theme(window: tauri::WebviewWindow, payload: &str) {
-    let theme = if payload == THEME_DARK {
-        tauri::Theme::Dark
+fn get_sort(app: tauri::AppHandle) -> Sort {
+    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
+        sort.lock().unwrap().clone()
     } else {
-        tauri::Theme::Light
+        Sort::default()
+    }
+}
+
+#[tauri::command]
+fn change_theme(window: WebviewWindow, payload: String) {
+    let (tauri_them, menu_theme) = match payload.as_str() {
+        "dark" => (tauri::Theme::Dark, wcpopup::config::Theme::Dark),
+        "light" => (tauri::Theme::Light, wcpopup::config::Theme::Light),
+        _ => (tauri::Theme::Light, wcpopup::config::Theme::System),
     };
-    window.set_theme(Some(theme)).unwrap();
-    helper::change_theme(theme);
+    let _ = window.set_theme(Some(tauri_them));
+    menu::change_menu_theme(window.app_handle(), menu_theme);
 }
 
 #[tauri::command]
-async fn open_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    #[cfg(target_os = "windows")]
-    {
-        helper::popup_menu(&window, window.label(), payload).await;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let gtk_window = window.clone();
-        let label = gtk_window.label().to_string();
-        window
-            .run_on_main_thread(move || {
-                gtk::glib::spawn_future_local(async move {
-                    helper::popup_menu(&gtk_window, &label, payload).await;
-                });
-            })
-            .unwrap();
-    }
+async fn open_context_menu(window: WebviewWindow, payload: menu::Position) {
+    menu::popup_menu(window.app_handle(), window.label(), menu::PLAYER, payload).await;
 }
 
 #[tauri::command]
-async fn open_sort_context_menu(window: tauri::WebviewWindow, payload: helper::Position) {
-    #[cfg(target_os = "windows")]
-    {
-        helper::popup_menu(&window, helper::SORT_MENU_NAME, payload).await;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let gtk_window = window.clone();
-        window
-            .run_on_main_thread(move || {
-                gtk::glib::spawn_future_local(async move {
-                    helper::popup_menu(&gtk_window, helper::SORT_MENU_NAME, payload).await;
-                });
-            })
-            .unwrap();
-    }
+async fn open_list_context_menu(window: WebviewWindow, payload: menu::Position) {
+    menu::popup_menu(window.app_handle(), window.label(), menu::PLAY_LIST, payload).await;
+}
+
+#[tauri::command]
+async fn open_sort_context_menu(window: WebviewWindow, payload: menu::Position) {
+    menu::popup_menu(window.app_handle(), window.label(), menu::SORT_MENU_NAME, payload).await;
 }
 
 #[tauri::command]
@@ -167,21 +145,9 @@ struct MoveInfo {
     from: Vec<String>,
     to: String,
 }
-#[allow(unused_variables)]
 #[tauri::command]
-async fn mv_all(window: WebviewWindow, payload: MoveInfo) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        zouni::fs::mv_all(&payload.from, payload.to)
-    }
-    #[cfg(target_os = "linux")]
-    {
-        window
-            .run_on_main_thread(move || {
-                gtk::glib::spawn_future_local(async move { zouni::fs::mv_all(&payload.from, payload.to).await });
-            })
-            .map_err(|e| e.to_string())
-    }
+async fn mv_all(payload: MoveInfo) -> Result<(), String> {
+    zouni::fs::mv_all(&payload.from, payload.to)
 }
 
 #[tauri::command]
@@ -191,12 +157,12 @@ fn is_uris_available() -> bool {
 
 #[tauri::command]
 fn read_uris(window: WebviewWindow) -> Result<ClipboardData, String> {
-    zouni::clipboard::read_uris(get_window_handel(&window))
+    zouni::clipboard::read_uris(get_window_handle(&window))
 }
 
 #[tauri::command]
 fn read_text(window: WebviewWindow) -> Result<String, String> {
-    zouni::clipboard::read_text(get_window_handel(&window))
+    zouni::clipboard::read_text(get_window_handle(&window))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,12 +174,12 @@ struct WriteUriInfo {
 
 #[tauri::command]
 fn write_uris(window: WebviewWindow, payload: WriteUriInfo) -> Result<(), String> {
-    zouni::clipboard::write_uris(get_window_handel(&window), &payload.fullPaths, payload.operation)
+    zouni::clipboard::write_uris(get_window_handle(&window), &payload.fullPaths, payload.operation)
 }
 
 #[tauri::command]
 fn write_text(window: WebviewWindow, payload: String) -> Result<(), String> {
-    zouni::clipboard::write_text(get_window_handel(&window), payload)
+    zouni::clipboard::write_text(get_window_handle(&window), payload)
 }
 
 #[tauri::command]
@@ -273,7 +239,7 @@ fn launch(payload: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn message(payload: dialog::DialogOptions) -> bool {
+async fn message(payload: dialog::DialogOptions) -> MessageResult {
     dialog::show(payload).await
 }
 
@@ -292,7 +258,7 @@ fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) 
     #[cfg(target_os = "windows")]
     {
         let player = app.get_webview_window(PLAYER).unwrap();
-        helper::set_play_thumbs(&app, &player, payload);
+        menu::set_play_thumbs(&app, &player, payload);
     }
 }
 
@@ -301,7 +267,7 @@ fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>)
     #[cfg(target_os = "windows")]
     {
         let player = app.get_webview_window(PLAYER).unwrap();
-        helper::set_pause_thumbs(&app, &player, payload);
+        menu::set_pause_thumbs(&app, &player, payload);
     }
 }
 
@@ -315,6 +281,7 @@ async fn kill(payload: String) -> Result<(), String> {
     shell::kill(payload)
 }
 
+#[allow(unused_variables)]
 #[tauri::command]
 fn listen_file_drop(window: WebviewWindow, app: tauri::AppHandle, payload: String) -> tauri::Result<()> {
     #[cfg(target_os = "windows")]
@@ -346,11 +313,32 @@ fn unlisten_file_drop() {
     zouni::webview2::clear();
 }
 
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn undo(window: WebviewWindow) -> Result<(), String> {
+    window
+        .with_webview(|webview_impl| {
+            let webview = webview_impl.inner();
+            zouni::webkit::execute_editing_command(&webview, "Undo");
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn redo(window: WebviewWindow) -> Result<(), String> {
+    window
+        .with_webview(|webview_impl| {
+            let webview = webview_impl.inner();
+            zouni::webkit::execute_editing_command(&webview, "Redo");
+        })
+        .map_err(|e| e.to_string())
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Settings {
-    pub data: String,
-    pub theme: wcpopup::config::Theme,
+    pub theme: String,
     pub fitToWindow: bool,
     pub playbackSpeed: f64,
     pub seekSpeed: f64,
@@ -359,62 +347,35 @@ pub struct Settings {
 }
 #[tauri::command]
 fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bool> {
-    app.manage(payload);
-
-    let settings = app.state::<Settings>();
-
     let player = app.get_webview_window(PLAYER).unwrap();
     let playlist = app.get_webview_window(PLAY_LIST).unwrap();
+    let player_window_handle = get_window_handle(&player);
+    let list_window_handle = get_window_handle(&playlist);
 
-    let theme = match settings.theme {
-        wcpopup::config::Theme::Dark => tauri::Theme::Dark,
-        wcpopup::config::Theme::Light => tauri::Theme::Light,
+    let theme = match payload.theme.as_str() {
+        "dark" => tauri::Theme::Dark,
+        "light" => tauri::Theme::Light,
         _ => tauri::Theme::Dark,
     };
 
     player.set_theme(Some(theme))?;
 
-    helper::create_player_menu(&player, &settings)?;
-
-    helper::create_playlist_menu(&playlist, &settings)?;
-
-    helper::create_sort_menu(&playlist, &settings)?;
+    menu::create(&app, player_window_handle, list_window_handle, &payload);
 
     Ok(true)
 }
 
-#[allow(deprecated)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if let Some(urls) = app.try_state::<OpenedUrls>() {
-                let mut seconds = argv[1..].to_vec();
-                seconds.extend(urls.inner().0.clone());
-                app.manage(OpenedUrls(seconds));
+            let args = argv[1..].to_vec();
+            if let Some(view) = app.get_webview_window(PLAYER) {
+                let _ = view.emit("second-instance", args);
             }
         }))
         .setup(|app| {
-            let mut urls = Vec::new();
-            for arg in env::args().skip(1) {
-                urls.push(arg);
-            }
-
-            app.manage(OpenedUrls(urls));
-
+            helper::setup(app);
             Ok(())
-        })
-        .on_page_load(|window, _| {
-            if window.webview_windows().len() == 3 {
-                window
-                    .emit_to(
-                        tauri::EventTarget::WebviewWindow {
-                            label: PLAYER.to_string(),
-                        },
-                        "backend-ready",
-                        String::new(),
-                    )
-                    .unwrap();
-            }
         })
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
@@ -426,11 +387,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_init_args,
             prepare_windows,
-            get_settings,
-            set_settings,
-            update_settings,
+            #[cfg(target_os = "linux")]
+            undo,
+            #[cfg(target_os = "linux")]
+            redo,
+            get_sort,
+            set_sort,
             change_theme,
             open_context_menu,
+            open_list_context_menu,
             open_sort_context_menu,
             reveal,
             trash,

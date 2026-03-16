@@ -5,16 +5,16 @@
     import editor from "./editor";
     import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
-    import { handleKeyEvent, Buttons, EmptyFile, PLATFROMS } from "../constants";
+    import { handleKeyEvent, Buttons, EmptyFile, OS } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
-    import { t, lang } from "../translation/useTranslation";
+    import { t } from "../translation/useTranslation.svelte";
     import { IPC } from "../ipc";
     import util from "../util";
     import Deferred from "../deferred";
     import path from "../path";
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { awaitContextMenu, resolveContextMenu } from "../contextMenuState.svelte";
 
-    let openContextMenu = false;
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
     let fileReleasePromise: Deferred<Mp.ReleaseFileResult>;
@@ -26,23 +26,28 @@
         e.preventDefault();
         if ($appState.rename.renaming) return;
 
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            openContextMenu = true;
+        if (navigator.userAgent.includes(OS.linux)) {
+            await awaitContextMenu();
+            await ipc.invoke("open_list_context_menu", { x: e.clientX, y: e.clientY });
         } else {
-            await ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
+            await ipc.invoke("open_list_context_menu", { x: e.screenX, y: e.screenY });
         }
     };
 
     const openSortMenu = async (e: MouseEvent) => {
-        await ipc.invoke("open_sort_context_menu", { x: e.screenX, y: e.screenY - 150 });
+        if (navigator.userAgent.includes(OS.linux)) {
+            await awaitContextMenu();
+            await ipc.invoke("open_sort_context_menu", { x: e.clientX, y: e.clientY - 150 });
+        } else {
+            await ipc.invoke("open_sort_context_menu", { x: e.screenX, y: e.screenY - 150 });
+        }
     };
 
     const onMouseUp = async (e: MouseEvent) => {
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
+        if (navigator.userAgent.includes(OS.linux)) {
             if ($appState.rename.renaming) return;
-            if (e.button == 2 && e.buttons == 0 && openContextMenu) {
-                await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
-                openContextMenu = false;
+            if (e.button == 2 && e.buttons == 0) {
+                resolveContextMenu();
             }
         }
     };
@@ -305,23 +310,16 @@
 
         if (files.length > 1) {
             const confimed = await ipc.invoke("message", { dialog_type: "ask", message: "Move multiple files. Are you sure?", title: "Move", kind: "warning", buttons: ["Yes", "No"] });
-            if (!confimed) return;
+            if (confimed.button == "No" || confimed.cancelled) return;
         }
 
-        const settings = await ipc.getSettings();
-
-        const defaultPath = settings.defaultPath ? settings.defaultPath : files[0].dir;
-        const result = await ipc.invoke("open", { default_path: defaultPath, properties: ["OpenDirectory"] });
+        const result = await ipc.invoke("open", { default_path: "", properties: ["OpenDirectory"] });
 
         if (!result.file_paths.length) return;
 
         const destPath = result.file_paths[0];
         try {
             await releaseFile($appState.selection.selectedIds);
-
-            settings.defaultPath = destPath;
-
-            await ipc.updateSettings(settings);
 
             const sourcePaths = files.map((file) => file.fullPath);
 
@@ -558,7 +556,7 @@
     };
 
     const releaseFile = async (fileIds: string[]) => {
-        ipc.sendTo("Player", "release-file", { fileIds });
+        ipc.sendTo("Player", "release-file-request", { fileIds });
         fileReleasePromise = new Deferred();
         return await fileReleasePromise.promise;
     };
@@ -675,16 +673,12 @@
     const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
         dispatch({ type: "sortType", value: { order: sortOrder, groupBy: $appState.sortType.groupBy } });
         sortPlayList();
-        const settings = await ipc.getSettings();
-        settings.sort.order = sortOrder;
-        await ipc.updateSettings(settings);
+        await ipc.invoke("set_sort", { order: sortOrder, groupBy: $appState.sortType.groupBy });
     };
 
     const toggleGroupBy = async () => {
         dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy } });
-        const settings = await ipc.getSettings();
-        settings.sort.groupBy = $appState.sortType.groupBy;
-        await ipc.updateSettings(settings);
+        await ipc.invoke("set_sort", { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy });
     };
 
     const copyFileNameToClipboard = async (fullPath: boolean) => {
@@ -739,13 +733,29 @@
         await ipc.invoke("reveal", file.fullPath);
     };
 
-    const openConvert = async (opener: Mp.DialogOpener) => {
+    const openConvert = async () => {
         const file = $appState.files.find((file) => file.id == $appState.selection.selectedId) ?? EmptyFile;
-        await ipc.sendTo("Convert", "open-convert", { file, opener });
+        await ipc.sendTo("Convert", "open-convert", file);
+    };
+
+    /* Undo/Redo shortcut does not work on Webkit2gtk with Tauri */
+    const resolve_input_edit = async (e: KeyboardEvent) => {
+        if (navigator.userAgent.includes(OS.windows)) return;
+        if (!$appState.rename.renaming) return;
+
+        if (!e.ctrlKey) return;
+
+        if (e.key == "z") {
+            await ipc.invoke("undo", undefined);
+        }
+
+        if (e.key == "y") {
+            await ipc.invoke("redo", undefined);
+        }
     };
 
     const onKeydown = async (e: KeyboardEvent) => {
-        if ($appState.rename.renaming) return;
+        if ($appState.rename.renaming) return resolve_input_edit(e);
 
         if ($appState.searchState.searching) {
             if (e.key === "Escape") {
@@ -840,7 +850,7 @@
                 await displayMetadata();
                 break;
             case "Convert":
-                await openConvert("user");
+                await openConvert();
                 break;
             case "Sort":
                 await changeSortOrder(value as Mp.SortOrder);
@@ -867,32 +877,18 @@
 
     const prepare = async () => {
         await ipc.invoke("listen_file_drop", "playlistViewport");
-
-        const settings = await ipc.getSettings();
-
-        $lang = settings.locale.lang;
-
-        dispatch({ type: "sortType", value: { order: settings.sort.order, groupBy: settings.sort.groupBy } });
-
-        const playlist = WebviewWindow.getCurrent();
-
-        await playlist.setPosition(util.toPhysicalPosition(settings.playlistBounds));
-
-        await playlist.setSize(util.toPhysicalSize(settings.playlistBounds));
-
-        if (settings.playlistVisible) {
-            await playlist.show();
-        }
+        const sort = await ipc.invoke("get_sort", undefined);
+        dispatch({ type: "sortType", value: { order: sort.order, groupBy: sort.groupBy } });
     };
 
     onMount(() => {
-        ipc.receive("all-ready", prepare);
+        prepare();
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
-        ipc.receive("file-released", onReleaseFile);
+        ipc.receive("release-file-result", onReleaseFile);
 
         return () => {
             ipc.release();
@@ -906,7 +902,6 @@
     <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title-bar">
         <div class="close-btn" onclick={close} onkeydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
     </div>
-
     <div
         class="playlist-viewport"
         id="playlistViewport"
@@ -938,7 +933,7 @@
         <List {onPlaylistItemClicked} onEndDrag={changePlaylistItemOrder} onMouseDown={onPlaylistItemMousedown} {scrollToElement} {getChildIndex} />
     </div>
     <div class="playlist-footer" class:shuffle={$appState.shuffle}>
-        <div class="btn shuffle-btn" title={$t("shuffle")} onclick={toggleShuffle} onkeydown={handleKeyEvent} role="button" tabindex="-1">
+        <div class="btn shuffle-btn" title={t("shuffle")} onclick={toggleShuffle} onkeydown={handleKeyEvent} role="button" tabindex="-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                 <path
                     fill-rule="evenodd"
@@ -949,7 +944,7 @@
                 />
             </svg>
         </div>
-        <div class="btn" title={$t("sort")} onclick={openSortMenu} onkeydown={handleKeyEvent} role="button" tabindex="-1">
+        <div class="btn" title={t("sort")} onclick={openSortMenu} onkeydown={handleKeyEvent} role="button" tabindex="-1">
             {#if $appState.sortType.order == "NameAsc"}
                 <svg xmlns="http://www.w3.org/2000/svg" id="nameAsc" fill="currentColor" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="M10.082 5.629 9.664 7H8.598l1.789-5.332h1.234L13.402 7h-1.12l-.419-1.371h-1.781zm1.57-.785L11 2.687h-.047l-.652 2.157h1.351z" />

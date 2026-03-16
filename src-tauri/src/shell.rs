@@ -4,7 +4,7 @@ use zouni::process::{Output, SpawnOption};
 
 pub async fn spawn(app: &tauri::AppHandle, option: SpawnOption) -> Result<Output, Output> {
     let mut modified_option = option.clone();
-    let command_name = PathBuf::from(option.program).components().last().unwrap().as_os_str().to_string_lossy().into_owned();
+    let command_name = PathBuf::from(option.program).components().next_back().unwrap().as_os_str().to_string_lossy().into_owned();
     let command_path = relative_command_path(app, command_name).unwrap();
     modified_option.program = command_path.to_string_lossy().to_string();
     zouni::process::spawn(modified_option).await

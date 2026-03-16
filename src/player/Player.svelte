@@ -4,23 +4,23 @@
     import icon from "../assets/icon.ico";
 
     import { appState, dispatch } from "./appStateReducer";
-    import { t, lang } from "../translation/useTranslation";
+    import { t, locale } from "../translation/useTranslation.svelte";
     import { IPC, toTauriSettings } from "../ipc";
     import util from "../util";
     import path from "../path";
     import { Settings } from "../settings";
-    import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, PLATFROMS } from "../constants";
+    import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, OS } from "../constants";
     import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
 
     import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { getCurrentWindow, ProgressBarStatus, Window } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
+    import { resolveContextMenu, awaitContextMenu } from "../contextMenuState.svelte";
 
     const ipc = new IPC("Player");
     const settings = new Settings();
 
-    let openContextMenu = false;
     let video: HTMLVideoElement;
     let container: HTMLDivElement;
     let hideControlTimeout: number | null;
@@ -147,7 +147,7 @@
         video.autoplay = false;
 
         if (loaded) {
-            util.showErrorMessage($t("unsupportedMedia"));
+            util.showErrorMessage(t("unsupportedMedia"));
         }
     };
 
@@ -163,9 +163,9 @@
             const currentTime = $appState.media.currentTime;
             const playing = $appState.playing;
             initPlayer();
-            afterReleaseCallback = () => ipc.sendTo("Playlist", "file-released", { playing, currentTime });
+            afterReleaseCallback = () => ipc.sendTo("Playlist", "release-file-result", { playing, currentTime });
         } else {
-            ipc.sendTo("Playlist", "file-released", { playing: $appState.playing, currentTime: 0 });
+            ipc.sendTo("Playlist", "release-file-result", { playing: $appState.playing, currentTime: 0 });
         }
     };
 
@@ -299,8 +299,6 @@
         settings.data.defaultPath = path.dirname(savePath);
 
         await ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
-
-        await ipc.invoke("set_settings", toTauriSettings(settings.data));
     };
 
     const minimize = () => {
@@ -487,18 +485,18 @@
     const onContextMenu = async (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            openContextMenu = true;
+        if (navigator.userAgent.includes(OS.linux)) {
+            await awaitContextMenu();
+            await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
         } else {
             await ipc.invoke("open_context_menu", { x: e.screenX, y: e.screenY });
         }
     };
 
     const onMouseUp = async (e: MouseEvent) => {
-        if (navigator.userAgent.includes(PLATFROMS.linux)) {
-            if (e.button == 2 && e.buttons == 0 && openContextMenu) {
-                await ipc.invoke("open_context_menu", { x: e.clientX, y: e.clientY });
-                openContextMenu = false;
+        if (navigator.userAgent.includes(OS.linux)) {
+            if (e.button == 2 && e.buttons == 0) {
+                resolveContextMenu();
             }
         }
     };
@@ -581,7 +579,7 @@
         return onThumbClickEvent;
     };
 
-    const beforeClose = async () => {
+    const close = async () => {
         await ipc.invoke("unlisten_file_drop", undefined);
 
         const player = Window.getCurrent();
@@ -598,6 +596,9 @@
             settings.data.playlistBounds = util.toBounds(position, size);
         }
 
+        const sort = await ipc.invoke("get_sort", undefined);
+        settings.data.sort = sort;
+
         await settings.save();
 
         // On Linux, all windows created must be closed.
@@ -607,15 +608,14 @@
             await convert?.close();
         }
 
-        await player.destroy();
+        await player.close();
     };
 
-    const close = async () => {
-        await WebviewWindow.getCurrent().close();
-    };
-
-    const onSettingsUpdate = (e: Mp.TauriSettings) => {
-        settings.data = JSON.parse(e.data);
+    const initWithArgs = async (args?: string[]) => {
+        const files = args ? args : await ipc.invoke("get_init_args", undefined);
+        if (files.length) {
+            await ipc.sendTo("Playlist", "load-playlist", { files });
+        }
     };
 
     const prepare = async () => {
@@ -623,8 +623,9 @@
 
         await ipc.invoke("prepare_windows", toTauriSettings(settings.data));
         await ipc.invoke("listen_file_drop", "videoContainer");
+        await ipc.invoke("set_sort", settings.data.sort);
 
-        $lang = settings.data.locale.lang;
+        locale.lang = settings.data.locale.lang;
 
         dispatch({ type: "isMaximized", value: settings.data.isMaximized });
 
@@ -653,29 +654,32 @@
 
         await ipc.invoke("set_play_thumbs", createThumbClickEvent());
 
-        await ipc.sendTo("Playlist", "all-ready", {});
+        const playlist = await WebviewWindow.getByLabel("Playlist");
 
-        const files = await ipc.invoke("get_init_args", undefined);
-        if (files.length) {
-            await ipc.sendTo("Playlist", "load-playlist", { files });
+        await playlist?.setPosition(util.toPhysicalPosition(settings.data.playlistBounds));
+
+        await playlist?.setSize(util.toPhysicalSize(settings.data.playlistBounds));
+
+        if (settings.data.playlistVisible) {
+            await playlist?.show();
         }
+
+        initWithArgs();
     };
 
     onMount(() => {
-        ipc.receiveOnce("backend-ready", prepare);
-        ipc.receiveTauri("tauri://close-requested", beforeClose);
+        prepare();
+        ipc.receive("second-instance", initWithArgs);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         ipc.receive("toggle-play", togglePlay);
         ipc.receive("toggle-playlist-visible", togglePlaylistWindow);
         ipc.receive("restart", initPlayer);
-        ipc.receive("release-file", releaseFile);
+        ipc.receive("release-file-request", releaseFile);
         ipc.receiveTauri("tauri://resize", onWindowSizeChanged);
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
-        ipc.receive("settings-updated", onSettingsUpdate);
-        ipc.receive("log", (data) => console.log(data.log));
 
         return () => {
             ipc.release();
@@ -740,6 +744,6 @@
         onClickPrevious={playBackward}
         onClickNext={playFoward}
         onClickMute={toggleMute}
-        t={$t}
+        {t}
     />
 </div>

@@ -1,12 +1,29 @@
-import { SEPARATOR } from "./constants";
+const OS = {
+    windows: "Windows",
+    linux: "Linux",
+};
+
+const SEPARATOR = navigator.userAgent.includes(OS.windows) ? "\\" : "/";
+const SEPARATOR_EXP = new RegExp(/\\|\//);
+const UNC = "\\\\";
 
 export default class path {
     static join(...paths: string[]) {
         const components = paths
-            .map((a) => a.split(SEPARATOR))
+            .map((a) => this.split(a))
             .flat()
             .filter(Boolean);
-        return components.join(SEPARATOR);
+        return this.joinPaths(components);
+    }
+
+    static joinPaths(paths: string[]) {
+        if (!paths.length) return "";
+
+        if (navigator.userAgent.includes(OS.windows)) {
+            return paths.length > 1 ? paths.join(SEPARATOR) : paths[0] + SEPARATOR;
+        } else {
+            return SEPARATOR + paths.join(SEPARATOR);
+        }
     }
 
     static extname(name: string | undefined) {
@@ -14,27 +31,33 @@ export default class path {
 
         if (name.lastIndexOf(".") < 0) return "";
 
-        return name.substring(name.lastIndexOf(".")).toLowerCase();
+        return name.substring(name.lastIndexOf("."));
     }
 
     static basename(path: string | undefined) {
         if (!path) return "";
 
-        const components = path.split(SEPARATOR);
+        const components = this.split(path);
         return components[components.length - 1];
     }
 
     static dirname(path: string | undefined) {
         if (!path) return "";
 
-        const components = path.split(SEPARATOR);
+        const components = this.split(path);
         const rest = components.slice(0, components.length - 1);
-        return rest.join(SEPARATOR);
+        return this.joinPaths(rest);
     }
 
     static root(path: string | undefined) {
         if (!path) return "";
-        const components = path.split(SEPARATOR);
-        return components[0];
+        const components = this.split(path);
+        return components[0] + SEPARATOR;
+    }
+
+    static split(path: string | undefined) {
+        if (!path) return [];
+        const pattern = path.startsWith(UNC) ? new RegExp(/(?<!^|\\)\\/) : SEPARATOR_EXP;
+        return path.split(pattern).filter(Boolean);
     }
 }

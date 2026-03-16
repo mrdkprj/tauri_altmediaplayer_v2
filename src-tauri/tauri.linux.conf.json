@@ -65,6 +65,7 @@
     "bundle": {
         "active": true,
         "category": "Video",
+        "targets": ["deb"],
         "icon": [
             "icons/icon.icns",
             "icons/icon.ico"
@@ -72,10 +73,15 @@
         "resources":[
             "assets/*"
         ],
-            "fileAssociations":[
+        "fileAssociations":[
             {
                 "ext": ["mp4","mov","webm","ogg","ogv","mp3","oga"]
             }
-        ]
-    }    
+        ],
+        "linux": {
+            "deb": {
+                "depends":["ffmpeg"]
+            }
+        }
+    }
 }

@@ -102,13 +102,20 @@ type FileDialogResult = {
     file_paths: string[];
 };
 
+type MessageResult = {
+    button: string;
+    cancelled: boolean;
+};
+
 type TauriCommandMap = {
     prepare_windows: TauriCommand<Mp.TauriSettings, boolean>;
     get_init_args: TauriCommand<undefined, string[]>;
     open_context_menu: TauriCommand<Mp.Position, undefined>;
+    open_list_context_menu: TauriCommand<Mp.Position, undefined>;
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
-    set_settings: TauriCommand<Mp.TauriSettings, undefined>;
+    set_sort: TauriCommand<Mp.SortType, undefined>;
+    get_sort: TauriCommand<undefined, Mp.SortType>;
     reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
     remove: TauriCommand<string, undefined>;
@@ -132,18 +139,19 @@ type TauriCommandMap = {
     set_pause_thumbs: TauriCommand<any, undefined>;
     spawn: TauriCommand<SpawnOption, CommandResult>;
     kill: TauriCommand<string, undefined>;
-    message: TauriCommand<DialogOptions, boolean>;
+    message: TauriCommand<DialogOptions, MessageResult>;
     save: TauriCommand<FileDialogOptions, FileDialogResult>;
     open: TauriCommand<FileDialogOptions, FileDialogResult>;
     launch: TauriCommand<string, undefined>;
     listen_file_drop: TauriCommand<string, undefined>;
     unlisten_file_drop: TauriCommand<undefined, undefined>;
     get_media_metadata: TauriCommand<string, any>;
+    undo: TauriCommand<undefined, undefined>;
+    redo: TauriCommand<undefined, undefined>;
 };
 
 export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
     return {
-        data: JSON.stringify(settings),
         theme: settings.theme,
         fitToWindow: settings.video.fitToWindow,
         playbackSpeed: settings.video.playbackSpeed,
@@ -158,15 +166,6 @@ export class IPCBase {
         return await invoke<TauriCommandMap[K]["Response"]>(channel, {
             payload: data,
         });
-    };
-
-    getSettings = async (): Promise<Mp.Settings> => {
-        const settingsJSON = await invoke<string>("get_settings");
-        return JSON.parse(settingsJSON);
-    };
-
-    updateSettings = async (settings: Mp.Settings) => {
-        return await invoke("update_settings", { payload: toTauriSettings(settings) });
     };
 }
 

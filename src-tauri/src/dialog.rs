@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use zouni::dialog::{message, FileDialogResult, FileFilter, MessageDialogKind, MessageDialogOptions, OpenDialogOptions, OpenProperty, SaveDialogOptions};
+use zouni::dialog::{message, FileDialogResult, FileFilter, MessageDialogKind, MessageDialogOptions, MessageResult, OpenDialogOptions, OpenProperty, SaveDialogOptions};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogOptions {
@@ -11,12 +11,15 @@ pub struct DialogOptions {
     message: String,
 }
 
-pub async fn show(options: DialogOptions) -> bool {
+pub async fn show(options: DialogOptions) -> MessageResult {
     match options.dialog_type.as_str() {
         "message" => show_message(options).await,
         "confirm" => show_confirm(options).await,
         "ask" => show_ask(options).await,
-        _ => false,
+        _ => MessageResult {
+            button: String::new(),
+            cancelled: true,
+        },
     }
 }
 
@@ -33,7 +36,7 @@ fn get_level(kind: &Option<String>) -> MessageDialogKind {
     }
 }
 
-async fn show_message(options: DialogOptions) -> bool {
+async fn show_message(options: DialogOptions) -> MessageResult {
     let options = MessageDialogOptions {
         title: options.title,
         kind: Some(get_level(&options.kind)),
@@ -44,7 +47,7 @@ async fn show_message(options: DialogOptions) -> bool {
     message(options).await
 }
 
-async fn show_confirm(options: DialogOptions) -> bool {
+async fn show_confirm(options: DialogOptions) -> MessageResult {
     let options = MessageDialogOptions {
         title: options.title,
         kind: Some(get_level(&options.kind)),
@@ -55,7 +58,7 @@ async fn show_confirm(options: DialogOptions) -> bool {
     message(options).await
 }
 
-async fn show_ask(options: DialogOptions) -> bool {
+async fn show_ask(options: DialogOptions) -> MessageResult {
     let options = MessageDialogOptions {
         title: options.title,
         kind: Some(get_level(&options.kind)),

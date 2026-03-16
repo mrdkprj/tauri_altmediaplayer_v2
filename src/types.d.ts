@@ -4,8 +4,7 @@ declare global {
     type RendererName = "Player" | "Playlist" | "Convert";
 
     type RendererChannelEventMap = {
-        "backend-ready": Mp.Event;
-        "all-ready": Mp.Event;
+        "second-instance": string[];
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "load-playlist": Mp.LoadPlaylistEvent;
@@ -14,17 +13,15 @@ declare global {
         "toggle-play": Mp.Event;
         "toggle-fullscreen": Mp.Event;
         restart: Mp.Event;
-        "release-file": Mp.ReleaseFileRequest;
-        "file-released": Mp.ReleaseFileResult;
-        log: Mp.Logging;
+        "release-file-request": Mp.ReleaseFileRequest;
+        "release-file-result": Mp.ReleaseFileResult;
         "toggle-convert": Mp.Event;
-        "open-convert": Mp.OpenConvertDialogEvent;
-        "settings-updated": Mp.TauriSettings;
+        "open-convert": Mp.MediaFile;
     };
 
     namespace Mp {
         type Lang = "en" | "ja";
-        type Theme = "Dark" | "Light";
+        type Theme = "dark" | "light";
         type ConvertFormat = "MP4" | "MP3";
         type ThumbButtonType = "Play" | "Pause" | "Previous" | "Next";
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
@@ -63,10 +60,7 @@ declare global {
         type VideoFrameSize = "SizeNone" | "360p" | "480p" | "720p" | "1080p";
         type VideoRotation = "RotationNone" | "90Clockwise" | "90CounterClockwise";
         type AudioBitrate = "BitrateNone" | "128" | "160" | "192" | "320";
-
         type PlayStatus = "playing" | "paused" | "stopped";
-
-        type DialogOpener = "system" | "user";
 
         type ContextMenuEvent = {
             id: keyof PlayerContextMenuSubTypeMap | keyof PlaylistContextMenuSubTypeMap;
@@ -134,7 +128,6 @@ declare global {
         };
 
         type TauriSettings = {
-            data: string;
             theme: Mp.Theme;
             fitToWindow: boolean;
             playbackSpeed: number;
@@ -270,11 +263,6 @@ declare global {
             cancellationId: number;
         };
 
-        type OpenConvertDialogEvent = {
-            file: MediaFile;
-            opener: DialogOpener;
-        };
-
         type ConvertRequest = {
             sourcePath: string;
             convertFormat: ConvertFormat;
@@ -291,14 +279,6 @@ declare global {
 
         type Event = {
             args?: any;
-        };
-
-        type Logging = {
-            log: any;
-        };
-
-        type RadioGroupChangeEvent<T> = {
-            value: T;
         };
 
         type MessageLabel = {

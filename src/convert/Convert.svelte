@@ -3,8 +3,8 @@
     import RadioGroup from "./RadioGroup.svelte";
 
     import { AudioExtensions, VideoExtensions } from "../constants";
-    import { appState, dispatch } from "./appStateReducer";
-    import { t } from "../translation/useTranslation";
+    import { appState } from "./appState.svelte";
+    import { t } from "../translation/useTranslation.svelte";
     import { IPC } from "../ipc";
     import util from "../util";
     import path from "../path";
@@ -14,9 +14,9 @@
     const ipc = new IPC("Convert");
 
     const changeSourceFile = (file: Mp.MediaFile) => {
-        dispatch({ type: "sourceFile", value: file.fullPath });
+        appState.sourceFile = file.fullPath;
         const format = AudioExtensions.includes(file.extension) ? "MP3" : "MP4";
-        dispatch({ type: "format", value: format });
+        appState.sourceFileFormat = format;
     };
 
     const closeDialog = async () => {
@@ -24,29 +24,29 @@
     };
 
     const lock = () => {
-        dispatch({ type: "converting", value: true });
+        appState.converting = true;
         document.querySelectorAll("input").forEach((element) => (element.disabled = true));
     };
 
     const unlock = () => {
-        dispatch({ type: "converting", value: false });
+        appState.converting = false;
         document.querySelectorAll("input").forEach((element) => (element.disabled = false));
     };
 
     const requestConvert = async () => {
-        if (!$appState.sourceFile) return;
+        if (!appState.sourceFile) return;
 
         lock();
 
         const args: Mp.ConvertRequest = {
-            sourcePath: $appState.sourceFile,
-            convertFormat: $appState.convertFormat,
+            sourcePath: appState.sourceFile,
+            convertFormat: appState.convertFormat,
             options: {
-                frameSize: $appState.frameSize,
-                audioBitrate: $appState.audioBitrate,
-                rotation: $appState.rotation,
-                audioVolume: $appState.audioVolume,
-                maxAudioVolume: $appState.maxVolume,
+                frameSize: appState.frameSize,
+                audioBitrate: appState.audioBitrate,
+                rotation: appState.rotation,
+                audioVolume: appState.audioVolume,
+                maxAudioVolume: appState.maxVolume,
             },
         };
 
@@ -61,11 +61,9 @@
 
         const extension = data.convertFormat.toLocaleLowerCase();
         const fileName = file.name.replace(path.extname(file.name), "");
-
-        const settings = await ipc.getSettings();
-
+        const defaultPath = path.join(file.dir, `${fileName}.${extension}`);
         const result = await ipc.invoke("save", {
-            default_path: path.join(settings.defaultPath, `${fileName}.${extension}`),
+            default_path: defaultPath,
             filters: [
                 {
                     name: data.convertFormat === "MP4" ? "Video" : "Audio",
@@ -77,8 +75,6 @@
         if (!result.file_paths.length) return await endConvert();
 
         const selectedPath = result.file_paths[0];
-        settings.defaultPath = path.dirname(selectedPath);
-        await ipc.updateSettings(settings);
 
         const shouldReplace = file.fullPath === selectedPath;
 
@@ -121,32 +117,9 @@
         await util.cancelConvert();
     };
 
-    const onChangeFormat = (e: Mp.RadioGroupChangeEvent<Mp.ConvertFormat>) => {
-        dispatch({ type: "convertFormat", value: e.value });
-    };
-
-    const onChangeAudioBitrate = (e: Mp.RadioGroupChangeEvent<Mp.AudioBitrate>) => {
-        dispatch({ type: "audioBitrate", value: e.value });
-    };
-
-    const onChangeRotation = (e: Mp.RadioGroupChangeEvent<Mp.VideoRotation>) => {
-        dispatch({ type: "rotation", value: e.value });
-    };
-
-    const onMaxVolumeChange = (e: Event) => {
-        dispatch({ type: "maxVolume", value: (e.target as HTMLInputElement).checked });
-    };
-
-    const onVolumeChange = (e: Event) => {
-        dispatch({ type: "audioVolume", value: (e.target as HTMLInputElement).value });
-    };
-
-    const onFrameSizeChange = (e: Mp.RadioGroupChangeEvent<Mp.VideoFrameSize>) => {
-        dispatch({ type: "frameSize", value: e.value });
-    };
-
     const openDialog = async () => {
         const result = await ipc.invoke("open", {
+            default_path: path.dirname(appState.sourceFile),
             title: "Select file to convert",
             filters: [{ name: "Media File", extensions: VideoExtensions.concat(AudioExtensions) }],
             properties: ["OpenFile"],
@@ -158,7 +131,7 @@
         if (VideoExtensions.concat(AudioExtensions).includes(file.extension)) {
             changeSourceFile(file);
         } else {
-            await util.showErrorMessage($t("unsupportedMedia"));
+            await util.showErrorMessage(t("unsupportedMedia"));
         }
     };
 
@@ -169,9 +142,9 @@
         }
     };
 
-    const show = async (e: Mp.OpenConvertDialogEvent) => {
-        if (!$appState.converting && e.opener == "user") {
-            changeSourceFile(e.file);
+    const show = async (file: Mp.MediaFile) => {
+        if (!appState.converting) {
+            changeSourceFile(file);
         }
         await WebviewWindow.getCurrent().show();
     };
@@ -193,10 +166,10 @@
     </div>
     <div class="convert-viewport">
         <div class="container">
-            <div class="option-label">{$t("inputFile")}</div>
+            <div class="option-label">{t("inputFile")}</div>
             <div class="option-area">
                 <div class="text">
-                    <input type="text" class="source-file-input" readonly value={$appState.sourceFile} />
+                    <input type="text" class="source-file-input" readonly value={appState.sourceFile} />
                     <div class="btn" onclick={openDialog} onkeydown={onKeydown} role="button" tabindex="-1">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                             <path
@@ -206,63 +179,63 @@
                     </div>
                 </div>
             </div>
-            <div class="option-label">{$t("convertFormat")}</div>
+            <div class="option-label">{t("convertFormat")}</div>
             <div class="option-area">
                 <RadioGroup
                     options={["MP4", "MP3"]}
                     labels={["MP4", "MP3"]}
                     name="format"
-                    checkedOption={$appState.convertFormat}
-                    onChange={onChangeFormat}
-                    disableIf={{ condition: $appState.sourceFileFormat == "MP3", target: "MP4" }}
+                    checkedOption={appState.convertFormat}
+                    bind:group={appState.convertFormat}
+                    disableIf={{ condition: appState.sourceFileFormat == "MP3", target: "MP4" }}
                 />
             </div>
-            {#if $appState.convertFormat == "MP4"}
+            {#if appState.convertFormat == "MP4"}
                 <div class="video-options">
-                    <div class="option-label">{$t("frameSize")}</div>
+                    <div class="option-label">{t("frameSize")}</div>
                     <div class="option-area">
                         <RadioGroup
                             options={["SizeNone", "360p", "480p", "720p", "1080p"]}
                             labels={["None", "360p", "480p", "720p", "1080p"]}
                             name="framesize"
-                            checkedOption={$appState.frameSize}
-                            onChange={onFrameSizeChange}
+                            checkedOption={appState.frameSize}
+                            bind:group={appState.frameSize}
                         />
                     </div>
-                    <div class="option-label">{$t("videoRotation")}</div>
+                    <div class="option-label">{t("videoRotation")}</div>
                     <div class="option-area">
                         <RadioGroup
                             options={["RotationNone", "90Clockwise", "90CounterClockwise"]}
                             labels={["None", "+90", "-90"]}
                             name="rotation"
-                            checkedOption={$appState.rotation}
-                            onChange={onChangeRotation}
+                            checkedOption={appState.rotation}
+                            bind:group={appState.rotation}
                         />
                     </div>
                 </div>
             {/if}
             <div class="audio-options">
-                <div class="option-label">{$t("audioBitrate")}</div>
+                <div class="option-label">{t("audioBitrate")}</div>
                 <div class="option-area">
                     <RadioGroup
                         options={["BitrateNone", "128", "160", "192", "320"]}
                         labels={["None", "128", "160", "192", "320"]}
                         name="audioBitrate"
-                        checkedOption={$appState.audioBitrate}
-                        onChange={onChangeAudioBitrate}
+                        checkedOption={appState.audioBitrate}
+                        bind:group={appState.audioBitrate}
                     />
                 </div>
-                <div class="option-label">{$t("volume")}<label><input type="checkbox" class="max-volume" onchange={onMaxVolumeChange} />{$t("maximizeVolue")}</label></div>
+                <div class="option-label">{t("volume")}<label><input type="checkbox" class="max-volume" bind:checked={appState.maxVolume} />{t("maximizeVolue")}</label></div>
                 <div class="option-area">
-                    <input type="range" min="1" max="5" step="0.5" value={$appState.audioVolume} onchange={onVolumeChange} disabled={$appState.maxVolume} />
-                    <span id="volumeLabel">{`${parseFloat($appState.audioVolume) * 100}%`}</span>
+                    <input type="range" min="1" max="5" step="0.5" bind:value={appState.audioVolume} disabled={appState.maxVolume} />
+                    <span id="volumeLabel">{`${parseFloat(appState.audioVolume) * 100}%`}</span>
                 </div>
             </div>
 
             <div class="button">
-                <button disabled={$appState.converting} onclick={requestConvert}>{$t("start")}</button>
-                <button disabled={!$appState.converting} onclick={requestCancelConvert}>{$t("cancel")}</button>
-                <button onclick={closeDialog}>{$t("close")}</button>
+                <button disabled={appState.converting} onclick={requestConvert}>{t("start")}</button>
+                <button disabled={!appState.converting} onclick={requestCancelConvert}>{t("cancel")}</button>
+                <button onclick={closeDialog}>{t("close")}</button>
             </div>
         </div>
     </div>
