@@ -2,6 +2,7 @@
     import Slider from "./Slider.svelte";
     import { Buttons, handleKeyEvent } from "../constants";
     import { appState, dispatch } from "./appStateReducer";
+    import { t } from "../translation/useTranslation.svelte";
 
     let {
         onMouseEnter,
@@ -13,7 +14,7 @@
         onClickPrevious,
         onClickNext,
         onClickMute,
-        t,
+        openConvert,
     }: {
         onMouseEnter: () => void;
         onUpdateTime: (progress: number) => void;
@@ -24,7 +25,7 @@
         onClickPrevious: (button: number) => void;
         onClickNext: (button: number) => void;
         onClickMute: () => void;
-        t: (key: keyof Mp.Labels) => string;
+        openConvert: () => void;
     } = $props();
 
     const formatTime = (secondValue: number) => {
@@ -131,7 +132,7 @@
                 </div>
                 <div class="btn-separator"></div>
                 {#if $appState.converting}
-                    <div class="convert-state">
+                    <div class="convert-state" onclick={openConvert} onkeydown={handleKeyEvent} role="button" tabindex="-1">
                         <div class="ring">
                             <div class="lds-dual-ring"></div>
                         </div>

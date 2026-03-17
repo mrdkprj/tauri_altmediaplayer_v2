@@ -4325,8 +4325,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-single-instance",
  "wcpopup",
- "windows",
- "zbus",
  "zouni",
 ]
 

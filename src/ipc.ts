@@ -1,5 +1,6 @@
 import { listen, emit, UnlistenFn, once, emitTo, EventName } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 type TauriCommand<Req, Res> = {
     Request: Req;
@@ -162,6 +163,10 @@ export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
 };
 
 export class IPCBase {
+    getWindow = async (label: RendererName) => {
+        return WebviewWindow.getByLabel(label);
+    };
+
     invoke = async <K extends keyof TauriCommandMap>(channel: K, data: TauriCommandMap[K]["Request"]): Promise<TauriCommandMap[K]["Response"]> => {
         return await invoke<TauriCommandMap[K]["Response"]>(channel, {
             payload: data,

@@ -12,11 +12,11 @@
     import { FORWARD, BACKWARD, APP_NAME, Buttons, handleKeyEvent, PlayableAudioExtentions, OS } from "../constants";
     import { getDropFiles } from "../fileDropHandler";
     import { handleShortcut } from "../shortcut";
-
-    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { getCurrentWindow, ProgressBarStatus, Window } from "@tauri-apps/api/window";
-    import { Channel } from "@tauri-apps/api/core";
     import { resolveContextMenu, awaitContextMenu } from "../contextMenuState.svelte";
+
+    import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { ProgressBarStatus, Window, getAllWindows } from "@tauri-apps/api/window";
+    import { Channel } from "@tauri-apps/api/core";
 
     const ipc = new IPC("Player");
     const settings = new Settings();
@@ -39,7 +39,7 @@
 
         dispatch({ type: "currentTime", value: video.currentTime });
 
-        getCurrentWindow().setProgressBar({
+        getCurrentWebviewWindow().setProgressBar({
             status: ProgressBarStatus.Normal,
             progress: Math.floor((video.currentTime / duration) * 100),
         });
@@ -97,7 +97,7 @@
     const initPlayer = () => {
         dispatch({ type: "init" });
         video.load();
-        getCurrentWindow().setProgressBar({
+        getCurrentWebviewWindow().setProgressBar({
             status: ProgressBarStatus.Normal,
             progress: 0,
         });
@@ -302,7 +302,7 @@
     };
 
     const minimize = () => {
-        WebviewWindow.getCurrent().minimize();
+        getCurrentWebviewWindow().minimize();
     };
 
     const toggleMaximize = async () => {
@@ -322,7 +322,7 @@
     const onWindowSizeChanged = async () => {
         if ($appState.isFullScreen) return;
 
-        const isMaximized = await WebviewWindow.getCurrent().isMaximized();
+        const isMaximized = await getCurrentWebviewWindow().isMaximized();
         dispatch({ type: "isMaximized", value: isMaximized });
         settings.data.isMaximized = isMaximized;
     };
@@ -342,10 +342,10 @@
         dispatch({ type: "autohide", value: false });
 
         // Cannot enter fullscreen if decoration is false
-        await WebviewWindow.getCurrent().setDecorations(false);
-        await WebviewWindow.getCurrent().setFullscreen(false);
+        await getCurrentWebviewWindow().setDecorations(false);
+        await getCurrentWebviewWindow().setFullscreen(false);
         if (settings.data.playlistVisible) {
-            (await WebviewWindow.getByLabel("Playlist"))?.show();
+            (await ipc.getWindow("Playlist"))?.show();
         }
     };
 
@@ -353,11 +353,11 @@
         dispatch({ type: "isFullScreen", value: true });
         hideControl();
 
-        const views = await WebviewWindow.getAll();
+        const views = await getAllWindows();
         views.filter((view) => view.label != "Player").forEach((view) => view.hide());
         // Cannot enter fullscreen if decoration is false
-        await WebviewWindow.getCurrent().setDecorations(true);
-        await WebviewWindow.getCurrent().setFullscreen(true);
+        await getCurrentWebviewWindow().setDecorations(true);
+        await getCurrentWebviewWindow().setFullscreen(true);
     };
 
     const toggleFullscreen = async () => {
@@ -383,6 +383,10 @@
 
     const toggleConvert = () => {
         dispatch({ type: "converting" });
+    };
+
+    const openConvert = async () => {
+        (await ipc.getWindow("Convert"))?.show();
     };
 
     const onChangeDisplayMode = () => {
@@ -502,14 +506,14 @@
     };
 
     const togglePlaylistWindow = async () => {
-        const playlist = WebviewWindow.getByLabel("Playlist");
+        const playlist = await ipc.getWindow("Playlist");
 
         settings.data.playlistVisible = !settings.data.playlistVisible;
 
         if (settings.data.playlistVisible) {
-            (await playlist)?.show();
+            playlist?.show();
         } else {
-            (await playlist)?.hide();
+            playlist?.hide();
         }
     };
 
@@ -611,11 +615,8 @@
         await player.close();
     };
 
-    const initWithArgs = async (args?: string[]) => {
-        const files = args ? args : await ipc.invoke("get_init_args", undefined);
-        if (files.length) {
-            await ipc.sendTo("Playlist", "load-playlist", { files });
-        }
+    const onSecondInstance = async (args: string[]) => {
+        await ipc.sendTo("Playlist", "add-to-playlist", args);
     };
 
     const prepare = async () => {
@@ -640,7 +641,7 @@
 
         initPlayer();
 
-        const player = WebviewWindow.getCurrent();
+        const player = getCurrentWebviewWindow();
 
         await player.setPosition(util.toPhysicalPosition(settings.data.bounds));
 
@@ -654,7 +655,7 @@
 
         await ipc.invoke("set_play_thumbs", createThumbClickEvent());
 
-        const playlist = await WebviewWindow.getByLabel("Playlist");
+        const playlist = await ipc.getWindow("Playlist");
 
         await playlist?.setPosition(util.toPhysicalPosition(settings.data.playlistBounds));
 
@@ -664,12 +665,15 @@
             await playlist?.show();
         }
 
-        initWithArgs();
+        const files = await ipc.invoke("get_init_args", undefined);
+        if (files.length) {
+            await ipc.sendTo("Playlist", "load-playlist", { files });
+        }
     };
 
     onMount(() => {
         prepare();
-        ipc.receive("second-instance", initWithArgs);
+        ipc.receive("second-instance", onSecondInstance);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
@@ -744,6 +748,6 @@
         onClickPrevious={playBackward}
         onClickNext={playFoward}
         onClickMute={toggleMute}
-        {t}
+        {openConvert}
     />
 </div>

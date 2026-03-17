@@ -12,8 +12,9 @@
     import util from "../util";
     import Deferred from "../deferred";
     import path from "../path";
-    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { awaitContextMenu, resolveContextMenu } from "../contextMenuState.svelte";
+
+    import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
@@ -872,7 +873,7 @@
 
     const close = async () => {
         await ipc.sendTo("Player", "toggle-playlist-visible", {});
-        await WebviewWindow.getCurrent().hide();
+        await getCurrentWebviewWindow().hide();
     };
 
     const prepare = async () => {
@@ -885,6 +886,7 @@
         prepare();
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
+        ipc.receive("add-to-playlist", addToPlaylist);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);

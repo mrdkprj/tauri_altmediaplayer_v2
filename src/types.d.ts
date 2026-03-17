@@ -8,6 +8,7 @@ declare global {
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "load-playlist": Mp.LoadPlaylistEvent;
+        "add-to-playlist": string[];
         "load-file": Mp.FileLoadEvent;
         "change-playlist": Mp.ChangePlaylistRequest;
         "toggle-play": Mp.Event;
@@ -22,7 +23,7 @@ declare global {
     namespace Mp {
         type Lang = "en" | "ja";
         type Theme = "dark" | "light";
-        type ConvertFormat = "MP4" | "MP3";
+        type ConvertType = "Video" | "Audio";
         type ThumbButtonType = "Play" | "Pause" | "Previous" | "Next";
         type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
         type SeekSpeed = 0.03 | 0.05 | 0.1 | 0.5 | 1 | 3 | 5 | 10 | 20;
@@ -196,6 +197,7 @@ declare global {
         };
 
         type ConvertOptions = {
+            format: string;
             frameSize: VideoFrameSize;
             audioBitrate: AudioBitrate;
             rotation: VideoRotation;
@@ -265,7 +267,7 @@ declare global {
 
         type ConvertRequest = {
             sourcePath: string;
-            convertFormat: ConvertFormat;
+            convertType: ConvertType;
             options: ConvertOptions;
         };
 
@@ -325,7 +327,7 @@ declare global {
             previous: string;
             next: string;
             inputFile: string;
-            convertFormat: string;
+            convertType: string;
             frameSize: string;
             videoRotation: string;
             audioBitrate: string;

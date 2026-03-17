@@ -2,22 +2,26 @@ type AppState = {
     audioVolume: string;
     maxVolume: boolean;
     converting: boolean;
-    convertFormat: Mp.ConvertFormat;
+    convertType: Mp.ConvertType;
+    videoCodec: string;
+    audioCodec: string;
     frameSize: Mp.VideoFrameSize;
     audioBitrate: Mp.AudioBitrate;
     rotation: Mp.VideoRotation;
     sourceFile: string;
-    sourceFileFormat: Mp.ConvertFormat;
+    sourceType: Mp.ConvertType;
 };
 
-export const appState: AppState = {
+export const appState: AppState = $state({
     audioVolume: "1",
     maxVolume: false,
     converting: false,
-    convertFormat: "MP4",
+    videoCodec: "mp4",
+    audioCodec: "mp3",
+    convertType: "Video",
     frameSize: "SizeNone",
     audioBitrate: "BitrateNone",
     rotation: "RotationNone",
     sourceFile: "",
-    sourceFileFormat: "MP4",
-};
+    sourceType: "Video",
+});

@@ -207,7 +207,7 @@ class Util {
             audioVolume = `volume=${maxVolume * -1}dBdb`;
         }
 
-        const args = ["-i", sourcePath, "-y", "-acodec", "libmp3lame", "-b:a", String(audioBitrate)];
+        const args = ["-i", sourcePath, "-y", "-b:a", String(audioBitrate)];
 
         if (audioVolume) {
             args.push("-filter:a");
@@ -215,7 +215,7 @@ class Util {
         }
 
         args.push("-f");
-        args.push("mp3");
+        args.push(options.format);
         args.push(destPath);
 
         this.child = new Command("binaries/ffmpeg", args);
@@ -225,7 +225,7 @@ class Util {
             await this.finishConvert();
         } catch (ex: any) {
             await this.cleanUp();
-            throw new Error(ex.message ?? ex.status);
+            throw new Error(JSON.stringify(ex));
         }
     }
 
@@ -256,7 +256,7 @@ class Util {
             audioVolume = `volume=${maxVolume * -1}dB`;
         }
 
-        const args = ["-i", sourcePath, "-y", "-acodec", "libmp3lame"];
+        const args = ["-i", sourcePath, "-y"];
 
         if (audioBitrate > 0) {
             args.push("-b:a"), args.push(String(audioBitrate));
@@ -267,9 +267,6 @@ class Util {
             args.push(`volume=${audioVolume}dB`);
         }
 
-        args.push("-vcodec");
-        args.push("libx264");
-
         args.push("-filter:v");
         if (rotate) {
             args.push(`scale=${size},transpose=${Rotations[options.rotation]}`);
@@ -278,16 +275,16 @@ class Util {
         }
 
         args.push("-f");
-        args.push("mp4");
+        args.push(options.format);
         args.push(destPath);
-
+        console.log(args);
         this.child = new Command("binaries/ffmpeg", args);
         try {
             await this.child.spawn();
             await this.finishConvert();
         } catch (ex: any) {
             await this.cleanUp();
-            throw new Error(ex.message ?? ex.status);
+            throw new Error(JSON.stringify(ex));
         }
     }
 

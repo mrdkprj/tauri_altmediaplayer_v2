@@ -9,18 +9,18 @@
     import util from "../util";
     import path from "../path";
 
-    import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
     const ipc = new IPC("Convert");
 
     const changeSourceFile = (file: Mp.MediaFile) => {
         appState.sourceFile = file.fullPath;
-        const format = AudioExtensions.includes(file.extension) ? "MP3" : "MP4";
-        appState.sourceFileFormat = format;
+        const type = AudioExtensions.includes(file.extension.toLowerCase().replace(".", "")) ? "Audio" : "Video";
+        appState.sourceType = type;
     };
 
     const closeDialog = async () => {
-        await WebviewWindow.getCurrent().hide();
+        await getCurrentWebviewWindow().hide();
     };
 
     const lock = () => {
@@ -40,8 +40,9 @@
 
         const args: Mp.ConvertRequest = {
             sourcePath: appState.sourceFile,
-            convertFormat: appState.convertFormat,
+            convertType: appState.convertType,
             options: {
+                format: appState.convertType == "Video" ? appState.videoCodec : appState.audioCodec,
                 frameSize: appState.frameSize,
                 audioBitrate: appState.audioBitrate,
                 rotation: appState.rotation,
@@ -59,14 +60,14 @@
         const fileExists = await util.exists(file.fullPath);
         if (!fileExists) return endConvert();
 
-        const extension = data.convertFormat.toLocaleLowerCase();
+        const extension = data.options.format.toLocaleLowerCase();
         const fileName = file.name.replace(path.extname(file.name), "");
         const defaultPath = path.join(file.dir, `${fileName}.${extension}`);
         const result = await ipc.invoke("save", {
             default_path: defaultPath,
             filters: [
                 {
-                    name: data.convertFormat === "MP4" ? "Video" : "Audio",
+                    name: data.convertType,
                     extensions: [extension],
                 },
             ],
@@ -81,12 +82,13 @@
         const timestamp = String(new Date().getTime());
         const savePath = shouldReplace ? path.join(path.dirname(selectedPath), path.basename(selectedPath) + timestamp) : selectedPath;
 
-        await WebviewWindow.getCurrent().hide();
+        const webviewWindow = getCurrentWebviewWindow();
+        await webviewWindow.hide();
 
         await ipc.sendTo("Player", "toggle-convert", {});
 
         try {
-            if (data.convertFormat === "MP4") {
+            if (data.convertType === "Video") {
                 await util.convertVideo(data.sourcePath, savePath, data.options);
             } else {
                 await util.convertAudio(data.sourcePath, savePath, data.options);
@@ -100,14 +102,15 @@
         } catch (ex: any) {
             await endConvert(ex.message);
         } finally {
-            await WebviewWindow.getCurrent().show();
+            await webviewWindow.show();
             await ipc.sendTo("Player", "toggle-convert", {});
         }
     };
 
-    const endConvert = async (message?: string) => {
+    const endConvert = async (message?: any) => {
         if (message) {
-            await util.showErrorMessage(message);
+            console.log(message);
+            await util.showErrorMessage(JSON.stringify(message));
         }
 
         unlock();
@@ -146,7 +149,7 @@
         if (!appState.converting) {
             changeSourceFile(file);
         }
-        await WebviewWindow.getCurrent().show();
+        await getCurrentWebviewWindow().show();
     };
 
     onMount(() => {
@@ -179,18 +182,34 @@
                     </div>
                 </div>
             </div>
-            <div class="option-label">{t("convertFormat")}</div>
+            <div class="option-label">{t("convertType")}</div>
             <div class="option-area">
                 <RadioGroup
-                    options={["MP4", "MP3"]}
-                    labels={["MP4", "MP3"]}
+                    options={["Video", "Audio"]}
+                    labels={["Video", "Audio"]}
                     name="format"
-                    checkedOption={appState.convertFormat}
-                    bind:group={appState.convertFormat}
-                    disableIf={{ condition: appState.sourceFileFormat == "MP3", target: "MP4" }}
+                    checkedOption={appState.convertType}
+                    bind:group={appState.convertType}
+                    disableIf={{ condition: appState.sourceType == "Audio", target: "Video" }}
                 />
             </div>
-            {#if appState.convertFormat == "MP4"}
+            <div class="option-label">Format</div>
+            <div class="option-area">
+                {#if appState.convertType == "Video"}
+                    <select bind:value={appState.videoCodec}>
+                        {#each VideoExtensions as format}
+                            <option value={format}>{format}</option>
+                        {/each}
+                    </select>
+                {:else}
+                    <select bind:value={appState.audioCodec}>
+                        {#each AudioExtensions as format}
+                            <option value={format}>{format}</option>
+                        {/each}
+                    </select>
+                {/if}
+            </div>
+            {#if appState.convertType == "Video"}
                 <div class="video-options">
                     <div class="option-label">{t("frameSize")}</div>
                     <div class="option-area">
@@ -240,3 +259,20 @@
         </div>
     </div>
 </div>
+
+<style>
+    select {
+        position: relative;
+        height: 30px;
+        flex: 1;
+        line-height: 30px;
+        font-size: 16px;
+        background-color: var(--input-bgcolor);
+        color: var(--input-color);
+        font-family: var(--font);
+        text-indent: 5px;
+    }
+    select:focus {
+        outline: none;
+    }
+</style>

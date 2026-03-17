@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::{env, path::PathBuf};
 use tauri::{Emitter, Manager, WebviewWindow, WindowEvent};
@@ -10,7 +9,6 @@ use zouni::{
 mod dialog;
 mod helper;
 mod menu;
-// mod session;
 mod shell;
 
 #[allow(non_snake_case)]
@@ -19,9 +17,6 @@ struct Sort {
     order: String,
     groupBy: bool,
 }
-
-#[derive(Serialize)]
-struct OpenedUrls(Vec<String>);
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
@@ -41,29 +36,17 @@ fn get_window_handle(window: &WebviewWindow) -> isize {
 
 #[tauri::command]
 fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
-    if let Some(urls) = app.try_state::<OpenedUrls>() {
-        return urls.inner().0.clone();
-    }
-
-    Vec::new()
+    helper::get_init_args(&app)
 }
 
 #[tauri::command]
 fn set_sort(app: tauri::AppHandle, payload: Sort) {
-    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
-        *sort.lock().unwrap() = payload;
-    } else {
-        app.manage(Mutex::new(payload));
-    }
+    helper::set_sort(&app, payload);
 }
 
 #[tauri::command]
 fn get_sort(app: tauri::AppHandle) -> Sort {
-    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
-        sort.lock().unwrap().clone()
-    } else {
-        Sort::default()
-    }
+    helper::get_sort(&app)
 }
 
 #[tauri::command]
@@ -367,12 +350,7 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            let args = argv[1..].to_vec();
-            if let Some(view) = app.get_webview_window(PLAYER) {
-                let _ = view.emit("second-instance", args);
-            }
-        }))
+        .plugin(tauri_plugin_single_instance::init(helper::handle_second_instance))
         .setup(|app| {
             helper::setup(app);
             Ok(())
