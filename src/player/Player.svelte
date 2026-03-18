@@ -14,8 +14,8 @@
     import { handleShortcut } from "../shortcut";
     import { resolveContextMenu, awaitContextMenu } from "../contextMenuState.svelte";
 
-    import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-    import { ProgressBarStatus, Window, getAllWindows } from "@tauri-apps/api/window";
+    import { getCurrentWebviewWindow, getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
+    import { ProgressBarStatus } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
 
     const ipc = new IPC("Player");
@@ -301,12 +301,16 @@
         await ipc.invoke("write_all", { fullPath: savePath, data: Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) });
     };
 
-    const minimize = () => {
-        getCurrentWebviewWindow().minimize();
+    const minimize = async () => {
+        const player = getCurrentWebviewWindow();
+        const position = await player.innerPosition();
+        const size = await player.innerSize();
+        settings.data.bounds = util.toBounds(position, size);
+        await player.minimize();
     };
 
     const toggleMaximize = async () => {
-        const player = Window.getCurrent();
+        const player = getCurrentWebviewWindow();
 
         if ($appState.isMaximized) {
             await player.unmaximize();
@@ -353,7 +357,7 @@
         dispatch({ type: "isFullScreen", value: true });
         hideControl();
 
-        const views = await getAllWindows();
+        const views = await getAllWebviewWindows();
         views.filter((view) => view.label != "Player").forEach((view) => view.hide());
         // Cannot enter fullscreen if decoration is false
         await getCurrentWebviewWindow().setDecorations(true);
@@ -586,14 +590,15 @@
     const close = async () => {
         await ipc.invoke("unlisten_file_drop", undefined);
 
-        const player = Window.getCurrent();
-        if (!$appState.isMaximized) {
+        const player = getCurrentWebviewWindow();
+        const isMinimized = await player.isMinimized();
+        if (!$appState.isMaximized && !isMinimized) {
             const position = await player.innerPosition();
             const size = await player.innerSize();
             settings.data.bounds = util.toBounds(position, size);
         }
 
-        const playlist = await Window.getByLabel("Playlist");
+        const playlist = await ipc.getWindow("Playlist");
         if (playlist) {
             const position = await playlist.innerPosition();
             const size = await playlist.innerSize();
@@ -608,7 +613,7 @@
         // On Linux, all windows created must be closed.
         if (navigator.userAgent.includes("Linux")) {
             await playlist?.close();
-            const convert = await Window.getByLabel("Convert");
+            const convert = await ipc.getWindow("Convert");
             await convert?.close();
         }
 

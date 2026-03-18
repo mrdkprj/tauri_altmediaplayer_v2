@@ -123,13 +123,17 @@ class Util {
         files.push(...result);
     }
 
-    toPhysicalPosition(bounds: Mp.Bounds) {
-        return new PhysicalPosition(bounds.x, bounds.y);
-    }
+    toPhysicalPosition = (bounds: Mp.Bounds) => {
+        const x = bounds.x < 0 ? 0 : bounds.x;
+        const y = bounds.y < 0 ? 0 : bounds.y;
+        return new PhysicalPosition(x, y);
+    };
 
-    toPhysicalSize(bounds: Mp.Bounds) {
-        return new PhysicalSize(bounds.width, bounds.height);
-    }
+    toPhysicalSize = (bounds: Mp.Bounds) => {
+        const width = bounds.width < 400 ? 400 : bounds.width;
+        const height = bounds.height < 400 ? 400 : bounds.height;
+        return new PhysicalSize(width, height);
+    };
 
     toBounds(position: PhysicalPosition, size: PhysicalSize): Mp.Bounds {
         return {
