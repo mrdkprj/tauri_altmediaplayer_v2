@@ -3,10 +3,9 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use strum_macros::Display;
 use tauri::async_runtime::Mutex;
-#[cfg(target_os = "linux")]
-use tauri::Emitter;
 #[cfg(target_os = "windows")]
-use tauri::{path::BaseDirectory, Emitter, EventTarget, Manager};
+use tauri::path::BaseDirectory;
+use tauri::{Emitter, EventTarget, Manager};
 use wcpopup::{
     config::{ColorScheme, Config, MenuSize, Theme, ThemeColor, DEFAULT_DARK_COLOR_SCHEME},
     Menu, MenuBuilder,

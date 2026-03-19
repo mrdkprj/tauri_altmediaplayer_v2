@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use std::{env, path::PathBuf};
-use tauri::{Emitter, Manager, WebviewWindow, WindowEvent};
+#[cfg(target_os = "windows")]
+use tauri::Emitter;
+use tauri::{Manager, WebviewWindow, WindowEvent};
 use zouni::{
     dialog::{FileDialogResult, MessageResult},
     ClipboardData, FileAttribute, Operation,
@@ -236,6 +238,7 @@ async fn save(payload: dialog::FileDialogOptions) -> FileDialogResult {
     dialog::save(payload).await
 }
 
+#[allow(unused_variables)]
 #[tauri::command]
 fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
     #[cfg(target_os = "windows")]
@@ -245,6 +248,7 @@ fn set_play_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) 
     }
 }
 
+#[allow(unused_variables)]
 #[tauri::command]
 fn set_pause_thumbs(app: tauri::AppHandle, payload: tauri::ipc::Channel<String>) {
     #[cfg(target_os = "windows")]
