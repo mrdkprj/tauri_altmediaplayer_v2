@@ -67,8 +67,7 @@
         "category": "Video",
         "targets": ["deb"],
         "icon": [
-            "icons/icon.icns",
-            "icons/icon.ico"
+            "icons/icon.png"
         ],
         "resources":[
             "assets/*"
