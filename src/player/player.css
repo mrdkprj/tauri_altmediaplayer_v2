@@ -253,7 +253,7 @@
 }
 
 .thumb{
-    left:0%;
+    left:0px;
     height: 8px;
     width: 8px;
     background-color: var(--slider-thumb-bgcolor);
@@ -352,6 +352,11 @@
 
 .track-value.current-time {
     margin-left: 0px;
+}
+
+.volume + .track-value,
+.amp + .track-value{
+    width: 30px;
 }
 
 .btn,

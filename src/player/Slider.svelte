@@ -53,7 +53,10 @@
         const rect = slider.getBoundingClientRect();
         const progress = (e.clientX - rect.left) / rect.width;
 
-        if (progress > 1 || progress < 0) return;
+        const maxValue = max ? max : 1;
+        if (value == maxValue && progress > 1) return;
+
+        if (value == 0 && progress < 0) return;
 
         onSlide(progress);
     };

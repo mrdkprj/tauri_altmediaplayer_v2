@@ -26,12 +26,15 @@ export default class path {
         }
     }
 
-    static extname(name: string | undefined) {
-        if (!name) return "";
+    static extname(path: string | undefined) {
+        if (!path) return "";
 
-        if (name.lastIndexOf(".") < 0) return "";
+        const components = this.split(path);
+        const lastComponent = components[components.length - 1];
 
-        return name.substring(name.lastIndexOf("."));
+        if (lastComponent.lastIndexOf(".") < 0) return "";
+
+        return lastComponent.substring(lastComponent.lastIndexOf(".")).toLowerCase();
     }
 
     static basename(path: string | undefined) {

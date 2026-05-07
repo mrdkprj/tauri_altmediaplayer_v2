@@ -876,9 +876,23 @@
         await getCurrentWebviewWindow().hide();
     };
 
+    const getSortType = (): Promise<Mp.SortType> => {
+        return new Promise((resolve) => {
+            const check = async () => {
+                const sort = await ipc.invoke("get_sort", undefined);
+                if (sort) {
+                    resolve(sort);
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
+    };
+
     const prepare = async () => {
         await ipc.invoke("listen_file_drop", "playlistViewport");
-        const sort = await ipc.invoke("get_sort", undefined);
+        const sort = await getSortType();
         dispatch({ type: "sortType", value: { order: sort.order, groupBy: sort.groupBy } });
     };
 

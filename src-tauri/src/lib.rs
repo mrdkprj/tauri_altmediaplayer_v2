@@ -47,7 +47,7 @@ fn set_sort(app: tauri::AppHandle, payload: Sort) {
 }
 
 #[tauri::command]
-fn get_sort(app: tauri::AppHandle) -> Sort {
+fn get_sort(app: tauri::AppHandle) -> Option<Sort> {
     helper::get_sort(&app)
 }
 

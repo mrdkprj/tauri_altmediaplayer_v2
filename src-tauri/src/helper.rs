@@ -62,10 +62,6 @@ pub fn set_sort(app: &AppHandle, new_sort: Sort) {
     }
 }
 
-pub fn get_sort(app: &AppHandle) -> Sort {
-    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
-        sort.lock().unwrap().clone()
-    } else {
-        Sort::default()
-    }
+pub fn get_sort(app: &AppHandle) -> Option<Sort> {
+    app.try_state::<Mutex<Sort>>().map(|sort| sort.lock().unwrap().clone())
 }

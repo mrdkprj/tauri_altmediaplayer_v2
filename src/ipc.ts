@@ -116,7 +116,7 @@ type TauriCommandMap = {
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
     set_sort: TauriCommand<Mp.SortType, undefined>;
-    get_sort: TauriCommand<undefined, Mp.SortType>;
+    get_sort: TauriCommand<undefined, Mp.SortType | undefined>;
     reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
     remove: TauriCommand<string, undefined>;
