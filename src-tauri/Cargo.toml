@@ -13,7 +13,7 @@ tauri = { version = "2.9", features = [ "protocol-asset", "devtools"] }
 strum_macros = "0.26"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-zouni = { version = "0.1.29", features = ["webview2", "webkit2gtk"] }
+zouni = { version = "0.2.0", features = ["webview2", "webkit2gtk"] }
 wcpopup = { version = "0.9.3", features = ["webview"] }
 tauri-plugin-single-instance = "=2.3.0"
 

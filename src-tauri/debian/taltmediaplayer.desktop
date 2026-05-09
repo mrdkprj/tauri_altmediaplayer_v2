@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=taltmediaplayer
+Comment=altmediaplayer
+Exec=taltmediaplayer
+Icon=taltmediaplayer
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Audio;Player;
+MimeType=audio/*;video/*;application/x-ogg;application/ogg;application/mpeg4-iod;application/mpeg4-muxcodetable;application/mxf;application/ogg;application/ram;application/sdp;application/streamingmedia;application/vnd.apple.mpegurl;application/vnd.ms-asf;application/vnd.rn-realmedia;application/vnd.rn-realmedia-vbr;application/x-extension-m4a;application/x-extension-mp4;application/x-flac;application/x-flash-video;application/x-matroska;application/x-ogg;application/x-streamingmedia;

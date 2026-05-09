@@ -606,7 +606,9 @@
         }
 
         const sort = await ipc.invoke("get_sort", undefined);
-        settings.data.sort = sort;
+        if (sort) {
+            settings.data.sort = sort;
+        }
 
         await settings.save();
 

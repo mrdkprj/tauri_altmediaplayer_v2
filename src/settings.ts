@@ -11,7 +11,7 @@ const defaultSettings: Mp.Settings = {
     playlistBounds: { width: 400, height: 700, x: 0, y: 0 },
     isMaximized: false,
     playlistVisible: true,
-    theme: "Dark",
+    theme: "dark",
     sort: {
         order: "NameAsc",
         groupBy: false,
@@ -56,7 +56,7 @@ export class Settings {
         } else {
             await ipc.invoke("mkdir_all", settingPath);
             await ipc.invoke("create", this.file);
-            await ipc.invoke("write_text_file", { fullPath: settingPath, data: JSON.stringify(this.data) });
+            await ipc.invoke("write_text_file", { fullPath: this.file, data: JSON.stringify(this.data) });
         }
 
         return this.data;

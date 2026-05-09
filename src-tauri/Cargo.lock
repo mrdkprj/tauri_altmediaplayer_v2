@@ -6056,9 +6056,9 @@ dependencies = [
 
 [[package]]
 name = "zouni"
-version = "0.1.29"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d7acfd863c6d29ec96ada7aef5961c44814f65995ca57e04c11eafb6236492e"
+checksum = "da4d0628eb7124638d80df7e361bf020af7015bd6370fb6e8a773d8e8344f9cd"
 dependencies = [
  "bstr",
  "gio",

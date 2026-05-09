@@ -674,12 +674,12 @@
     const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
         dispatch({ type: "sortType", value: { order: sortOrder, groupBy: $appState.sortType.groupBy } });
         sortPlayList();
-        await ipc.invoke("set_sort", { order: sortOrder, groupBy: $appState.sortType.groupBy });
+        await ipc.invoke("set_sort", $appState.sortType);
     };
 
     const toggleGroupBy = async () => {
         dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy } });
-        await ipc.invoke("set_sort", { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy });
+        await ipc.invoke("set_sort", $appState.sortType);
     };
 
     const copyFileNameToClipboard = async (fullPath: boolean) => {
