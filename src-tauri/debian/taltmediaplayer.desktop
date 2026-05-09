@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=taltmediaplayer
-Comment=altmediaplayer
-Exec=taltmediaplayer
+Comment=Media Player
+Exec=taltmediaplayer %F
 Icon=taltmediaplayer
 Terminal=false
 Type=Application
