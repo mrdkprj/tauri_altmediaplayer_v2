@@ -10,6 +10,7 @@
     import path from "../path";
 
     import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import GtkResize from "../GtkResize.svelte";
 
     const ipc = new IPC("Convert");
 
@@ -164,6 +165,9 @@
 <svelte:window onkeydown={onKeydown} />
 
 <div class="viewport">
+    {#if util.isLinux()}
+        <GtkResize />
+    {/if}
     <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title-bar">
         <div class="close-btn" onclick={closeDialog} onkeydown={onKeydown} role="button" tabindex="-1">&times;</div>
     </div>

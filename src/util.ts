@@ -24,6 +24,14 @@ class Util {
         this.child = null;
     }
 
+    isWin() {
+        return navigator.userAgent.includes(OS.windows);
+    }
+
+    isLinux() {
+        return navigator.userAgent.includes(OS.linux);
+    }
+
     async exists(path: string) {
         return await this.ipc.invoke("exists", path);
     }

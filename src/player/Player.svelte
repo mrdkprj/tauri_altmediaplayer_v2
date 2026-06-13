@@ -17,6 +17,7 @@
     import { getCurrentWebviewWindow, getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
     import { ProgressBarStatus } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
+    import GtkResize from "../GtkResize.svelte";
 
     const ipc = new IPC("Player");
     const settings = new Settings();
@@ -702,6 +703,9 @@
 <svelte:document onmousemove={onMousemove} />
 
 <div class="player-viewport" class:full-screen={$appState.isFullScreen} class:loaded={$appState.loaded} class:autohide={$appState.autohide}>
+    {#if util.isLinux()}
+        <GtkResize />
+    {/if}
     <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="player-title-bar">
         <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="icon-area">
             <img class="ico" src={icon} alt="" />

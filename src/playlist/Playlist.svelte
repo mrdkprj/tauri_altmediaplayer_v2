@@ -15,6 +15,7 @@
     import { awaitContextMenu, resolveContextMenu } from "../contextMenuState.svelte";
 
     import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import GtkResize from "../GtkResize.svelte";
 
     let fileListContainer: HTMLDivElement;
     let randomIndices: number[] = [];
@@ -915,6 +916,9 @@
 <svelte:window oncontextmenu={onContextMenu} onkeydown={onKeydown} onmouseup={onMouseUp} />
 
 <div class="viewport">
+    {#if util.isLinux()}
+        <GtkResize />
+    {/if}
     <div data-tauri-drag-region={navigator.userAgent.includes("Linux") ? true : null} class="title-bar">
         <div class="close-btn" onclick={close} onkeydown={handleKeyEvent} role="button" tabindex="-1">&times;</div>
     </div>
