@@ -5,15 +5,6 @@ import { IPCBase } from "./ipc";
 import path from "./path";
 import { Command } from "./shell";
 
-const convertFileSrcExt = (path: string) => {
-    const src = convertFileSrc(path);
-    if (navigator.userAgent.includes(OS.linux)) {
-        return src.startsWith("http://asset.localhost") ? src.replace("http://asset.localhost", "asset:") : src;
-    } else {
-        return src;
-    }
-};
-
 class Util {
     convertDestFile: string | null;
     child: Command | null;
@@ -47,7 +38,7 @@ class Util {
                 id: crypto.randomUUID(),
                 fullPath,
                 dir,
-                src: convertFileSrcExt(fullPath),
+                src: convertFileSrc(fullPath),
                 name: decodeURIComponent(encodeURIComponent(name)),
                 date: stat.attribute.mtime_ms ? stat.attribute.mtime_ms : new Date().getTime(),
                 extension: path.extname(fullPath),
@@ -64,7 +55,7 @@ class Util {
             id: crypto.randomUUID(),
             fullPath,
             dir,
-            src: convertFileSrcExt(fullPath),
+            src: convertFileSrc(fullPath),
             name: decodeURIComponent(encodeURIComponent(name)),
             date: statInfo.mtime_ms ? statInfo.mtime_ms : new Date().getTime(),
             extension: path.extname(fullPath),
@@ -79,7 +70,7 @@ class Util {
             id: currentFile.id,
             fullPath,
             dir,
-            src: convertFileSrcExt(fullPath),
+            src: convertFileSrc(fullPath),
             name: decodeURIComponent(encodeURIComponent(name)),
             date: currentFile.date,
             extension: currentFile.extension,
