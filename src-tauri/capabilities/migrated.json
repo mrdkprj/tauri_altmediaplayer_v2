@@ -32,7 +32,8 @@
     "core:webview:allow-internal-toggle-devtools",
     "core:webview:allow-webview-position",
     "core:webview:allow-webview-size",
-    "core:window:allow-set-decorations"
+    "core:window:allow-set-decorations",
+    "core:window:allow-start-resize-dragging"
   ],
   "platforms": [
     "linux",
