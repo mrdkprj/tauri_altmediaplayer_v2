@@ -623,10 +623,6 @@
         await player.close();
     };
 
-    const onSecondInstance = async (args: string[]) => {
-        await ipc.sendTo("Playlist", "add-to-playlist", args);
-    };
-
     const prepare = async () => {
         await settings.init();
 
@@ -681,7 +677,6 @@
 
     onMount(() => {
         prepare();
-        ipc.receive("second-instance", onSecondInstance);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);

@@ -1,6 +1,6 @@
-use crate::{Sort, PLAYER};
+use crate::Sort;
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 pub struct Urls {
     pub taken: bool,
@@ -13,10 +13,6 @@ impl Urls {
             taken: false,
             urls,
         }
-    }
-
-    pub fn add(&mut self, urls: Vec<String>) {
-        self.urls.extend(urls);
     }
 
     pub fn take(&mut self) -> Vec<String> {
@@ -33,19 +29,6 @@ pub fn setup(app: &tauri::App) {
         urls.push(arg);
     }
     app.manage(Mutex::new(Urls::new(urls)));
-}
-
-pub fn handle_second_instance(app: &AppHandle, argv: Vec<String>, _cwd: String) {
-    let args = argv[1..].to_vec();
-    let state = app.state::<Mutex<Urls>>();
-    let mut urls = state.lock().unwrap();
-    if urls.taken {
-        if let Some(view) = app.get_webview_window(PLAYER) {
-            let _ = view.emit("second-instance", args);
-        }
-    } else {
-        urls.add(args);
-    }
 }
 
 pub fn get_init_args(app: &AppHandle) -> Vec<String> {

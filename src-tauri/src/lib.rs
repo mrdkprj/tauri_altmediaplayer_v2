@@ -354,7 +354,6 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(helper::handle_second_instance))
         .setup(|app| {
             helper::setup(app);
             Ok(())

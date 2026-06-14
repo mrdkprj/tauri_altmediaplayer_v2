@@ -4,7 +4,6 @@ declare global {
     type RendererName = "Player" | "Playlist" | "Convert";
 
     type RendererChannelEventMap = {
-        "second-instance": string[];
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "load-playlist": Mp.LoadPlaylistEvent;
