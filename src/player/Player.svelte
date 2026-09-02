@@ -535,6 +535,12 @@
     const handleContextMenu = async (e: Mp.ContextMenuEvent) => {
         const id = e.name ? e.name : e.id;
         switch (id) {
+            case "RemoveThis":
+                await ipc.sendTo("Playlist", "remove-this", {});
+                break;
+            case "TrashThis":
+                await ipc.sendTo("Playlist", "trash-this", {});
+                break;
             case "PlaybackSpeed":
                 changePlaybackSpeed(Number(e.id));
                 break;

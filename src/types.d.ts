@@ -17,6 +17,8 @@ declare global {
         "release-file-result": Mp.ReleaseFileResult;
         "toggle-convert": Mp.Event;
         "open-convert": Mp.MediaFile;
+        "remove-this": Mp.Event;
+        "trash-this": Mp.Event;
     };
 
     namespace Mp {
@@ -30,6 +32,8 @@ declare global {
         type ThumbButtonId = "Play" | "Pause" | "Previous" | "Next";
 
         type PlayerContextMenuSubTypeMap = {
+            RemoveThis: null;
+            TrashThis: null;
             PlaybackSpeed: Mp.PlaybackSpeed;
             SeekSpeed: Mp.SeekSpeed;
             TogglePlaylistWindow: null;

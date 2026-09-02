@@ -13,8 +13,8 @@ tauri = { version = "~2.11.0", features = [ "devtools", "protocol-asset"] }
 strum_macros = "0.26"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-zouni = { version = "0.2.2", features = ["webview2", "webkit2gtk"] }
-wcpopup = { version = "0.9.5", features = ["webview"] }
+zouni = { version = "0.2.3", features = ["webview2", "webkit2gtk"] }
+wcpopup = { version = "0.9.6", features = ["webview"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18" }

@@ -31,6 +31,8 @@ pub struct Position {
 
 #[derive(Clone, Display)]
 pub enum PlayerMenu {
+    RemoveThis,
+    TrashThis,
     PlaybackSpeed,
     SeekSpeed,
     TogglePlaylistWindow,
@@ -134,6 +136,9 @@ fn create_player_menu(window_handle: isize, settings: &Settings) -> Menu {
 
     let mut builder = MenuBuilder::new_from_config(window_handle, config);
 
+    builder.text_with_accelerator(&PlayerMenu::RemoveThis.to_string(), "Remove", false, "Delete");
+    builder.text_with_accelerator(&PlayerMenu::TrashThis.to_string(), "Trash", false, "Shift+Delete");
+    builder.separator();
     create_playback_speed_submenu(&mut builder, settings);
     create_seek_speed_submenu(&mut builder, settings);
     builder.check(&PlayerMenu::FitToWindow.to_string(), "Fit To Window Size", settings.fitToWindow, false);

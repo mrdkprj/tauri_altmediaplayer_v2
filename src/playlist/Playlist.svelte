@@ -238,16 +238,24 @@
         }
     };
 
-    const removeFromPlaylist = async (autoPlay = false) => {
-        if (!$appState.selection.selectedIds.length) return;
+    const removeCurrent = async () => {
+        if ($appState.currentIndex < 0) return;
+        removeFromPlaylist([$appState.currentIndex], true);
+    };
 
+    const removeSelected = async (autoPlay = false) => {
+        if (!$appState.selection.selectedIds.length) return;
         const removeIndices = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id)).map((file) => $appState.files.indexOf(file));
-        const isCurrentFileRemoved = removeIndices.includes($appState.currentIndex);
+        removeFromPlaylist(removeIndices, autoPlay);
+    };
+
+    const removeFromPlaylist = async (targetIndices: number[], autoPlay = false) => {
+        const isCurrentFileRemoved = targetIndices.includes($appState.currentIndex);
 
         const selectedIndex = $appState.files.findIndex((file) => file.id == $appState.selection.selectedId);
         const shouldRestoreSelection = $appState.selection.selectedIds.length == 1;
 
-        dispatch({ type: "removeFiles", value: removeIndices });
+        dispatch({ type: "removeFiles", value: targetIndices });
 
         clearSelection();
 
@@ -256,7 +264,7 @@
             dispatch({ type: "updateSelection", value: { selectedId: nextId, selectedIds: [nextId] } });
         }
 
-        dispatch({ type: "currentIndex", value: getIndexAfterRemove(removeIndices) });
+        dispatch({ type: "currentIndex", value: getIndexAfterRemove(targetIndices) });
 
         if (isCurrentFileRemoved) {
             await loadMediaFile(autoPlay);
@@ -283,19 +291,27 @@
         return $appState.currentIndex;
     };
 
-    const trash = async () => {
-        if (!$appState.selection.selectedIds.length) return;
+    const trashCurrent = async () => {
+        if ($appState.currentIndex < 0) return;
+        await trash([$appState.files[$appState.currentIndex].id]);
+    };
 
-        const result = await releaseFile($appState.selection.selectedIds);
+    const trashSelected = async () => {
+        if (!$appState.selection.selectedIds.length) return;
+        await trash($appState.selection.selectedIds);
+    };
+
+    const trash = async (targetIds: string[]) => {
+        const result = await releaseFile(targetIds);
 
         try {
-            const targetFilePaths = $appState.files.filter((file) => $appState.selection.selectedIds.includes(file.id)).map((file) => file.fullPath);
+            const targetFilePaths = $appState.files.filter((file) => targetIds.includes(file.id)).map((file) => file.fullPath);
 
             if (!targetFilePaths.length) return;
 
             await Promise.all(targetFilePaths.map(async (item) => await ipc.invoke("trash", item)));
 
-            await removeFromPlaylist(result.playing);
+            await removeSelected(result.playing);
         } catch (ex: any) {
             await util.showErrorMessage(ex);
         }
@@ -327,7 +343,7 @@
 
             await ipc.invoke("mv_all", { from: sourcePaths, to: destPath });
 
-            await removeFromPlaylist();
+            await removeSelected();
         } catch (ex: any) {
             await util.showErrorMessage(ex);
         }
@@ -831,13 +847,13 @@
     const handleContextMenu = async (menuId: keyof Mp.PlaylistContextMenuSubTypeMap, value: keyof Mp.PlaylistContextMenuSubTypeMap) => {
         switch (menuId) {
             case "Remove":
-                await removeFromPlaylist();
+                await removeSelected();
                 break;
             case "RemoveAll":
                 await clearPlaylist();
                 break;
             case "Trash":
-                trash();
+                trashSelected();
                 break;
             case "CopyFileName":
                 await copyFileNameToClipboard(false);
@@ -906,6 +922,8 @@
         ipc.receive("change-playlist", changeIndex);
         ipc.receive("restart", clearPlaylist);
         ipc.receive("release-file-result", onReleaseFile);
+        ipc.receive("remove-this", removeCurrent);
+        ipc.receive("trash-this", trashCurrent);
 
         return () => {
             ipc.release();
