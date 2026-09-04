@@ -682,7 +682,10 @@
     };
 
     onMount(() => {
-        prepare();
+        setTimeout(() => {
+            prepare();
+        }, 1000);
+        // prepare();
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
