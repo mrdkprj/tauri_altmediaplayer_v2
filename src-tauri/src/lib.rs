@@ -13,13 +13,6 @@ mod helper;
 mod menu;
 mod shell;
 
-#[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Default, Clone)]
-struct Sort {
-    order: String,
-    groupBy: bool,
-}
-
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
 
@@ -39,16 +32,6 @@ fn get_window_handle(window: &WebviewWindow) -> isize {
 #[tauri::command]
 fn get_init_args(app: tauri::AppHandle) -> Vec<String> {
     helper::get_init_args(&app)
-}
-
-#[tauri::command]
-fn set_sort(app: tauri::AppHandle, payload: Sort) {
-    helper::set_sort(&app, payload);
-}
-
-#[tauri::command]
-fn get_sort(app: tauri::AppHandle) -> Option<Sort> {
-    helper::get_sort(&app)
 }
 
 #[tauri::command]
@@ -358,6 +341,12 @@ pub fn run() {
             helper::setup(app);
             Ok(())
         })
+        .on_page_load(|webview, ev| {
+            if ev.event() == tauri::webview::PageLoadEvent::Finished {
+                let app = webview.app_handle();
+                helper::on_page_load(app);
+            }
+        })
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
                 if window.label() == PLAYER {
@@ -372,8 +361,6 @@ pub fn run() {
             undo,
             #[cfg(target_os = "linux")]
             redo,
-            get_sort,
-            set_sort,
             change_theme,
             open_context_menu,
             open_list_context_menu,

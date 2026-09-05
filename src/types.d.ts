@@ -4,6 +4,8 @@ declare global {
     type RendererName = "Player" | "Playlist" | "Convert";
 
     type RendererChannelEventMap = {
+        ready: Mp.Event;
+        "prepare-playlist": Mp.SortType;
         "toggle-playlist-visible": Mp.Event;
         "contextmenu-event": Mp.ContextMenuEvent;
         "load-playlist": Mp.LoadPlaylistEvent;
@@ -19,6 +21,7 @@ declare global {
         "open-convert": Mp.MediaFile;
         "remove-this": Mp.Event;
         "trash-this": Mp.Event;
+        "update-sort-type": Mp.SortType;
     };
 
     namespace Mp {

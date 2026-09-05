@@ -1,6 +1,13 @@
-use crate::Sort;
+use crate::PLAYER;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
+
+#[derive(Debug, Default)]
+struct WindowCount {
+    count: u8,
+}
+
+const MIN_WINDOW_COUNT: u8 = 3;
 
 pub struct Urls {
     pub taken: bool,
@@ -29,22 +36,32 @@ pub fn setup(app: &tauri::App) {
         urls.push(arg);
     }
     app.manage(Mutex::new(Urls::new(urls)));
+    app.manage(Mutex::new(WindowCount::default()));
+}
+
+pub fn on_page_load(app: &AppHandle) {
+    if let Some(state) = app.try_state::<Mutex<WindowCount>>() {
+        let mut state = state.lock().unwrap();
+        state.count += 1;
+        if state.count >= MIN_WINDOW_COUNT {
+            let _ = app.emit_to(
+                tauri::EventTarget::WebviewWindow {
+                    label: PLAYER.to_string(),
+                },
+                "ready",
+                "",
+            );
+        }
+    } else {
+        /* on_page_load event can occur before setup */
+        app.manage(Mutex::new(WindowCount {
+            count: 1,
+        }));
+    }
 }
 
 pub fn get_init_args(app: &AppHandle) -> Vec<String> {
     let state = app.state::<Mutex<Urls>>();
     let mut urls = state.lock().unwrap();
     urls.take()
-}
-
-pub fn set_sort(app: &AppHandle, new_sort: Sort) {
-    if let Some(sort) = app.try_state::<Mutex<Sort>>() {
-        *sort.lock().unwrap() = new_sort;
-    } else {
-        app.manage(Mutex::new(new_sort));
-    }
-}
-
-pub fn get_sort(app: &AppHandle) -> Option<Sort> {
-    app.try_state::<Mutex<Sort>>().map(|sort| sort.lock().unwrap().clone())
 }

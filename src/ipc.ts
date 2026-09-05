@@ -1,6 +1,5 @@
 import { listen, emit, UnlistenFn, once, emitTo, EventName } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 type TauriCommand<Req, Res> = {
     Request: Req;
@@ -115,8 +114,8 @@ type TauriCommandMap = {
     open_list_context_menu: TauriCommand<Mp.Position, undefined>;
     open_sort_context_menu: TauriCommand<Mp.Position, undefined>;
     change_theme: TauriCommand<Mp.Theme, undefined>;
-    set_sort: TauriCommand<Mp.SortType, undefined>;
-    get_sort: TauriCommand<undefined, Mp.SortType | undefined>;
+    // set_sort: TauriCommand<Mp.SortType, undefined>;
+    // get_sort: TauriCommand<undefined, Mp.SortType | undefined>;
     reveal: TauriCommand<string, undefined>;
     trash: TauriCommand<string, undefined>;
     remove: TauriCommand<string, undefined>;
@@ -163,10 +162,6 @@ export const toTauriSettings = (settings: Mp.Settings): Mp.TauriSettings => {
 };
 
 export class IPCBase {
-    getWindow = async (label: RendererName) => {
-        return WebviewWindow.getByLabel(label);
-    };
-
     invoke = async <K extends keyof TauriCommandMap>(channel: K, data: TauriCommandMap[K]["Request"]): Promise<TauriCommandMap[K]["Response"]> => {
         return await invoke<TauriCommandMap[K]["Response"]>(channel, {
             payload: data,

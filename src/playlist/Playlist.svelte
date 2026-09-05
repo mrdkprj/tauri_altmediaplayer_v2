@@ -691,12 +691,12 @@
     const changeSortOrder = async (sortOrder: Mp.SortOrder) => {
         dispatch({ type: "sortType", value: { order: sortOrder, groupBy: $appState.sortType.groupBy } });
         sortPlayList();
-        await ipc.invoke("set_sort", $appState.sortType);
+        await ipc.sendTo("Player", "update-sort-type", $appState.sortType);
     };
 
     const toggleGroupBy = async () => {
         dispatch({ type: "sortType", value: { order: $appState.sortType.order, groupBy: !$appState.sortType.groupBy } });
-        await ipc.invoke("set_sort", $appState.sortType);
+        await ipc.sendTo("Player", "update-sort-type", $appState.sortType);
     };
 
     const copyFileNameToClipboard = async (fullPath: boolean) => {
@@ -893,28 +893,13 @@
         await getCurrentWebviewWindow().hide();
     };
 
-    const getSortType = (): Promise<Mp.SortType> => {
-        return new Promise((resolve) => {
-            const check = async () => {
-                const sort = await ipc.invoke("get_sort", undefined);
-                if (sort) {
-                    resolve(sort);
-                } else {
-                    setTimeout(check, 100);
-                }
-            };
-            check();
-        });
-    };
-
-    const prepare = async () => {
+    const prepare = async (sortType: Mp.SortType) => {
         await ipc.invoke("listen_file_drop", "playlistViewport");
-        const sort = await getSortType();
-        dispatch({ type: "sortType", value: { order: sort.order, groupBy: sort.groupBy } });
+        dispatch({ type: "sortType", value: sortType });
     };
 
     onMount(() => {
-        prepare();
+        ipc.receive("prepare-playlist", prepare);
         ipc.receive("contextmenu-event", onContextMenuSelect);
         ipc.receive("load-playlist", initPlaylist);
         ipc.receive("add-to-playlist", addToPlaylist);

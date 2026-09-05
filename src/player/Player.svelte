@@ -14,7 +14,7 @@
     import { handleShortcut } from "../shortcut";
     import { resolveContextMenu, awaitContextMenu } from "../contextMenuState.svelte";
 
-    import { getCurrentWebviewWindow, getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
+    import { getCurrentWebviewWindow, getAllWebviewWindows, WebviewWindow } from "@tauri-apps/api/webviewWindow";
     import { ProgressBarStatus } from "@tauri-apps/api/window";
     import { Channel } from "@tauri-apps/api/core";
     import GtkResize from "../GtkResize.svelte";
@@ -350,7 +350,7 @@
         await getCurrentWebviewWindow().setDecorations(false);
         await getCurrentWebviewWindow().setFullscreen(false);
         if (settings.data.playlistVisible) {
-            (await ipc.getWindow("Playlist"))?.show();
+            (await WebviewWindow.getByLabel("Playlist"))?.show();
         }
     };
 
@@ -391,7 +391,7 @@
     };
 
     const openConvert = async () => {
-        (await ipc.getWindow("Convert"))?.show();
+        (await WebviewWindow.getByLabel("Convert"))?.show();
     };
 
     const onChangeDisplayMode = () => {
@@ -399,6 +399,10 @@
         dispatch({ type: "fitToWindow", value: mode });
         settings.data.video.fitToWindow = $appState.media.fitToWindow;
         changeVideoSize();
+    };
+
+    const updateSortType = (sortType: Mp.SortType) => {
+        settings.data.sort = sortType;
     };
 
     const load = (e: Mp.FileLoadEvent) => {
@@ -511,7 +515,7 @@
     };
 
     const togglePlaylistWindow = async () => {
-        const playlist = await ipc.getWindow("Playlist");
+        const playlist = await WebviewWindow.getByLabel("Playlist");
 
         settings.data.playlistVisible = !settings.data.playlistVisible;
 
@@ -605,16 +609,11 @@
             settings.data.bounds = util.toBounds(position, size);
         }
 
-        const playlist = await ipc.getWindow("Playlist");
+        const playlist = await WebviewWindow.getByLabel("Playlist");
         if (playlist) {
             const position = await playlist.innerPosition();
             const size = await playlist.innerSize();
             settings.data.playlistBounds = util.toBounds(position, size);
-        }
-
-        const sort = await ipc.invoke("get_sort", undefined);
-        if (sort) {
-            settings.data.sort = sort;
         }
 
         await settings.save();
@@ -622,7 +621,7 @@
         // On Linux, all windows created must be closed.
         if (navigator.userAgent.includes("Linux")) {
             await playlist?.close();
-            const convert = await ipc.getWindow("Convert");
+            const convert = await WebviewWindow.getByLabel("Convert");
             await convert?.close();
         }
 
@@ -634,7 +633,6 @@
 
         await ipc.invoke("prepare_windows", toTauriSettings(settings.data));
         await ipc.invoke("listen_file_drop", "videoContainer");
-        await ipc.invoke("set_sort", settings.data.sort);
 
         locale.lang = settings.data.locale.lang;
 
@@ -665,7 +663,9 @@
 
         await ipc.invoke("set_play_thumbs", createThumbClickEvent());
 
-        const playlist = await ipc.getWindow("Playlist");
+        const playlist = await WebviewWindow.getByLabel("Playlist");
+
+        await ipc.sendTo("Playlist", "prepare-playlist", settings.data.sort);
 
         await playlist?.setPosition(util.toPhysicalPosition(settings.data.playlistBounds));
 
@@ -682,10 +682,7 @@
     };
 
     onMount(() => {
-        setTimeout(() => {
-            prepare();
-        }, 1000);
-        // prepare();
+        ipc.receive("ready", prepare);
         ipc.receive("load-file", load);
         ipc.receive("contextmenu-event", handleContextMenu);
         ipc.receiveTauri("tauri://drag-drop", onFileDrop);
@@ -696,6 +693,7 @@
         ipc.receiveTauri("tauri://resize", onWindowSizeChanged);
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
+        ipc.receive("update-sort-type", updateSortType);
 
         return () => {
             ipc.release();
