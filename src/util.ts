@@ -29,33 +29,35 @@ class Util {
 
     async toFiles(fullPaths: string[]): Promise<Mp.MediaFile[]> {
         const stats = await this.ipc.invoke("stat_all", fullPaths);
-        return stats.map((stat) => {
-            const fullPath = stat.full_path;
-            const dir = path.dirname(fullPath);
-            const name = path.basename(fullPath);
-
-            return {
-                id: crypto.randomUUID(),
-                fullPath,
-                dir,
-                src: convertFileSrc(fullPath),
-                name: decodeURIComponent(encodeURIComponent(name)),
-                date: stat.attribute.mtime_ms ? stat.attribute.mtime_ms : new Date().getTime(),
-                extension: path.extname(fullPath),
-            };
-        });
+        return await Promise.all(
+            stats.map(async (stat) => {
+                const fullPath = stat.full_path;
+                const dir = path.dirname(fullPath);
+                const name = path.basename(fullPath);
+                const src = this.isLinux() ? await this.ipc.invoke("register_video", fullPath) : convertFileSrc(fullPath);
+                return {
+                    id: crypto.randomUUID(),
+                    fullPath,
+                    dir,
+                    src,
+                    name: decodeURIComponent(encodeURIComponent(name)),
+                    date: stat.attribute.mtime_ms ? stat.attribute.mtime_ms : new Date().getTime(),
+                    extension: path.extname(fullPath),
+                };
+            }),
+        );
     }
 
     async toFile(fullPath: string): Promise<Mp.MediaFile> {
         const statInfo = await this.ipc.invoke("stat", fullPath);
         const dir = path.dirname(fullPath);
         const name = path.basename(fullPath);
-
+        const src = this.isLinux() ? await this.ipc.invoke("register_video", fullPath) : convertFileSrc(fullPath);
         return {
             id: crypto.randomUUID(),
             fullPath,
             dir,
-            src: convertFileSrc(fullPath),
+            src,
             name: decodeURIComponent(encodeURIComponent(name)),
             date: statInfo.mtime_ms ? statInfo.mtime_ms : new Date().getTime(),
             extension: path.extname(fullPath),
@@ -65,12 +67,13 @@ class Util {
     async updateFile(fullPath: string, currentFile: Mp.MediaFile): Promise<Mp.MediaFile> {
         const dir = path.dirname(fullPath);
         const name = path.basename(fullPath);
+        const src = this.isLinux() ? await this.ipc.invoke("register_video", fullPath) : convertFileSrc(fullPath);
 
         return {
             id: currentFile.id,
             fullPath,
             dir,
-            src: convertFileSrc(fullPath),
+            src,
             name: decodeURIComponent(encodeURIComponent(name)),
             date: currentFile.date,
             extension: currentFile.extension,

@@ -12,6 +12,8 @@ mod dialog;
 mod helper;
 mod menu;
 mod shell;
+#[cfg(target_os = "linux")]
+mod stream;
 
 static PLAYER: &str = "Player";
 static PLAY_LIST: &str = "Playlist";
@@ -335,18 +337,31 @@ fn prepare_windows(app: tauri::AppHandle, payload: Settings) -> tauri::Result<bo
     Ok(true)
 }
 
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn register_video(payload: String, server: tauri::State<'_, stream::VideoServer>) -> Result<String, String> {
+    server.register(payload.into()).await
+}
+
+#[tauri::command]
+fn mounted(app: tauri::AppHandle) {
+    helper::on_page_load(&app);
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             helper::setup(app);
+            let server = stream::VideoServer::start()?;
+            app.manage(server);
             Ok(())
         })
-        .on_page_load(|webview, ev| {
-            if ev.event() == tauri::webview::PageLoadEvent::Finished {
-                let app = webview.app_handle();
-                helper::on_page_load(app);
-            }
-        })
+        // .on_page_load(|webview, ev| {
+        //     if ev.event() == tauri::webview::PageLoadEvent::Finished {
+        //         let app = webview.app_handle();
+        //         helper::on_page_load(app);
+        //     }
+        // })
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
                 if window.label() == PLAYER {
@@ -355,12 +370,15 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            mounted,
             get_init_args,
             prepare_windows,
             #[cfg(target_os = "linux")]
             undo,
             #[cfg(target_os = "linux")]
             redo,
+            #[cfg(target_os = "linux")]
+            register_video,
             change_theme,
             open_context_menu,
             open_list_context_menu,

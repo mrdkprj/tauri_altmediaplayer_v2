@@ -104,7 +104,7 @@
         });
     };
 
-    const loadMedia = (e: Mp.FileLoadEvent) => {
+    const loadMedia = async (e: Mp.FileLoadEvent) => {
         dispatch({ type: "currentFile", value: e.currentFile });
         dispatch({ type: "currentTime", value: 0 });
         dispatch({ type: "startFrom", value: e.startFrom });
@@ -599,7 +599,7 @@
     };
 
     const close = async () => {
-        await ipc.invoke("unlisten_file_drop", undefined);
+        await ipc.invoke("unlisten_file_drop", null);
 
         const player = getCurrentWebviewWindow();
         const isMinimized = await player.isMinimized();
@@ -675,7 +675,7 @@
             await playlist?.show();
         }
 
-        const files = await ipc.invoke("get_init_args", undefined);
+        const files = await ipc.invoke("get_init_args", null);
         if (files.length) {
             await ipc.sendTo("Playlist", "load-playlist", { files });
         }
@@ -694,6 +694,8 @@
         ipc.receive("toggle-convert", toggleConvert);
         ipc.receive("toggle-fullscreen", toggleFullscreen);
         ipc.receive("update-sort-type", updateSortType);
+
+        ipc.invoke("mounted", null);
 
         return () => {
             ipc.release();
@@ -747,7 +749,6 @@
             onemptied={onEmptied}
             onerror={onLoadError}
             muted={$appState.media.mute}
-            crossorigin="anonymous"
         ></video>
     </div>
 

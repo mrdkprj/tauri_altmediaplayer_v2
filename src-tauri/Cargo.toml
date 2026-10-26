@@ -18,6 +18,12 @@ wcpopup = { version = "0.9.6", features = ["webview"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18" }
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+http-range = "0.1"
+mime_guess = "2"
+uuid = { version = "1", features = ["v4"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
