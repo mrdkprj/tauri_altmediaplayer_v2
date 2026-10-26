@@ -7,7 +7,7 @@ struct WindowCount {
     count: u8,
 }
 
-const MIN_WINDOW_COUNT: u8 = 3;
+const MIN_WINDOW_COUNT: u8 = 2;
 
 pub struct Urls {
     pub taken: bool,

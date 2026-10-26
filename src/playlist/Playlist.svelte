@@ -712,7 +712,7 @@
     };
 
     const pasteFilePath = async () => {
-        const paths = await ipc.invoke("read_text", undefined);
+        const paths = await ipc.invoke("read_text", null);
         const lineBreak = paths.includes("\r") ? "\r\n" : "\n";
 
         if (paths) {
@@ -764,11 +764,11 @@
         if (!e.ctrlKey) return;
 
         if (e.key == "z") {
-            await ipc.invoke("undo", undefined);
+            await ipc.invoke("undo", null);
         }
 
         if (e.key == "y") {
-            await ipc.invoke("redo", undefined);
+            await ipc.invoke("redo", null);
         }
     };
 
@@ -909,6 +909,8 @@
         ipc.receive("release-file-result", onReleaseFile);
         ipc.receive("remove-this", removeCurrent);
         ipc.receive("trash-this", trashCurrent);
+
+        ipc.invoke("mounted", null);
 
         return () => {
             ipc.release();
