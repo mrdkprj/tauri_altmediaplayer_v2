@@ -352,16 +352,13 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             helper::setup(app);
-            let server = stream::VideoServer::start()?;
-            app.manage(server);
+            #[cfg(target_os = "linux")]
+            {
+                let server = stream::VideoServer::start()?;
+                app.manage(server);
+            }
             Ok(())
         })
-        // .on_page_load(|webview, ev| {
-        //     if ev.event() == tauri::webview::PageLoadEvent::Finished {
-        //         let app = webview.app_handle();
-        //         helper::on_page_load(app);
-        //     }
-        // })
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
                 if window.label() == PLAYER {
